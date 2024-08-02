@@ -42,7 +42,7 @@ mongoose.connect('mongodb+srv://saiefadnan078:eYGjkUILy43UTRYl@cluster-chatapp.t
     status('Network error..');
 });
 
-app.use(express.static(path.join(__dirname,'my-project/public')));
+app.use(express.static(path.join(__dirname,'public')));
 
 
 io.on('connection', (socket) =>{
