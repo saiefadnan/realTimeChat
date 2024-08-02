@@ -6,8 +6,8 @@ const path = require('path');
 const User = require('./mongodb/user');
 require('dotenv').config();
 const bodyParser = require('body-parser');
-const {uploadImageToAzure} = require('./azureUpload');
-const { receiveMessageOnPort } = require('worker_threads');
+const {uploadImageToAzure} = require('./config/azureUpload');
+//const { receiveMessageOnPort } = require('worker_threads');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,7 +42,7 @@ mongoose.connect('mongodb+srv://saiefadnan078:eYGjkUILy43UTRYl@cluster-chatapp.t
     status('Network error..');
 });
 
-app.use(express.static(path.join(__dirname,'public')));
+app.use(express.static(path.join(__dirname,'my-project/public')));
 
 
 io.on('connection', (socket) =>{
