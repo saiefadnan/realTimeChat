@@ -1,0 +1,25 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# dotenv environment variables file
+.env
+
+# Azure Blob Storage configuration file
+azureUpload.js
+
+# Next.js build output
+.next
+
+# Other build outputs
+dist
