@@ -13,6 +13,9 @@ const socket = io();
             socket.emit('register', {email, username ,password, profile: { name: profile.name, data: fileData, type: profile.type }});
         }
         reader.readAsDataURL(profile);
+        document.getElementById('emailInput').value='';
+        document.getElementById('usernameInput').value='';
+        document.getElementById('passwordInput').value='';
     }else{
         console.error('No file selected');
         addNotify('All fields should be filled including profile picture!');
@@ -25,6 +28,8 @@ const socket = io();
     console.log(email,password);
     if (email.trim() && password.trim()) {
       socket.emit('login', email, password);
+      document.getElementById('logemailInput').value='';
+      document.getElementById('logpasswordInput').value='';
     }
   });
 
@@ -137,6 +142,7 @@ const socket = io();
         const profileUrl = profile[index];
         console.log(profileUrl);
         userDiv.style.height = '70px';
+        userDiv.style.width = '80%';
         if(name!=='public') userDiv.style.backgroundColor = 'lightgreen';
         else userDiv.style.backgroundColor = 'crimson';
         userDiv.style.display = 'flex';
@@ -146,6 +152,7 @@ const socket = io();
         userDiv.style.borderRadius = '10px';
         userDiv.style.padding = '0 20px';
         userDiv.textContent = name;
+        userDiv.style.marginTop ='5px';
 
         profileDiv.src=profileUrl;
         profileDiv.style.width = '60px';
