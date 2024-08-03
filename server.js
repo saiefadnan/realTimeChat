@@ -8,13 +8,12 @@ require('dotenv').config();
 const bodyParser = require('body-parser');
 const {uploadImageToAzure} = require('./azureUpload');
 const cors = require('cors');
-//const { receiveMessageOnPort } = require('worker_threads');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
   
-  app.use(cors());
+app.use(cors());
 
 const users={};
 const names={};
@@ -33,9 +32,7 @@ function status(msg){
     });
 }
 
-status('Connecting...');
-
-mongoose.connect('mongodb+srv://saiefadnan078:eYGjkUILy43UTRYl@cluster-chatapp.thnof8a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster-chatApp',{
+mongoose.connect(process.env.MONGODB_URL,{
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
