@@ -14,7 +14,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-      origin: process.env.DOMAIN_URL,
+      origin: 'https://real-time-chat-git-main-saiefadnans-projects.vercel.app',
       methods: ['GET', 'POST'],
       allowedHeaders: ['Access-Control-Allow-Origin'],
       credentials: true
@@ -22,7 +22,7 @@ const io = new Server(server, {
   });
   
   app.use(cors({
-    origin: process.env.DOMAIN_URL,
+    origin: 'https://real-time-chat-git-main-saiefadnans-projects.vercel.app',
     methods: ['GET', 'POST'],
     allowedHeaders: ['Access-Control-Allow-Origin'],
     credentials: true

@@ -1,4 +1,4 @@
-const socket = io('https://real-time-chat-saiefadnan-saiefadnans-projects.vercel.app');
+const socket = io('https://real-time-chat-git-main-saiefadnans-projects.vercel.app');
 
     document.getElementById('registerButton').addEventListener('click', () => {
     const email = document.getElementById('emailInput').value;
