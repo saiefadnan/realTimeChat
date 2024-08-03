@@ -7,11 +7,27 @@ const User = require('./mongodb/user');
 require('dotenv').config();
 const bodyParser = require('body-parser');
 const {uploadImageToAzure} = require('./config/azureUpload');
+const cors = require('cors');
 //const { receiveMessageOnPort } = require('worker_threads');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+      origin: process.env.DOMAIN_URL,
+      methods: ['GET', 'POST'],
+      allowedHeaders: ['Access-Control-Allow-Origin'],
+      credentials: true
+    }
+  });
+  
+  app.use(cors({
+    origin: process.env.DOMAIN_URL,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Access-Control-Allow-Origin'],
+    credentials: true
+  }));
+
 const users={};
 const names={};
 const photo={};
@@ -28,6 +44,8 @@ function status(msg){
         notify: msg
     });
 }
+
+status('Connecting...');
 
 mongoose.connect('mongodb+srv://saiefadnan078:eYGjkUILy43UTRYl@cluster-chatapp.thnof8a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster-chatApp',{
     useNewUrlParser: true,
