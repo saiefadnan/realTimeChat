@@ -6,7 +6,7 @@ const path = require('path');
 const User = require('./mongodb/user');
 require('dotenv').config();
 const bodyParser = require('body-parser');
-const {uploadImageToAzure} = require('./azureUpload');
+const {uploadImageToAzure} = require('../realTimeChat/azureUpload');
 const cors = require('cors');
 
 const app = express();
