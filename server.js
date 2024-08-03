@@ -261,7 +261,7 @@ io.on('connection', (socket) =>{
         else if(recipientSocketId){
             io.to(recipientSocketId).emit('private message',{
                 from: names[socket.id],
-                time: Date.now,
+                time: Date.now(),
                 message,
                 profile: photo[socket.id] 
         });
