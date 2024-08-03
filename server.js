@@ -6,7 +6,7 @@ const path = require('path');
 const User = require('./mongodb/user');
 require('dotenv').config();
 const bodyParser = require('body-parser');
-const {uploadImageToAzure} = require('./config/azureUpload');
+const {uploadImageToAzure} = require('./azureUpload');
 const cors = require('cors');
 //const { receiveMessageOnPort } = require('worker_threads');
 
