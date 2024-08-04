@@ -1,7 +1,7 @@
 const { BlobServiceClient } = require('@azure/storage-blob');
 
 async function uploadImageToAzure(profile) {
-    if (!AZURE_STORAGE_CONNECTION_STRING) {
+    if (!process.env.AZURE_STORAGE_CONNECTION_STRING) {
         throw new Error('Azure Storage connection string is not defined in environment variables');
     }
 

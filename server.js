@@ -79,18 +79,22 @@ io.on('connection', (socket) =>{
             let user = await User.findOne({username});
             let emails = await User.findOne({email});
             if(!user && !emails){
-                const imageUrl = await uploadImageToAzure(profile);
+                let imageUrl="";
+                if(profile!=="false") imageUrl = await uploadImageToAzure(profile);
+                else imageUrl="https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600";
                 user = new User({username,password,email,profilePicture: imageUrl});
                 await user.save();
                 users[username]=socket.id;
-                names[socket.id]=username;
                 photo[socket.id]=imageUrl;
+                names[socket.id]=username;
                 io.to(socket.id).emit('notify',{
                     notify: `Registration successful!! Logged in as : ${user.username}`
                 });
-                io.to(socket.id).emit('profilePicture',{
-                    picture: imageUrl
-                });
+                if(profile!=="false"){
+                    io.to(socket.id).emit('profilePicture',{
+                        picture: imageUrl
+                    });
+                }
                 if(Object.keys(names).length>0)emitActiveUsers();
             }
             else{

@@ -1,4 +1,5 @@
-const socket = io('https://realtimechat-7aqr.onrender.com');
+const url = 'https://realtimechat-7aqr.onrender.com';
+const socket = io('http://localhost:4000/');
     document.getElementById('registerButton').addEventListener('click', () => {
     const email = document.getElementById('emailInput').value;
     const username = document.getElementById('usernameInput').value;
@@ -15,9 +16,16 @@ const socket = io('https://realtimechat-7aqr.onrender.com');
         document.getElementById('emailInput').value='';
         document.getElementById('usernameInput').value='';
         document.getElementById('passwordInput').value='';
-    }else{
+    }
+    else if (username.trim() && email.trim() && password.trim()) {
+      socket.emit('register', {email, username ,password, profile:"false"});
+      document.getElementById('emailInput').value='';
+      document.getElementById('usernameInput').value='';
+      document.getElementById('passwordInput').value='';
+    }
+    else{
         console.error('No file selected');
-        addNotify('All fields should be filled including profile picture!');
+        addNotify('All fields should be filled!');
     }
   });
 
