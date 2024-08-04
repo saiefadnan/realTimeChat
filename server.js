@@ -11,9 +11,29 @@ const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server,{
+    cors: {
+        origin: "*",
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
+        exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
+        credentials: true
+    },
+    allowEIO3: true,
+    pingTimeout: 60000
+});
   
-app.use(cors());
+const corsOptions = {
+    origin: "*",
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
+    exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
+    credentials: true,
+    maxAge: 600,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
 
 const users={};
 const names={};
@@ -45,7 +65,11 @@ mongoose.connect(process.env.MONGODB_URL,{
     status('Network error..');
 });
 
-app.use(express.static(path.join(__dirname,'public')));
+app.use(express.static(path.join(__dirname,'./public')));
+
+app.get("/", (req, res) => {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 
 io.on('connection', (socket) =>{
