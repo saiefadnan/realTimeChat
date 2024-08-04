@@ -130,11 +130,6 @@ io.on('connection', (socket) =>{
                     error: `Invalid login attempt with: ${email}`
                 });
             }
-            // else if(users[user.username] && names[socket.id]){
-            //     io.to(socket.id).emit('error',{
-            //         error: `Already logged in with: ${email}`
-            //     });
-            // }
         }catch(error){
             console.error('Error logging in user:', error);
         }

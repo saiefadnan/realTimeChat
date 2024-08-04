@@ -1,29 +1,4 @@
-import CustomParser from "./customParser";
-
-const socket = io('https://real-time-chat-five-beta.vercel.app', {
-  transports: ['websocket', 'polling'],
-  reconnection: true,           
-  reconnectionAttempts: 5,    
-  reconnectionDelay: 1000,       
-  reconnectionDelayMax: 5000,  
-  randomizationFactor: 0.5, 
-  timeout: 20000,           
-  pingInterval: 25000,         
-  pingTimeout: 5000,          
-  autoConnect: true,        
-  query: { foo: "bar" },     
-  forceNew: true,            
-  multiplex: true,             
-  parser: CustomParser,      
-  upgrade: true,                
-  rememberUpgrade: false,        
-  path: '/socket.io',         
-  withCredentials: false,
-  extraHeaders: {
-    'Authorization': 'Bearer token',
-    'X-Custom-Header': 'value'
-  }
-});
+const socket = io('https://realtimechat-7aqr.onrender.com');
     document.getElementById('registerButton').addEventListener('click', () => {
     const email = document.getElementById('emailInput').value;
     const username = document.getElementById('usernameInput').value;
