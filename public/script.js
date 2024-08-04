@@ -1,5 +1,5 @@
 const url = 'https://realtimechat-7aqr.onrender.com';
-const socket = io('http://localhost:4000/');
+const socket = io(url);
     document.getElementById('registerButton').addEventListener('click', () => {
     const email = document.getElementById('emailInput').value;
     const username = document.getElementById('usernameInput').value;
