@@ -1,0 +1,38 @@
+<!-- <div class="pop-window" style="background-color: black;width: 100%;height: 100%;cursor: pointer;z-index: 1000;position:fixed;"> -->
+<div class="chat-container">
+<div id="active-container">
+    <legend>Chat-Room (Active)</legend> 
+    <div id="active">
+    </div>
+</div>
+<div id="app">
+    <div id="chat-header">
+        <input type="text" id="recipientInput" placeholder="Recipient username">
+        <h5>
+            <ul>Warning:
+                <li>This is still under development.We dont store your chats.If you reload/change/close the tab evrything will be gone.
+                    Though other's can still see it.But u can login anytime.</li>
+                <li>You can send anything except video files.We are working on the payload.</li>
+                <li>You can login from one device at a time.</li>
+                <li>Every active users can see your message in public(red) mode.For private chat select a active user.</li>
+                Happy chatting!!
+            </ul>
+            
+        </h5>
+    </div>
+    <div id="messages"></div>
+    <div id="block-container">
+        <div id="chat-block" class="chat-block">
+            <textarea id="messageInput" class="messageInput" rows="4" cols="15" placeholder="Type your message...."></textarea>
+            <label for="file-input" class="file-label">
+                <div class="custom-file-upload" id="custom-file-upload">
+                    <i class="fas fa-file upload-icon"></i>
+                </div>
+                <input type="file" id="file-input" class="file-input" placeholder="file" accept="*/*" style="display: none;">
+            </label>
+            <button id="sendButton"><i class="fas fa-paper-plane send-icon"></i></button>
+        </div>
+    </div>
+</div>
+</div>
+<!-- </div> -->

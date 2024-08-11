@@ -2,67 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initsial-scale=1.0">
-  <title>Messaging App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatApp</title>
   <link rel="icon" type="image/png" href="https://png.pngtree.com/png-vector/20220527/ourmid/pngtree-chat-box-icon-web-white-png-image_4756254.png">
-
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
 <nav class="navbar">
     <div class="navbar-container">
-            <legend>Secret Chat Service</legend> 
-            <div id="profile-container" class="profile-container">
+            <h1>ChatApp</h1> 
+            <ul class="navbar-menu">
+                <li onclick="window.loadPage('signup.html')" style="cursor: pointer;"><a>Signup</a></li>
+                <li onclick="window.loadPage('login.html')" style="cursor: pointer;"><a>Login</a></li>
+                <li onclick="window.loadPage('chat.html')" style="cursor: pointer;"><a>Chat</a></li>
+            </ul>
+            <!-- <div id="profile-container" class="profile-container">
                 <img src="https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Profile Picture" />
-            </div>
+            </div> -->
     </div>
 </nav>
-<div id="main">
-    <div id="page">
-        <div id="active-container">
-            <legend>Private Chat-Room (Active)</legend> 
-            <div id="active">
-            </div>
-        </div>
-        <div id="app">
-            <div id="block-container">
-            <div id="block">
-                <input type="text" id="emailInput" placeholder="Enter your email">
-                <span>Select Profile Picture: </span><input type="file" id="profilePic" accept="image/*" placeholder="picture">
-            </div>
-            <div id="block">
-                <input type="text" id="usernameInput" placeholder="Enter your username">
-                <input type="password" id="passwordInput" placeholder="Enter your password">
-                <button id="registerButton">Register</button>
-            </div>
-            <hr>
-            <div id="block">
-                <input type="text" id="logemailInput" placeholder="Enter your email">
-                <input type="password" id="logpasswordInput" placeholder="Enter your password">
-                <button id="loginButton">Login</button>
-            </div>
-            </div>
-            <div id="messages"></div>
-            <div id="block-container">
-            <div id="block">
-                <input type="text" id="recipientInput" placeholder="Recipient username">
-            </div>
-                <div id="block">
-                    <input type="text" id="messageInput" placeholder="Type a message">
-                    <input type="file" id="fileInput" placeholder="file" accept="*/*">
-                    <button id="sendButton">Send</button>
-                </div>
-
-            </div>
-        </div>
-        <div id="info-container">
-            <legend>Status</legend> 
-            <div id="info">
-            </div>
-        </div>
-        </div>
-    </div>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>  
-  <script src="script.js"></script>
+<div id="page">
+</div>  
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>  
+<script type="module">
+    import loadPage from './loadfunc.js'; 
+    import fetchData from './fetchData.js';
+    window.loadPage = loadPage;
+    window.fetchData = fetchData;
+</script>
+<script type="module" src="loadComp.js"></script>
 </body>
 </html>
