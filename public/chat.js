@@ -1,11 +1,12 @@
 (function(){
-  function updateStyles() {
-    if (window.innerWidth < 1000) {
-        userDiv.classList.add('userDiv');
-    } else {
-        userDiv.classList.remove('userDiv');
+
+  function addPicture(picture){
+    console.log(picture);
+    const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
+    if(picture){
+        profileDiv.src=picture;
     }
-}
+  }
 if(sessionStorage.getItem('login')==='true'){
     if (window.socket && window.socket.connected) {
         console.log('WebSocket is connected.');
@@ -15,6 +16,7 @@ if(sessionStorage.getItem('login')==='true'){
       const url = 'https://realtimechat-7aqr.onrender.com';
         window.socket = io();
         console.log('u are connecting...');
+        addPicture(sessionStorage.getItem('imageurl'));
         window.socket.emit('insert name',{
             username: sessionStorage.getItem('username'),
             imageurl: sessionStorage.getItem('imageurl')
@@ -134,25 +136,40 @@ if(window.socket){
     addNotify(`${notify}`);
   });
 
-  socket.on('profilePicture',({picture})=>{
-    addPicture(picture);
-  })
-
+  function updateStyles() {
+    if (window.innerWidth < 1000) {
+      console.log('again...');
+      const userDivs = document.getElementById('active').querySelectorAll('div');
+      userDivs.forEach((userDiv)=>{
+        userDiv.style.width = '70px';
+        userDiv.style.margin = '5px';
+      })
+    }
+    else{
+      const userDivs = document.getElementById('active').querySelectorAll('div');
+      userDivs.forEach((userDiv)=>{
+        userDiv.style.margin ='0';
+        userDiv.style.marginTop ='5px';
+        userDiv.style.width = '80%';
+      })
+    }
+}
 
   socket.on('activeUsers',({activeUsers, profile})=>{
     console.log('active users....');
-    const activeBar = document.getElementById('active');
     if(!activeUsers.includes('public')){
         activeUsers.push('public');
         profile.push('https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600');
     }
+    const activeBar = document.getElementById('active');
     activeBar.innerHTML = ''; 
     activeUsers.forEach((name, index) => {
         const userDiv = document.createElement('div');
+        const userNameDiv = document.createElement('h5');
         const profileDiv = document.createElement('img');
-        const phoneActive = document.getElementById('phoneview-active');
+        //const phoneActive = document.getElementById('phoneview-active');
         const profileUrl = profile[index];
-        const activeDiv = document.createElement('div');
+        //const activeDiv = document.createElement('div');
         // const statusDiv = document.createElement('div');
         // statusDiv.style.width = '10px';
         // statusDiv.style.height = '10px';
@@ -163,62 +180,73 @@ if(window.socket){
         // statusDiv.style.marginBottom = '1%';
         // statusDiv.style.display = 'block';
 
-        activeDiv.style.display = 'flex';
-        activeDiv.style.alignItems = 'center';
-        activeDiv.style.justifyContent = 'center';
-        activeDiv.style.backgroundColor = 'lightgreen';
-        activeDiv.style.borderRadius = '50%';
-        activeDiv.style.width = '70px';
-        activeDiv.style.height = '70px';
+        // activeDiv.style.display = 'flex';
+        // activeDiv.style.alignItems = 'center';
+        // activeDiv.style.justifyContent = 'center';
+        // activeDiv.style.backgroundColor = 'lightgreen';
+        // activeDiv.style.borderRadius = '50%';
+        // activeDiv.style.width = '70px';
+        // activeDiv.style.height = '70px';
 
-        userDiv.style.height = '70px';
-        userDiv.style.width = '80%';
-        if(name!=='public') userDiv.style.backgroundColor = 'cadetblue';
+        if(name!=='public') userDiv.style.backgroundColor = 'black';
         else userDiv.style.backgroundColor = 'crimson';
+        userDiv.style.height = '78px';
+        userDiv.style.color = '#ccc';
         userDiv.style.display = 'flex';
+        userDiv.style.flexDirection = 'column';
         userDiv.style.alignItems = 'center';
         userDiv.style.justifyContent = 'space-between';
         userDiv.style.border = '1px solid black'
         userDiv.style.borderRadius = '10px';
-        userDiv.style.padding = '0 20px';
-
-        if(sessionStorage.getItem('username')===name)userDiv.textContent = `${name}(me)`;
-        else userDiv.textContent = name;
-        userDiv.style.marginTop ='5px';
+        userDiv.style.padding = '2.5px 0';
+        userDiv.style.cursor = 'pointer'; 
 
         profileDiv.src=profileUrl;
         profileDiv.style.width = '60px';
         profileDiv.style.height = '60px';
         profileDiv.style.borderRadius = '50%';
-        profileDiv.style.border = '1px soild #ccc';
-        const profileDivClone = profileDiv.cloneNode(true);
-        profileDivClone.style.cursor = 'pointer';
+        profileDiv.style.border = '2px solid #ccc';
 
-        activeDiv.addEventListener('click',()=>{
-          document.getElementById('recipientInput').value=`${name}`;
-        })
+        
 
+        // const profileDivClone = profileDiv.cloneNode(true);
+        // profileDivClone.style.cursor = 'pointer';
+
+        // activeDiv.addEventListener('click',()=>{
+        //   document.getElementById('recipientInput').value=`${name}`;
+        // })
         userDiv.addEventListener('mouseover', () => {
-            userDiv.style.backgroundColor = 'rgb(55, 88, 89)';
-            userDiv.style.cursor = 'pointer'; 
+            userDiv.style.scale = 0.8;
         });
         userDiv.addEventListener('click', () => {
-            document.getElementById('recipientInput').value=`${name}`;
+          document.getElementById('recipientInput').value= name;
+          const unselectDivs = document.getElementById('active').querySelectorAll('div');
+          unselectDivs.forEach((unselectDiv)=>{
+            const name = unselectDiv.querySelector('h5').textContent;
+            if(name!=='public')unselectDiv.style.backgroundColor = 'black';
+            else unselectDiv.style.backgroundColor = 'crimson';
+          })
+          userDiv.style.backgroundColor = 'cadetblue';
         });
         userDiv.addEventListener('mouseout', () => {
-            if(name!=='public')userDiv.style.backgroundColor = 'lightgreen';
-            else userDiv.style.backgroundColor = 'crimson';
+          userDiv.style.scale = 1;
         });
-        activeDiv.appendChild(profileDivClone);
+        
+        //activeDiv.appendChild(profileDivClone);
         //activeDiv.appendChild(statusDiv);
         //profileDivClone.appendChild(statusDiv);
-        phoneActive.style.backgroundColor = 'yellow';
-        phoneActive.appendChild(activeDiv);
+        // phoneActive.style.backgroundColor = 'yellow';
+        // phoneActive.appendChild(activeDiv);
         userDiv.appendChild(profileDiv);
+        userNameDiv.style.padding = 0;
+        userNameDiv.style.margin = 0;
+        if(sessionStorage.getItem('username')===name)userNameDiv.textContent = `${name}(me)`;
+        else userNameDiv.textContent = name;
+        userDiv.appendChild(userNameDiv);
         activeBar.appendChild(userDiv);
         activeBar.scrollTop = activeBar.scrollHeight;
-
-      window.addEventListener('resize', updateStyles);
+        updateStyles();
+        window.addEventListener('resize', updateStyles);
     });
   });
 
@@ -451,17 +479,8 @@ function addError(message) {
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
-  
-  function addPicture(picture){
-    console.log(picture);
-    const profileDiv = document.getElementById('profile-container').querySelector('img');
-    if(picture){
-        profileDiv.src=picture;
-    }
-  }
 
 }})();
-
 document.getElementById('file-input').addEventListener('change',()=>{
-        document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'
-})
+    document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'
+  })

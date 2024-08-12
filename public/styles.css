@@ -90,6 +90,7 @@ body {
     background-color: #333;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     flex-direction: column;
     border-radius: 0 0 15px 15px;
   }
@@ -426,6 +427,12 @@ textarea::-webkit-scrollbar {
     width: 10px;
    border-color:#0056b3;
   }
+  .unselect{
+    background-color: black;
+  }
+  .select{
+    background-color: cadetblue;
+  }
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;
@@ -468,7 +475,7 @@ textarea::-webkit-scrollbar {
   border-radius: 50%;
 }
 
-@media (width < 1000px) {
+@media (max-width: 1000px) {
   .navbar-menu {
     margin-right: -55%;
   }
@@ -491,7 +498,7 @@ textarea::-webkit-scrollbar {
   #active-container{
     flex-direction: row;
     width: 100%;
-    height: 10%;
+    height: 12%;
     margin: 0;
   }
   .users-active-list{
@@ -499,9 +506,11 @@ textarea::-webkit-scrollbar {
     background-color: #0056b3;
   }
   #active{
+    overflow-x: auto;
+    overflow-y: hidden;
     flex-direction: row;
     width: 100%;
-    height: 98%;
+    height: 100%;
   }
   #chat-header {
     display: none;
@@ -509,7 +518,7 @@ textarea::-webkit-scrollbar {
 
   #active-container1,
   #phoneview-active {
-    display: flex; /* Add this line to display the elements */
+    display: flex;
     width: 100px;
     height: 400px;
     background-color: #da5353;
