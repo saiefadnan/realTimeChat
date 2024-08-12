@@ -1,23 +1,24 @@
 <div id="box">
-    <form id="form-box" class="form-box">
-        <h2 style="color: #ccc;">Signup</h2>
-        <hr/>
-        <div class="block">
-            <label for="profile-pic" class="file-label">
-                <div class="custom-image-upload" id="custom-image-upload">
-                    <i class="upload-icon">&#128247;</i> 
-                    <span style="color: #ccc;">Choose an image</span>
-                </div>
-                <input type="file" id="profile-pic" accept="image/*" class="image-input">
-            </label>
-            <div id="profile-container" class="profile-container">
-                <img src="https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Profile Picture" />
-            </div>
-        </div>
+    <h2 class="-header" style="color: #ccc;">Signup</h2>
+    <hr/>
+    <form id="form-box" class="form-box" id="signup-box">
         <input type="text" id="emailInput" placeholder="Email">
         <input type="text" id="usernameInput" placeholder="Username">
         <input type="password" id="passwordInput" placeholder="Password">
         <button id="registerButton">Signup</button>
         <div id="error-box" class="error-box" style="display: none;">error</div>
     </form>
+</div>
+<div style="background-color: black;height: 80%;width:2px;margin: 10px;visibility:hidden"></div>
+<div class="zoom-pic-container">
+        <label for="profile-pic" class="file-label">
+            <div class="custom-image-upload" id="custom-image-upload">
+                <i class="upload-icon">&#128247;</i> 
+                <span style="color: #ccc;">Avatar</span>
+            </div>
+            <input type="file" id="profile-pic" accept="image/*" class="image-input">
+        </label>
+        <div id="profile-container" class="profile-container">
+            <img src="https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Profile Picture" />
+        </div>
 </div>
