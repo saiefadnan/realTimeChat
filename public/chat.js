@@ -235,8 +235,8 @@ function addImageTo(time, imageData){
     messageElement.style.color = 'black';
 
     messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;margin-right: 70px;">${time}</h5>
-    <img src="${imageData}" alt="Image" style="max-width: 215px; max-width: 215px;margin-right: 70px;">`;
+    `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;">${time}</h5>
+    <img src="${imageData}" alt="Image" style="max-width: 215px; max-width: 215px;">`;
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     messageElement.querySelector('img').style.cursor = 'pointer';
@@ -314,8 +314,8 @@ function addVideoTo(time, videoData) {
     messageElement.style.color = '#333';
 
     messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;margin-right: 70px;">${time}</h5>
-    <video controls style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;margin-right:70px;">
+    `<h5 style="width:90%;text-align: center;">${time}</h5>
+    <video controls style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">
       <source src="${videoData}" type="video/mp4">Your browser does not support the video tag.
     </video>`;
     messagesDiv.appendChild(messageElement);
