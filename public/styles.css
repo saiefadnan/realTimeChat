@@ -199,6 +199,7 @@ body {
     flex-direction: column;
     align-items: center;
     box-sizing: border-box;
+    gap: 15px;
   }
 
   #logpasswordInput, #logemailInput,#emailInput, #usernameInput, #passwordInput{

@@ -235,7 +235,7 @@ function addImageTo(time, imageData){
     messageElement.style.color = 'black';
 
     messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;">${time}</h5>
+    `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <img src="${imageData}" alt="Image" style="max-width: 215px; max-width: 215px;">`;
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -267,7 +267,7 @@ function addImage(time,from, imageData,profile){
     const messageContainer = document.createElement('div');
 
     messageElement.innerHTML = 
-    `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;">${time}</h5>
+    `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${from}</h5>
     <img src="${imageData}" alt="Image" style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">`;
     messageElement.style.width= '100%';
@@ -311,10 +311,9 @@ function addVideoTo(time, videoData) {
     messageElement.style.padding = '8px';
     messageElement.style.width = '98%';
     messageElement.style.height = 'auto';
-    messageElement.style.color = '#333';
 
     messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;">${time}</h5>
+    `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
     <video controls style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">
       <source src="${videoData}" type="video/mp4">Your browser does not support the video tag.
     </video>`;
@@ -329,7 +328,7 @@ function addVideo(time,to, videoData, profile) {
     const profileDiv = document.createElement('img');
     const messageContainer = document.createElement('div');
     messageElement.innerHTML =
-     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;">${time}</h5>
+     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
     <video controls style="max-width: 215px; max-height: 215px;">
       <source src="${videoData}" type="video/mp4">
