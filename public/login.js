@@ -8,6 +8,9 @@ document.getElementById('loginButton').addEventListener('click', async(e) => {
     else if(!password.trim()){
         showerror('Password is missing');
     }else{
+      if (window.socket && window.socket.connected) {
+        window.socket.disconnect();
+      } 
         const reqData ={
             email: email,
             password: password

@@ -1,5 +1,4 @@
 document.getElementById('profile-pic').addEventListener('change',(event)=>{
-        console.log('clicked');
         const image = document.getElementById('profile-container').querySelector('img');
         const avatar = event.target.files[0];
         if(avatar){
@@ -14,7 +13,6 @@ document.getElementById('profile-pic').addEventListener('change',(event)=>{
 
 document.getElementById('registerButton').addEventListener('click',async(e)=>{
     e.preventDefault();
-    console.log('hello');
     const avatar = document.getElementById('profile-pic');
     const email = document.getElementById('emailInput').value;
     const username = document.getElementById('usernameInput').value;
@@ -39,6 +37,9 @@ document.getElementById('registerButton').addEventListener('click',async(e)=>{
         showerror('Password is missing');
     }
     else{
+        if (window.socket && window.socket.connected) {
+            window.socket.disconnect();
+          } 
         if(profile){
             const reader = new FileReader();
             reader.onload = async() => {

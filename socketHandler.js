@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('./mongodb/user');
+const {usernames} = require('./controllers/controller');
 
 function socketHandler(io){
     const users = {};
@@ -20,7 +21,7 @@ function socketHandler(io){
             users[username] = socket.id;
             names[socket.id] = username;
             photo[socket.id] = imageurl
-            console.log('username saved...');
+            console.log('username saved');
             if(Object.keys(names).length>0)emitActiveUsers();
         })
         socket.on('private image',async({to,fileData})=>{
@@ -104,7 +105,6 @@ function socketHandler(io){
     
         
         socket.on('public file',async({fileData, fileName})=>{
-            // console.log('Received image data:', imageData);
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
                     error: 'You are not logged in! Message not sent!'
@@ -121,7 +121,7 @@ function socketHandler(io){
             }
         })
         socket.on('private file',async({to, fileData, fileName})=>{
-            console.log('video sending...');
+            console.log('file sending...');
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
@@ -146,7 +146,6 @@ function socketHandler(io){
         
         socket.on('private message',async({to,message})=>{
             const recipientSocketId = users[to];
-            console.log(message,to,recipientSocketId);
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
                     error: 'You are not logged in! Message not sent!'
@@ -184,6 +183,11 @@ function socketHandler(io){
         })
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);
+            const index = usernames.indexOf(names[socket.id]);
+            if(index!==-1){
+                usernames.splice(index,1);
+                console.log('total concurrent active users ',usernames.length);
+            }
             delete users[names[socket.id]];
             delete names[socket.id];
             delete photo[socket.id];

@@ -62,6 +62,3 @@ const PORT =4000;
 server.listen(PORT,()=>{
     console.log(`Server is running on port ${PORT}`);
 });
-
-
-// mongodb+srv://saiefadnan078:eYGjkUILy43UTRYl@cluster-chatapp.thnof8a.mongodb.net/?retryWrites=true&w=majority&appName=Cluster-chatApp

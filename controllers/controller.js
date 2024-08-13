@@ -52,7 +52,7 @@ const signinData = async(req,res)=>{
         let user = await User.findOne({username});
         const emails = await User.findOne({email});
         if(!user && !emails && !usernames.includes(username)){
-            let imageUrl="https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=600";
+            let imageUrl="https://img6.arthub.ai/65f2201a-1b80.webp";
             if(profile) imageUrl = await uploadImageToAzure(profile);
             user = new User({username,password,email,profilePicture: imageUrl});
             await user.save();
@@ -81,4 +81,5 @@ const signinData = async(req,res)=>{
 module.exports ={
     loginData,
     signinData,
+    usernames
 }

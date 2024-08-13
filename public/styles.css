@@ -90,15 +90,15 @@ body {
     background-color: #333;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    margin: auto;
     flex-direction: column;
     border-radius: 0 0 15px 15px;
   }
   #active-container{
     width: 15%;
     height: 88.5%;
-    background-color: cadetblue;
-    border-radius: 20px;
+    border-radius: 0 0 20px 20px;
+    border: 2px solid #333;
     text-align: center;
     display: flex;
     align-items: center;
@@ -119,12 +119,14 @@ body {
   }
   
   #messages {
-    overflow: hidden;
     border: 1px solid #ccc;
-    height: 100%;
-    min-height: 50px;
+    height: 90%;
     width: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     margin: 5px 0;
     font-weight: bold;
     background-color: #333;
@@ -132,30 +134,31 @@ body {
   }
   
   #sendButton{
-    padding: 11px 10px;
-    width: 5%;
-    font-size: 16px;
+    padding: 10px 15px;
+    width: auto;
+    height: auto;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
-    margin-bottom: 5px;
+    color: #333;
     background-color: lightgreen;
     
   }
-  #sendButton:hover{
+  #RegisterButton:hover,#loginButton:hover,#sendButton:hover{
     background-color: rgb(28, 102, 28);
   }
   #block-container{
     display: flex;
     flex-direction: column;
-    justify-content:left;
+    justify-content: center;
     align-items: center;
-    height: 100px;
+    height: 12%;
+    min-height: 50px;
     width: 100%;
-    background-color: #0056b3;
+    background-color: #333;
   }
 
   hr{
@@ -191,37 +194,40 @@ body {
 
   .form-box {
     width: 80%;
-    height: 100%;
-    padding: 20px;
+    height: 50%;
     display: flex;
+    margin: auto;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    box-sizing: border-box;
   }
 
   #logpasswordInput, #logemailInput,#emailInput, #usernameInput, #passwordInput{
     width: 100%;
-    padding: 10px;
+    padding: 8px 12px;
     font-size: 16px;
     font-weight: bold;
-    margin: 10px;
+    border: none;
+    margin: auto;
     background-color: #ccc;
+    box-sizing: border-box;
   }
 
   button{
     display: flex;
     align-items: center;
     justify-content: center;
+    border: none;
   }
 
   .form-box button{
-    width: 105%;
-    height: 10%;
-    padding: 10px;
+    width: 100%;
+    padding: 8px 12px;
     font-size: 16px;
     cursor: pointer;
-    margin: 10px;
+    margin: auto;
     background-color: lightgreen;
+    box-sizing: border-box;
   }
 
   .custom-image-upload {
@@ -242,24 +248,17 @@ body {
 }
 
 .custom-file-upload {
-  margin-right: 200px;
-  width: 45%;
-  height: 60%;
-  margin: 5px;
-  display: inline-block;
-  text-align: center;
-  color: #333;
-  text-align: center;
-  justify-content: space-between;
-  padding: 12px 15px;
+  width: auto;
+  height: auto;
+  display: flex;
+  justify-content: center;
+  padding: 8px 12px;
   cursor: pointer;
   background-color: #007bff;
   align-items: center;
-  color: #fff;
+  color: #333;
   border-radius: 5px;
-  font-size: 14px;
   text-align: center;
-  overflow: hidden;
 }
 .label-text{
   font-size: 16px;
@@ -291,19 +290,15 @@ body {
   display: flex;
   width: 99%;
   height: 100%;
-  gap: 1px;
   margin-top: 20px;
   overflow: hidden;
 }
 
 .chat-block{
-  background-color: #da5353;
   display: flex;
   flex-direction: row;
-  width: 98%;
-  height: 70%;
-  margin: 5px 5px;
-  padding: 10px;
+  width: 99%;
+  height: 98%;
   align-items: center;
   justify-content: center;
   gap: 20px;
@@ -337,79 +332,104 @@ textarea::-webkit-scrollbar {
   font-size: 16px;
   font-weight: bold;
   border-radius: 15px 0 15px 0;
-  margin: 0;
+  margin: auto;
   padding: 10px;
+  box-sizing: border-box;
 }
 
 #chat-header{
   display: flex;
   align-items:center;
   height: 125px;
-  background-color: yellow;
+  background-color: #0056b3;
 }
 
 #chat-header h5{
   margin-left: 10%;
-  color: crimson;
-  background-color: #ccc;
-  padding: 0 12px;
+  color: black;
 }
 
  .message-receive{
     background-color: lightblue;
     border-radius: 0 10px 10px 10px;
-    margin: 0 10px;
+    margin-left: 10px;
     text-align: left;
     padding: 10px;
-    width: 90%;
+    width: 40%;
     max-height: 100%;
-
+    word-wrap: break-word;
   }
 
   .message-send{
     background-color: rgb(38, 158, 198);
     border-radius: 10px 0 10px 10px;
-    margin: 0 10px;
     text-align: left;
+    margin-right: 70px;
     padding: 10px;
-    width: 90%;
+    width: 40%;
     max-height: 100%;
+    word-wrap: break-word;
+  }
+  .message-send-container{
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: auto;
+    margin: 0;
+    height: auto;
+    width:100%;
   }
 
-  .message-container{
+  .message-receive-container{
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    width: 100%;
-    height: 60px;
+    width: auto;
+    margin: 0;
+    height: auto;
+    width:100%;
   }
 
   .final-container{
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    width: 50%;
-    margin-top: 15px;
-    word-wrap: break-word;
+    align-items: flex-start;
+    justify-content: center;
+    width: 98%;
+    height: auto;
   }
 
-  .time-container,.time-name-container{
+  .send-final-container{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    width: 98%;
+    height: auto;
+  }
+
+  .time-container{
+    margin-right: 50px;
+    color: #ccc;
+  }
+
+  .time-name-container{
     display: flex;
     align-items: center;
     justify-content:flex-start;
     gap: 20px;
     width: 50%;
-    height: 0;
-    margin-bottom: 0;
+    padding: 0;
+    margin: 2px 50px 
   }
 
   .receiver-profile-container{
     width: 70px;
     height: 70px;
     border-radius: 50%;
+    margin: 0;
     background-color: #333;
-    padding: 5px;
+    padding: 5px ;
   }
   .zoom-pic-container{
     width: 35%;
@@ -427,12 +447,7 @@ textarea::-webkit-scrollbar {
     width: 10px;
    border-color:#0056b3;
   }
-  .unselect{
-    background-color: black;
-  }
-  .select{
-    background-color: cadetblue;
-  }
+
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;
@@ -453,14 +468,6 @@ textarea::-webkit-scrollbar {
   .custom-image-upload i{
     margin: 0;
     padding: 0;
-  }
-  #registerButton{
-    width: auto;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    font-size: x-small;
   }
 }
 
@@ -491,19 +498,21 @@ textarea::-webkit-scrollbar {
     width: 100%;
     justify-content:flex-start;
     align-items: center;
-    height: 85%;
-    gap: 0;
+    height: 77%;
+    padding: 0;
+    margin: 0;
   }
-
+  #sendButton, .custom-file-upload{
+    scale: 0.8;
+  }
   #active-container{
     flex-direction: row;
-    width: 100%;
+    width: 98%;
     height: 12%;
-    margin: 0;
+    border-radius: 20px 0 20px 0;
   }
   .users-active-list{
     width: 10px;
-    background-color: #0056b3;
   }
   #active{
     overflow-x: auto;
@@ -511,27 +520,10 @@ textarea::-webkit-scrollbar {
     flex-direction: row;
     width: 100%;
     height: 100%;
+    border-radius: 15px 0 15px 0;
   }
   #chat-header {
     display: none;
-  }
-
-  #active-container1,
-  #phoneview-active {
-    display: flex;
-    width: 100px;
-    height: 400px;
-    background-color: #da5353;
-    z-index: 1000;
-  }
-
-  #sendButton {
-    width: 7%;
-  }
-  #messages {
-    width: 98%;
-    height: 75%;
-    background-color: #fff;
   }
 }
 
@@ -546,16 +538,6 @@ textarea::-webkit-scrollbar {
   .profile-container{
     width: 130px;
     height: 130px;
-  }
-}
-
-
-@media(height<800px){
-  #emailInput, #usernameInput, #passwordInput{
-    width: 100%;
-    height: 10px;
-    padding: 5px 7px;
-    font-size: x-small;
   }
 }
 
@@ -579,18 +561,6 @@ textarea::-webkit-scrollbar {
     padding: 0;
     margin: 0;
   }
-  #logpasswordInput, #logemailInput{
-    width: 100%;
-    height: 10px;
-    padding: 5px 7px;
-    font-size: x-small;
-  }
-  #emailInput, #usernameInput, #passwordInput{
-    height: 5px;
-    margin: 2px;
-    padding: 5px;
-  }
-
   .profile-container{
     width: 100px;
     height: 100px;
@@ -601,14 +571,6 @@ textarea::-webkit-scrollbar {
 @media(height< 300px){
   #page{
     overflow: auto;
-  }
-  #loginButton,#registerButton{
-    width: auto;
-    height: 10px;
-    display: flex;
-    align-items: center;
-    padding: 4px 5px;
-    font-size: xx-small;
   }
   .profile-container{
     display: none;
@@ -627,25 +589,9 @@ textarea::-webkit-scrollbar {
     padding: 0;
     font-size: xx-small;
   }
-  .form-box{
-    height: 100%;
-  }
-  #logpasswordInput, #logemailInput,#emailInput, #usernameInput, #passwordInput{
-    height: 5px;
-    margin: 2px;
-    padding: 5px;
-  }
 } 
 
 @media(height> 1200px){
-  #logpasswordInput, #logemailInput,#emailInput, #usernameInput, #passwordInput{
-    padding: 5px 7px;
-    height: 50px;
-  }
-  .form-box button{
-    height: 70px;
-  }
-  
   .profile-container{
     width: 500px;
     height: 500px;

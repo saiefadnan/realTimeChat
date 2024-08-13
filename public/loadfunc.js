@@ -13,11 +13,11 @@ export default function loadPage(content){
             const existingScript = document.querySelector(`script[src="${Script}"]`);
             if(existingScript){
                 existingScript.remove();
-                console.log('Old script removed!!');
+                //console.log('Old script removed!!');
             }
             script.src = `${Script}?v=${new Date().getTime()}`;
             script.onload = () => {
-                console.log('Script loaded successfully');
+                //console.log('Script loaded successfully');
             };
             script.onerror = (error) => {
                 console.error('Error loading script', error);
