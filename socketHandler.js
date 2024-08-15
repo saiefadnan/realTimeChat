@@ -22,6 +22,7 @@ function socketHandler(io){
             if(Object.keys(names).length>0)emitActiveUsers('init',null,null,socket);
         })
         socket.on('insert name',async({username,imageurl})=>{
+            if(!usernames.includes(username)) usernames.push(username);
             users[username] = socket.id;
             names[socket.id] = username;
             photos[socket.id] = imageurl
@@ -195,8 +196,8 @@ function socketHandler(io){
                 usernames.splice(index,1);
                 console.log('total concurrent active users ',usernames.length);
             }
-            delete users[names[socket.id]];
             if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);
+            delete users[names[socket.id]];
             delete names[socket.id];
             delete photos[socket.id];
         });
