@@ -10,7 +10,6 @@ function socketHandler(io){
     function emitActiveUsers (operation, name, photo, socket){
         activeUsers = Object.values(names);
         profile = Object.values(photos);
-        console.log(operation);
         if(operation==='init'){
             io.to(socket.id).emit('init activeUsers',{activeUsers, profile});
         }

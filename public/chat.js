@@ -222,12 +222,8 @@ if(window.socket){
       const activeBar = document.getElementById('active');
       const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
       activeBar.innerHTML='';
-      if(!activeUsers.includes('public')){
-        activeUsers.push('public');
-        profile.push(publicUrl);
-        BuildActiveDiv(activeBar,sessionStorage.getItem('username'), sessionStorage.getItem('imageurl'));
-        BuildActiveDiv(activeBar,'public', publicUrl);
-      }
+      BuildActiveDiv(activeBar,sessionStorage.getItem('username'), sessionStorage.getItem('imageurl'));
+      BuildActiveDiv(activeBar,'public', publicUrl);
       activeUsers.forEach((name, index) => {
         console.log(name);
           if(name!=='public' && name!==sessionStorage.getItem('username')){
