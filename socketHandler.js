@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-const User = require('./mongodb/user');
 const {usernames} = require('./controllers/controller');
 
 function socketHandler(io){

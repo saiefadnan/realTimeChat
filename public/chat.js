@@ -1,33 +1,37 @@
 (function(){
 
   function addPicture(picture){
-    //console.log(picture);
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
         profileDiv.src=picture;
     }
   }
+  function connectWebSocket(){
+    window.socket = io();
+    addPicture(sessionStorage.getItem('imageurl'));
+    window.socket.on('connect', function(){
+      console.log('connection success....');
+      window.socket.emit('insert name',{
+        username: sessionStorage.getItem('username'),
+        imageurl: sessionStorage.getItem('imageurl')
+      })
+    })
+  }
 if(sessionStorage.getItem('login')==='true'){
     if (window.socket && window.socket.connected) {
-        //console.log('WebSocket is connected.');
+        console.log('WebSocket is already connected.....');
         window.socket.emit('show active-users');
     } 
     else{
-        window.socket = io();
-        //console.log('u are connecting...');
-        addPicture(sessionStorage.getItem('imageurl'));
-        window.socket.emit('insert name',{
-            username: sessionStorage.getItem('username'),
-            imageurl: sessionStorage.getItem('imageurl')
-    });
+      connectWebSocket();
     }
-}
-else{
-    //console.log('No connection');
 }
 
 if(window.socket){
     const socket = window.socket;
+    socket.on('disconnect', function(){
+      console.log("Disconnected....Attempting to reconnect...");
+    })
     document.getElementById('sendButton').addEventListener('click', () => {
     const recipient = document.getElementById('recipientInput').value;
     const message = document.getElementById('messageInput').value;
@@ -52,7 +56,6 @@ if(window.socket){
                 socket.emit('public image', {fileData });
                 addImageTo(new Date(Date.now()).toLocaleString(), fileData);
             } else if (file.type.startsWith('video/')) {
-                //console.log('video..');
                 socket.emit('public video', {fileData });
                 addVideoTo(new Date(Date.now()).toLocaleString(), fileData);
             } else {
@@ -333,7 +336,6 @@ function addVideoTo(time, videoData) {
 }
 
 function addVideo(time,to, videoData, profile) {
-  // console.log('video received...');
     const messagesDiv = document.getElementById('messages');
     const messageElement = document.createElement('div');
     const profileDiv = document.createElement('img');

@@ -30,7 +30,7 @@ async function uploadImageToAzure(profile) {
         }
         
         const uniqueName = `${uuidv4()}-${name}`;
-        console.log(uniqueName);
+        // console.log(uniqueName);
 
         const blockBlobClient = containerClient.getBlockBlobClient(uniqueName);
 

@@ -62,7 +62,6 @@ const signinData = async(req,res)=>{
             let sasToken_='';
             if(profile){
                 const { blobPath, sasToken } = await uploadImageToAzure(profile);
-                console.log(blobPath,sasToken);
                 blobPath_ = blobPath;
                 sasToken_ = sasToken;
             }
