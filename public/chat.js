@@ -13,7 +13,6 @@ if(sessionStorage.getItem('login')==='true'){
         window.socket.emit('show active-users');
     } 
     else{
-      const url = 'https://realtimechat-7aqr.onrender.com';
         window.socket = io();
         //console.log('u are connecting...');
         addPicture(sessionStorage.getItem('imageurl'));
@@ -140,7 +139,6 @@ if(window.socket){
 
   function updateStyles() {
     if (window.innerWidth < 1000) {
-      //console.log('again...');
       const userDivs = document.getElementById('active').querySelectorAll('div');
       userDivs.forEach((userDiv)=>{
         userDiv.style.width = '70px';
@@ -157,73 +155,106 @@ if(window.socket){
     }
 }
 
-  socket.on('activeUsers',({activeUsers, profile})=>{
-    if(!activeUsers.includes('public')){
-        activeUsers.push('public');
-        profile.push('https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg');
-    }
-    const activeBar = document.getElementById('active');
-    activeBar.innerHTML = ''; 
-    activeUsers.forEach((name, index) => {
-        const userDiv = document.createElement('div');
-        const userNameDiv = document.createElement('h5');
-        const profileDiv = document.createElement('img');
-        const profileUrl = profile[index];
+  function BuildActiveDiv(activeBar, name, profile_src){
+    const userDiv = document.createElement('div');
+    const userNameDiv = document.createElement('h5');
+    const profileDiv = document.createElement('img');
 
-        if(name!=='public') userDiv.style.backgroundColor = 'black';
-        else userDiv.style.backgroundColor = 'crimson';
-        userDiv.style.height = '78px';
-        userDiv.style.color = '#ccc';
-        userDiv.style.display = 'flex';
-        userDiv.style.flexDirection = 'column';
-        userDiv.style.alignItems = 'center';
-        userDiv.style.justifyContent = 'space-between';
-        userDiv.style.border = '1px solid black'
-        userDiv.style.borderRadius = '10px';
-        userDiv.style.padding = '2.5px 0';
-        userDiv.style.cursor = 'pointer'; 
+    userDiv.style.height = '78px';
+    userDiv.style.color = '#ccc';
+    userDiv.style.display = 'flex';
+    userDiv.style.flexDirection = 'column';
+    userDiv.style.alignItems = 'center';
+    userDiv.style.justifyContent = 'space-between';
+    userDiv.style.border = '1px solid black'
+    userDiv.style.borderRadius = '10px';
+    userDiv.style.padding = '2.5px 0';
+    userDiv.style.cursor = 'pointer'; 
+    if(name!=='public') userDiv.style.backgroundColor = 'black';
+    else userDiv.style.backgroundColor = 'crimson';
 
-        profileDiv.src=profileUrl;
-        profileDiv.style.width = '60px';
-        profileDiv.style.height = '60px';
-        profileDiv.style.borderRadius = '50%';
-        profileDiv.style.border = '2px solid #ccc';
+    profileDiv.src=profile_src;
+    profileDiv.style.width = '60px';
+    profileDiv.style.height = '60px';
+    profileDiv.style.borderRadius = '50%';
+    profileDiv.style.border = '2px solid #ccc';
 
-        userDiv.addEventListener('mouseover', () => {
-            userDiv.style.scale = 0.8;
-        });
-        userDiv.addEventListener('click', () => {
-          document.getElementById('recipientInput').value= name;
-          const unselectDivs = document.getElementById('active').querySelectorAll('div');
-          unselectDivs.forEach((unselectDiv)=>{
-            const name = unselectDiv.querySelector('h5').textContent;
-            if(name!=='public')unselectDiv.style.backgroundColor = 'black';
-            else unselectDiv.style.backgroundColor = 'crimson';
-          })
-          userDiv.style.backgroundColor = 'cadetblue';
-        });
-        userDiv.addEventListener('mouseout', () => {
-          userDiv.style.scale = 1;
-        });
-        
-        userDiv.appendChild(profileDiv);
-        userNameDiv.style.padding = 0;
-        userNameDiv.style.margin = 0;
-        if(sessionStorage.getItem('username')===name)userNameDiv.textContent = `${name}(me)`;
-        else userNameDiv.textContent = name;
-        userDiv.appendChild(userNameDiv);
-        activeBar.appendChild(userDiv);
-        activeBar.scrollTop = activeBar.scrollHeight;
-        updateStyles();
-        window.addEventListener('resize', updateStyles);
+    userDiv.addEventListener('mouseover', () => {
+      userDiv.style.scale = 0.8;
     });
+    userDiv.addEventListener('mouseout', () => {
+      userDiv.style.scale = 1;
+    });
+    userDiv.addEventListener('click', () => {
+      document.getElementById('recipientInput').value= name;
+      const unselectDivs = document.getElementById('active').querySelectorAll('div');
+      unselectDivs.forEach((unselectDiv)=>{
+        const name = unselectDiv.querySelector('h5').textContent;
+        if(name!=='public')unselectDiv.style.backgroundColor = 'black';
+        else unselectDiv.style.backgroundColor = 'crimson';
+    })
+      userDiv.style.backgroundColor = 'cadetblue';
+    });
+    userDiv.appendChild(profileDiv);
+
+    userNameDiv.style.padding = 0;
+    userNameDiv.style.margin = 0;
+
+    if(sessionStorage.getItem('username')===name)userNameDiv.textContent = `${name}(me)`;
+    else userNameDiv.textContent = name;
+    userDiv.appendChild(userNameDiv);
+    activeBar.appendChild(userDiv);
+    console.log('added...');
+  }
+
+  function RemoveActiveDiv(activeBar, name){
+    const userDivs = document.getElementById('active').querySelectorAll('div');
+    for(let i=0;i<userDivs.length;++i){
+      if(userDivs[i].querySelector('h5').textContent.trim()===name){
+        activeBar.removeChild(userDivs[i]);
+        console.log('removed...');
+        break;
+      }
+    }
+  }
+
+  socket.on('init activeUsers',({activeUsers, profile})=>{
+      const activeBar = document.getElementById('active');
+      const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
+      activeBar.innerHTML='';
+      if(!activeUsers.includes('public')){
+        activeUsers.push('public');
+        profile.push(publicUrl);
+        BuildActiveDiv(activeBar,sessionStorage.getItem('username'), sessionStorage.getItem('imageurl'));
+        BuildActiveDiv(activeBar,'public', publicUrl);
+      }
+      activeUsers.forEach((name, index) => {
+        console.log(name);
+          if(name!=='public' && name!==sessionStorage.getItem('username')){
+            BuildActiveDiv(activeBar,name, profile[index]);
+          }
+      });
+      console.log('init...');
+    updateStyles();
+    window.addEventListener('resize', updateStyles);
+  });
+
+  socket.on('activeUsers',({operation, name, photo})=>{
+    const activeBar = document.getElementById('active');
+      if(operation==='add'){
+        BuildActiveDiv(activeBar,name, photo);
+      }
+      else if(operation==='remove'){
+        RemoveActiveDiv(activeBar, name);
+      }
+    updateStyles();
+    window.addEventListener('resize', updateStyles);
   });
 
 
 function addImageTo(time, imageData){
     const messagesDiv = document.getElementById('messages');
     const messageElement = document.createElement('div');
-    //const modal = document.createElement('div');
     messageElement.style.display = 'flex';
     messageElement.style.flexDirection = 'column';
     messageElement.style.alignItems = 'flex-end';
@@ -241,22 +272,6 @@ function addImageTo(time, imageData){
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     messageElement.querySelector('img').style.cursor = 'pointer';
     
-    // messageElement.querySelector('img').addEventListener('click',()=>{
-    //     if(messageElement.querySelector('img').style.width=='200px'){
-    //         console.log('asda');
-    //         modal.style.position = 'fixed';
-    //         modal.style.top = '50%';
-    //         modal.style.left = '50%';
-    //         modal.style.transform = 'translate(-50%, -50%)';
-    //         modal.style.width = '100%';
-    //         modal.style.height = '100%';
-    //         modal.style.backgroundColor = '#ccc';
-    //         modal.style.zIndex = '1000';
-    //     }
-    //     else{
-    //         modal.style.display = 'none';
-    //     }
-    // })
 }
 
 

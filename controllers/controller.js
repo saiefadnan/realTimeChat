@@ -1,9 +1,11 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../mongodb/user');
-const {uploadImageToAzure} = require('../azureUpload');
+const { BlobServiceClient, StorageSharedKeyCredential} = require('@azure/storage-blob');
+const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
 const usernames=[];
-
+const accountName = process.env.AZURE_ACCOUNT_NAME;
+const accountKey = process.env.AZURE_ACCOUNT_KEY;
 
 
 const loginData = async(req,res)=>{
@@ -31,11 +33,15 @@ const loginData = async(req,res)=>{
             });
         }else if(user && pass){
             usernames.push(user.username);
+            const blobName = decodeURIComponent(user.profilePicture.substring(user.profilePicture.lastIndexOf('/')+1));
+            const credential = new StorageSharedKeyCredential(accountName, accountKey);
+            const sasToken = await generateSasToken(blobName,credential);
+            console.log('Token Refreshed....');
             return res.status(200).json({
                     login:true,
                     notify: `Welcome ${user.username}!`,
                     username: user.username,
-                    imageurl: user.profilePicture
+                    imageurl: `${user.profilePicture}?${sasToken}`
             });
         }
     }
@@ -52,16 +58,22 @@ const signinData = async(req,res)=>{
         let user = await User.findOne({username});
         const emails = await User.findOne({email});
         if(!user && !emails && !usernames.includes(username)){
-            let imageUrl="https://img6.arthub.ai/65f2201a-1b80.webp";
-            if(profile) imageUrl = await uploadImageToAzure(profile);
-            user = new User({username,password,email,profilePicture: imageUrl});
+            let blobPath_ = "https://img6.arthub.ai/65f2201a-1b80.webp";
+            let sasToken_='';
+            if(profile){
+                const { blobPath, sasToken } = await uploadImageToAzure(profile);
+                console.log(blobPath,sasToken);
+                blobPath_ = blobPath;
+                sasToken_ = sasToken;
+            }
+            user = new User({username,password,email,profilePicture: blobPath_});
             await user.save();
             usernames.push(username);
             res.status(200).json({
                 signin:true,
                 notify: `Sucessfully registered!! Welcome ${user.username}!`,
                 username: user.username,
-                imageurl: imageUrl
+                imageurl: `${blobPath_}?${sasToken_}`
             });
         }
         else{

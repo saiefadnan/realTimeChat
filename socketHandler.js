@@ -5,24 +5,34 @@ const {usernames} = require('./controllers/controller');
 function socketHandler(io){
     const users = {};
     const names = {};
-    const photo ={};
+    const photos ={};
 
-    function emitActiveUsers (){
-        activeUsers =  Object.values(names);
-        profile = Object.values(photo);
-        io.emit('activeUsers',{activeUsers,profile});
+    function emitActiveUsers (operation, name, photo, socket){
+        activeUsers = Object.values(names);
+        profile = Object.values(photos);
+        console.log(operation);
+        if(operation==='init'){
+            io.to(socket.id).emit('init activeUsers',{activeUsers, profile});
+        }
+        else if(operation==='add'){
+            socket.broadcast.emit('activeUsers',{operation, name, photo});
+        }
+        else io.emit('activeUsers',{operation, name});
     }
     io.on('connection', (socket) =>{
         console.log('A user connected: ',socket.id);
         socket.on('show active-users',async()=>{
-            if(Object.keys(names).length>0)emitActiveUsers();
+            if(Object.keys(names).length>0)emitActiveUsers('init',null,null,socket);
         })
         socket.on('insert name',async({username,imageurl})=>{
             users[username] = socket.id;
             names[socket.id] = username;
-            photo[socket.id] = imageurl
+            photos[socket.id] = imageurl
             console.log('username saved');
-            if(Object.keys(names).length>0)emitActiveUsers();
+            if(Object.keys(names).length>0){
+                emitActiveUsers('init',null,null,socket);
+                emitActiveUsers('add',username,imageurl,socket);
+            }
         })
         socket.on('private image',async({to,fileData})=>{
             const recipientSocketId = users[to];
@@ -36,7 +46,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 });
             }
             else{
@@ -58,7 +68,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 })
             }
         })
@@ -76,7 +86,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 });
             }
             else{
@@ -98,7 +108,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 })
             }
         })
@@ -116,7 +126,7 @@ function socketHandler(io){
                     time: Date.now(),
                     fileData: fileData,
                     fileName: fileName,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 })
             }
         })
@@ -134,7 +144,7 @@ function socketHandler(io){
                     time: Date.now(),
                     fileData: fileData,
                     fileName: fileName,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 });
             }
             else{
@@ -156,7 +166,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     message,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
             });
             }
             else{
@@ -177,7 +187,7 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     message,
-                    profile: photo[socket.id] 
+                    profile: photos[socket.id] 
                 })
             }
         })
@@ -189,9 +199,9 @@ function socketHandler(io){
                 console.log('total concurrent active users ',usernames.length);
             }
             delete users[names[socket.id]];
+            if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);
             delete names[socket.id];
-            delete photo[socket.id];
-            if(Object.keys(names).length>0)emitActiveUsers();
+            delete photos[socket.id];
         });
     });
 }
