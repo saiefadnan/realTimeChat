@@ -1,5 +1,4 @@
 body {
-    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,6 +21,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 1000;
   }
 
   .navbar-menu{
@@ -49,6 +49,7 @@ body {
     height: 100%;
     border-radius: 50%;
   }
+
   .block label,.chat-block label{
     background-color: #ccc;
     display: flex;
@@ -69,6 +70,11 @@ body {
   }
 
   .navbar-container legend{
+    color: cadetblue;
+    font-weight: bold;
+  }
+
+  li a{
     color: cadetblue;
     font-weight: bold;
   }
@@ -189,6 +195,7 @@ body {
     background-color: #333;
     border-radius: 20px;
     box-shadow: 5px 2px 5px 2px #ccc;
+    margin: auto;
   }
 
   .form-box {
@@ -231,14 +238,15 @@ body {
   }
 
   .custom-image-upload {
-    margin-right: 200px;
+    margin:0 50px;
     width: 45%;
     height: 20%;
     display: inline-block;
     justify-content: space-between;
     padding: 8px 0;
     cursor: pointer;
-    background-color: #007bff;
+    background-color: #333;
+    border: 2px solid #ccc;
     align-items: center;
     color: #fff;
     border-radius: 10px;
@@ -437,10 +445,10 @@ textarea::-webkit-scrollbar {
     box-sizing: border-box;
     border: 2px solid #ccc;
     display: flex;
-    margin-right: 1px;
     align-items: flex-end;
     justify-content: center;
     background-color: #333;
+    margin: auto;
   }
   .userDiv{
     width: 10px;
@@ -474,6 +482,7 @@ textarea::-webkit-scrollbar {
   height: 28px;
   width: 28px;
   border-radius: 50%;
+  border: 1px solid #ccc;
 }
 .nav-profile-container img{
   height: 100%;
@@ -483,7 +492,7 @@ textarea::-webkit-scrollbar {
 
 @media (max-width: 1000px) {
   .navbar-menu {
-    margin-right: -55%;
+    margin-right: -52%;
   }
   .chat-container {
     display: flex;
@@ -546,9 +555,6 @@ textarea::-webkit-scrollbar {
     display: flex;
     width: 20%;
     height: auto;
-  }
-  #box{
-    margin-top: 0;
   }
 
   .form-box{

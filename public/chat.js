@@ -1,5 +1,5 @@
 (function(){
-
+  window.unreadMessages = 0;
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
