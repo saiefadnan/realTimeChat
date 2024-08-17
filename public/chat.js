@@ -1,11 +1,37 @@
 (function(){
-  window.unreadMessages = 0;
+  const {createWorker, setLogging} = FFmpeg;
+  setLogging(true);
+  let offset=0;
+  let receivedChunks = [];
+  
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
         profileDiv.src=picture;
     }
   }
+
+  async function convertToMp4(file){
+    try{
+      const worker = createWorker({
+        logger: ({ message }) => console.log(message),
+    });
+      await worker.load();
+      const arrayBuffer = await file.arrayBuffer();
+      await worker.write('input.mkv', new Uint8Array(arrayBuffer));
+      await  worker.transcode('input.mkv', 'output.mp4');
+      const { data } = await worker.read('output.mp4');
+      await worker.terminate();
+      return new Blob([data], { type: 'video/mp4' });
+    }catch(err){
+      console.error(err);
+      if(worker){
+        await worker.terminate();
+      }
+    }
+    
+  }
+
   function connectWebSocket(){
     window.socket = io();
     addPicture(sessionStorage.getItem('imageurl'));
@@ -28,11 +54,67 @@ if(sessionStorage.getItem('login')==='true'){
 }
 
 if(window.socket){
+  function sendChunks(recipient, file){
+    if(offset>=file.size){
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const arrayBuffer = reader.result;
+        const blobUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: file.type }));
+        if (file.type.startsWith('image/')) {
+          addImageTo(new Date(Date.now()).toLocaleString(), blobUrl);
+        } else if (file.type.startsWith('video/')) {
+          addVideoTo(new Date(Date.now()).toLocaleString(), blobUrl);
+        } else {
+          addFileTo(new Date(Date.now()).toLocaleString(), blobUrl, file.name);
+        }
+        socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
+        console.log('end...');
+      }
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+    const chunkSize = 512*1024;
+    const fileSlice = file.slice(offset,offset+chunkSize);
+    console.log(offset);
+    if(recipient==='public'){
+      const reader = new FileReader();
+      reader.onload = async()=>{
+        if (file.type.startsWith('image/')) {
+            socket.emit('public image', {fileData: reader.result});
+        } else if (file.type.startsWith('video/')) {
+          socket.emit('public video', {fileData: reader.result});
+        } else {
+            socket.emit('public file', {fileData: reader.result,fileName: file.name});
+            //socket.emit('public file', {fileData, fileName: file.name, fileType: file.type });
+        }
+        offset+=chunkSize;
+        sendChunks(recipient,file);
+      }
+      reader.readAsArrayBuffer(fileSlice);
+    }else{
+      const reader = new FileReader();
+        reader.onload = () => {
+            if(file.type.startsWith('image/')) {
+              socket.emit('private image', { to: recipient, fileData: reader.result});
+            } 
+            else if (file.type.startsWith('video/')) {
+            socket.emit('private video', { to: recipient, fileData: reader.result});
+          }
+          else{
+            socket.emit('private file', { to: recipient, fileData: reader.result, fileName: file.name});
+          }
+            offset+=chunkSize;
+            sendChunks(recipient,file);
+        };
+      reader.readAsArrayBuffer(fileSlice);
+    }
+    document.getElementById('file-input').value = '';
+  }
     const socket = window.socket;
     socket.on('disconnect', function(){
       console.log("Disconnected....Attempting to reconnect...");
     })
-    document.getElementById('sendButton').addEventListener('click', () => {
+    document.getElementById('sendButton').addEventListener('click', async() => {
     const recipient = document.getElementById('recipientInput').value;
     const message = document.getElementById('messageInput').value;
     if(recipient.trim() && message.trim() && recipient==='public'){
@@ -46,46 +128,15 @@ if(window.socket){
       document.getElementById('messageInput').value = '';
     }
     const fileinput = document.getElementById('file-input');
-    const file = fileinput.files[0];
-    if(file && recipient.trim() && recipient==='public') {
-        document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
-        const reader = new FileReader();
-        reader.onload = () => {
-            const fileData = reader.result;
-            if (file.type.startsWith('image/')) {
-                socket.emit('public image', {fileData });
-                addImageTo(new Date(Date.now()).toLocaleString(), fileData);
-            } else if (file.type.startsWith('video/')) {
-                socket.emit('public video', {fileData });
-                addVideoTo(new Date(Date.now()).toLocaleString(), fileData);
-            } else {
-                socket.emit('public file', {fileData ,fileName: file.name});
-                //socket.emit('public file', {fileData, fileName: file.name, fileType: file.type });
-                addFileTo(new Date(Date.now()).toLocaleString(), fileData, file.name);
-            }
-            };
-            reader.readAsDataURL(file);
-            document.getElementById('file-input').value = '';
+    let file = fileinput.files[0];
+    if(file && recipient.trim()) {
+      document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
+      offset=0;
+      if(file.type.startsWith('video/') && file.type!=='video/mp4'){
+        file = await convertToMp4(file);
+      }
+      sendChunks(recipient, file);
     }
-    else if(file && recipient.trim()) {
-        document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
-        const reader = new FileReader();
-        reader.onload = () => {
-            const fileData = reader.result;
-            if (file.type.startsWith('image/')) {
-                socket.emit('private image', { to: recipient, fileData });
-                addImageTo(new Date(Date.now()).toLocaleString(), fileData);
-            } else if (file.type.startsWith('video/')) {
-                socket.emit('private video', { to: recipient, fileData });
-                addVideoTo(new Date(Date.now()).toLocaleString(), fileData);
-            } else {
-                socket.emit('private file', { to: recipient, fileData ,fileName: file.name});
-                addFileTo(new Date(Date.now()).toLocaleString(), fileData, file.name);
-            }
-            };
-            reader.readAsDataURL(file);
-            document.getElementById('file-input').value = '';
-        }
   });
 
   //message
@@ -101,37 +152,80 @@ if(window.socket){
   });
 
   //image
-  socket.on('private image',({from,time,fileData, profile  })=>{
-    const date = new Date(time).toLocaleString();
-    addImage(date,from,fileData,profile) ;
+  socket.on('private image',({from,time,fileData, profile, state })=>{
+    receivedChunks.push(fileData);
+    
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addImage(date,from,url,profile);
+      receivedChunks=[];
+    }
   })
 
-  socket.on('public image',({from,time,fileData, profile  })=>{
-    const date = new Date(time).toLocaleString();
-    addImage(date,from,fileData,profile) ;
+  socket.on('public image',({from,time,fileData, profile, state })=>{
+    receivedChunks.push(fileData);
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addImage(date,from,url,profile);
+      receivedChunks=[];
+    }
   })
 
   //video
 
-  socket.on('private video',({from,time,fileData, profile  })=>{
-    const date = new Date(time).toLocaleString();
-    addVideo(date, from,fileData,profile) ;
+  socket.on('private video',({from,time,fileData, profile, state})=>{
+    receivedChunks.push(fileData);
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addVideo(date, from,url,profile);
+      receivedChunks=[];
+    }
   })
 
-  socket.on('public video',({from,time,fileData, profile  })=>{
-    const date = new Date(time).toLocaleString();
-    addVideo(date, from,fileData,profile) ;
+  socket.on('public video',({from,time,fileData, profile, state })=>{
+    receivedChunks.push(fileData);
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addVideo(date, from,url,profile);
+      receivedChunks=[];
+    }
   })
 
   //file
 
-  socket.on('private file',({from,time,fileData,fileName, profile  })=>{
-    const date = new Date(time).toLocaleString();
-    addFile(date, from,fileData,fileName,profile);
+  socket.on('private file',({from,time,fileData,fileName, profile, state })=>{
+    receivedChunks.push(fileData);
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addFile(date, from,url,fileName,profile);
+      receivedChunks=[];
+    }
   })
-  socket.on('public file',({from,time,fileData,fileName, profile })=>{
-    const date = new Date(time).toLocaleString();
-    addFile(date, from,fileData,fileName,profile);
+  socket.on('public file',({from,time,fileData,fileName, profile, state })=>{
+    receivedChunks.push(fileData);
+    if(state){
+      //console.log('sent success.........');
+      const date = new Date(time).toLocaleString();
+      const blob = new Blob(receivedChunks);
+      const url = URL.createObjectURL(blob);
+      addFile(date, from,url,fileName,profile);
+      receivedChunks=[];
+    }
   })
 
 //rest
@@ -207,7 +301,7 @@ if(window.socket){
     else userNameDiv.textContent = name;
     userDiv.appendChild(userNameDiv);
     activeBar.appendChild(userDiv);
-    console.log('added...');
+   // console.log('added...');
   }
 
   function RemoveActiveDiv(activeBar, name){
@@ -215,7 +309,7 @@ if(window.socket){
     for(let i=0;i<userDivs.length;++i){
       if(userDivs[i].querySelector('h5').textContent.trim()===name){
         activeBar.removeChild(userDivs[i]);
-        console.log('removed...');
+        //console.log('removed...');
         break;
       }
     }
@@ -228,12 +322,11 @@ if(window.socket){
       BuildActiveDiv(activeBar,sessionStorage.getItem('username'), sessionStorage.getItem('imageurl'));
       BuildActiveDiv(activeBar,'public', publicUrl);
       activeUsers.forEach((name, index) => {
-        console.log(name);
           if(name!=='public' && name!==sessionStorage.getItem('username')){
             BuildActiveDiv(activeBar,name, profile[index]);
           }
       });
-      console.log('init...');
+      //console.log('init...');
     updateStyles();
     window.addEventListener('resize', updateStyles);
   });
@@ -268,9 +361,8 @@ function addImageTo(time, imageData){
     `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <img src="${imageData}" alt="Image" style="max-width: 215px; max-width: 215px;">`;
     messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
     messageElement.querySelector('img').style.cursor = 'pointer';
-    
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 
@@ -329,7 +421,10 @@ function addVideoTo(time, videoData) {
     messageElement.innerHTML = 
     `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
     <video controls style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">
-      <source src="${videoData}" type="video/mp4">Your browser does not support the video tag.
+    <source src="${videoData}" type="video/mp4">
+    <source src="${videoData}" type="video/webm">
+    <source src="${videoData}" type="video/ogg">
+    Your browser does not support the video tag.
     </video>`;
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -345,6 +440,8 @@ function addVideo(time,to, videoData, profile) {
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
     <video controls style="max-width: 215px; max-height: 215px;">
       <source src="${videoData}" type="video/mp4">
+      <source src="${videoData}" type="video/webm">
+      <source src="${videoData}" type="video/ogg">
       Your browser does not support the video tag.
     </video>`;
     messageElement.style.width= '100%';

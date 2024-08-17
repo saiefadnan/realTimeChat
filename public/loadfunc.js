@@ -16,6 +16,7 @@ export default function loadPage(content){
                 //console.log('Old script removed!!');
             }
             script.src = `${Script}?v=${new Date().getTime()}`;
+            if(Script==='chat.js')script.type = 'module';
             script.onload = () => {
                 //console.log('Script loaded successfully');
             };

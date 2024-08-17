@@ -44,7 +44,8 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false 
                 });
             }
             else{
@@ -55,7 +56,7 @@ function socketHandler(io){
         })
     
         socket.on('public image',async({fileData})=>{
-            console.log('image sending...');
+            // console.log('image sending...');
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
                     error: 'You are not logged in! Message not sent!'
@@ -66,13 +67,14 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false 
                 })
             }
         })
     
         socket.on('private video',async({to,fileData})=>{
-            console.log('video sending...');
+            //console.log('video sending...');
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
@@ -84,7 +86,8 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false 
                 });
             }
             else{
@@ -95,7 +98,7 @@ function socketHandler(io){
         })
     
         socket.on('public video',async({fileData})=>{
-            console.log('video sending...');
+            //console.log('video sending...');
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
                     error: 'You are not logged in! Message not sent!'
@@ -106,7 +109,8 @@ function socketHandler(io){
                     from: names[socket.id],
                     time: Date.now(),
                     fileData: fileData,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false 
                 })
             }
         })
@@ -124,12 +128,13 @@ function socketHandler(io){
                     time: Date.now(),
                     fileData: fileData,
                     fileName: fileName,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false  
                 })
             }
         })
         socket.on('private file',async({to, fileData, fileName})=>{
-            console.log('file sending...');
+            //console.log('file sending...');
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
@@ -142,13 +147,93 @@ function socketHandler(io){
                     time: Date.now(),
                     fileData: fileData,
                     fileName: fileName,
-                    profile: photos[socket.id] 
+                    profile: photos[socket.id],
+                    state: false  
                 });
             }
             else{
                 io.to(socket.id).emit('error',{
                     error: `${to} is disconnected or not available`
                 });
+            }
+        })
+
+        socket.on('complete', async({to, fileType, fileName})=>{
+            if(to==='public'){
+                if(!names[socket.id]){
+                    io.to(socket.id).emit('error',{
+                        error: 'You are not logged in! Message not sent!'
+                    });
+                }
+                else if(fileType.startsWith('image/')){
+                    socket.broadcast.emit('public image',{
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        profile: photos[socket.id],
+                        state: true
+                    })
+                }
+                else if(fileType.startsWith('video/')){
+                    socket.broadcast.emit('public video',{
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        profile: photos[socket.id],
+                        state: true
+                    })
+                }
+                else{
+                    socket.broadcast.emit('public file',{
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        fileName: fileName,
+                        profile: photos[socket.id],
+                        state: true 
+                    })
+                }
+            }
+            else{
+                const recipientSocketId = users[to];
+                if(!names[socket.id]){
+                    io.to(socket.id).emit('error',{
+                        error: 'You are not logged in! Message not sent!'
+                    });
+                }
+                else if(recipientSocketId && fileType.startsWith('image/')){
+                    io.to(recipientSocketId).emit('private image', {
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        profile: photos[socket.id],
+                        state: true 
+                    });
+                }
+                else if(recipientSocketId && fileType.startsWith('video/')){
+                    io.to(recipientSocketId).emit('private video', {
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        profile: photos[socket.id],
+                        state: true 
+                    });
+                }
+                else if(recipientSocketId){
+                    io.to(recipientSocketId).emit('private file', {
+                        from: names[socket.id],
+                        time: Date.now(),
+                        fileData: null,
+                        fileName: fileName,
+                        profile: photos[socket.id],
+                        state: true 
+                    });
+                }
+                else{
+                    io.to(socket.id).emit('error',{
+                        error: `${to} is disconnected or not available`
+                    });
+                }
             }
         })
         
