@@ -3,13 +3,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
-const User = require('./mongodb/user');
 require('dotenv').config();
 const bodyParser = require('body-parser');
 const socketHandler = require('./socketHandler');
 const routes = require('./routes/route');
 const cors = require('cors');
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server,{
@@ -46,12 +44,12 @@ mongoose.connect(process.env.MONGODB_URL)
     console.error(err);
 });
 
+
 app.use(express.static(path.join(__dirname,'./public')));
 app.get("/", (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.use('/api',routes);
-
 
 socketHandler(io);
 

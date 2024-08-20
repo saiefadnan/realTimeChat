@@ -454,7 +454,6 @@ textarea::-webkit-scrollbar {
     width: 10px;
    border-color:#0056b3;
   }
-
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;

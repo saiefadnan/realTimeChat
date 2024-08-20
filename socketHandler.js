@@ -1,4 +1,6 @@
 const {usernames} = require('./controllers/controller');
+const {uploadFile, gatherChunks} = require('./Gdrive');
+const { storeChats } = require('./storeChats');
 
 function socketHandler(io){
     const users = {};
@@ -32,14 +34,15 @@ function socketHandler(io){
                 emitActiveUsers('add',username,imageurl,socket);
             }
         })
-        socket.on('private image',async({to,fileData})=>{
+        socket.on('private image',async({to,fileData,fileType})=>{
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else if(recipientSocketId){
+                gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private image', {
                     from: names[socket.id],
                     time: Date.now(),
@@ -47,6 +50,7 @@ function socketHandler(io){
                     profile: photos[socket.id],
                     state: false 
                 });
+
             }
             else{
                 io.to(socket.id).emit('error',{
@@ -55,14 +59,15 @@ function socketHandler(io){
             }
         })
     
-        socket.on('public image',async({fileData})=>{
+        socket.on('public image',async({fileData, fileType})=>{
             // console.log('image sending...');
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else{
+                gatherChunks.push(fileData);
                 socket.broadcast.emit('public image',{
                     from: names[socket.id],
                     time: Date.now(),
@@ -78,10 +83,11 @@ function socketHandler(io){
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else if(recipientSocketId){
+                gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private video', {
                     from: names[socket.id],
                     time: Date.now(),
@@ -101,10 +107,11 @@ function socketHandler(io){
             //console.log('video sending...');
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else{
+                gatherChunks.push(fileData);
                 socket.broadcast.emit('public video',{
                     from: names[socket.id],
                     time: Date.now(),
@@ -119,10 +126,11 @@ function socketHandler(io){
         socket.on('public file',async({fileData, fileName})=>{
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else{
+                gatherChunks.push(fileData);
                 socket.broadcast.emit('public file',{
                     from: names[socket.id],
                     time: Date.now(),
@@ -138,10 +146,11 @@ function socketHandler(io){
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else if(recipientSocketId){
+                gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private file', {
                     from: names[socket.id],
                     time: Date.now(),
@@ -162,10 +171,11 @@ function socketHandler(io){
             if(to==='public'){
                 if(!names[socket.id]){
                     io.to(socket.id).emit('error',{
-                        error: 'You are not logged in! Message not sent!'
+                        error: 'You are disconnected! Message not sent!'
                     });
                 }
                 else if(fileType.startsWith('image/')){
+                    await uploadFile('image',fileName, names[socket.id]);
                     socket.broadcast.emit('public image',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -175,6 +185,7 @@ function socketHandler(io){
                     })
                 }
                 else if(fileType.startsWith('video/')){
+                    await uploadFile('video',fileName, names[socket.id]);
                     socket.broadcast.emit('public video',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -184,6 +195,7 @@ function socketHandler(io){
                     })
                 }
                 else{
+                    await uploadFile('document',fileName, names[socket.id]);
                     socket.broadcast.emit('public file',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -198,10 +210,11 @@ function socketHandler(io){
                 const recipientSocketId = users[to];
                 if(!names[socket.id]){
                     io.to(socket.id).emit('error',{
-                        error: 'You are not logged in! Message not sent!'
+                        error: 'You are disconnected! Message not sent!'
                     });
                 }
                 else if(recipientSocketId && fileType.startsWith('image/')){
+                    await uploadFile('image',fileName, names[socket.id]);
                     io.to(recipientSocketId).emit('private image', {
                         from: names[socket.id],
                         time: Date.now(),
@@ -211,6 +224,7 @@ function socketHandler(io){
                     });
                 }
                 else if(recipientSocketId && fileType.startsWith('video/')){
+                    await uploadFile('video',fileName, names[socket.id]);
                     io.to(recipientSocketId).emit('private video', {
                         from: names[socket.id],
                         time: Date.now(),
@@ -220,6 +234,7 @@ function socketHandler(io){
                     });
                 }
                 else if(recipientSocketId){
+                    await uploadFile('document',fileName, names[socket.id]);
                     io.to(recipientSocketId).emit('private file', {
                         from: names[socket.id],
                         time: Date.now(),
@@ -237,14 +252,15 @@ function socketHandler(io){
             }
         })
         
-        socket.on('private message',async({to,message})=>{
+        socket.on('private message',async({to,message,date})=>{
             const recipientSocketId = users[to];
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else if(recipientSocketId){
+                await storeChats(names[socket.id], names[recipientSocketId], message, date);
                 io.to(recipientSocketId).emit('private message',{
                     from: names[socket.id],
                     time: Date.now(),
@@ -254,18 +270,19 @@ function socketHandler(io){
             }
             else{
                 io.to(socket.id).emit('error',{
-                    error: `${to} is disconnected or not available`
+                    error: `${to} is not available`
                 });
             }
         });
     
-        socket.on('public message', async(message)=>{
+        socket.on('public message', async(message, date)=>{
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are not logged in! Message not sent!'
+                    error: 'You are disconnected! Message not sent!'
                 });
             }
             else{
+                await storeChats(names[socket.id], 'public', message, date);
                 socket.broadcast.emit('public message',{
                     from: names[socket.id],
                     time: Date.now(),

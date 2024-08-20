@@ -1,9 +1,30 @@
-(function(){
+(async function(){
   const {createWorker, setLogging} = FFmpeg;
   setLogging(true);
   let offset=0;
   let receivedChunks = [];
-  
+
+  if(sessionStorage.getItem('login')==='true'){
+    const reqData ={
+      username: sessionStorage.getItem('username')
+    }
+    const data = await window.fetchData('/api/getchats',reqData);
+    console.log(data);
+    data.chats.forEach((chat)=>{
+      if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
+      else addMessage(chat.sender,chat.text,chat.date,'');
+    })
+    if (window.socket && window.socket.connected) {
+        console.log('WebSocket is already connected.....');
+        window.socket.emit('show active-users');
+        
+    } 
+    else{
+      connectWebSocket();
+    }
+    console.log('loading....');
+  }
+
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
@@ -29,31 +50,27 @@
         await worker.terminate();
       }
     }
-    
   }
 
   function connectWebSocket(){
     window.socket = io();
     addPicture(sessionStorage.getItem('imageurl'));
     window.socket.on('connect', function(){
-      console.log('connection success....');
       window.socket.emit('insert name',{
         username: sessionStorage.getItem('username'),
         imageurl: sessionStorage.getItem('imageurl')
       })
     })
+    addError("Connected");
   }
-if(sessionStorage.getItem('login')==='true'){
-    if (window.socket && window.socket.connected) {
-        console.log('WebSocket is already connected.....');
-        window.socket.emit('show active-users');
-    } 
-    else{
-      connectWebSocket();
-    }
-}
 
 if(window.socket){
+  //reconnect
+  const socket = window.socket;
+    socket.on('disconnect', function(){
+      if(document.getElementById('messages'))addError("Disconnected! Attempting to reconnect...");
+    })
+  //send chunks
   function sendChunks(recipient, file){
     if(offset>=file.size){
       const reader = new FileReader();
@@ -80,7 +97,8 @@ if(window.socket){
       const reader = new FileReader();
       reader.onload = async()=>{
         if (file.type.startsWith('image/')) {
-            socket.emit('public image', {fileData: reader.result});
+          console.log(file.type);
+            socket.emit('public image', {fileData: reader.result, fileType: file.type});
         } else if (file.type.startsWith('video/')) {
           socket.emit('public video', {fileData: reader.result});
         } else {
@@ -95,7 +113,7 @@ if(window.socket){
       const reader = new FileReader();
         reader.onload = () => {
             if(file.type.startsWith('image/')) {
-              socket.emit('private image', { to: recipient, fileData: reader.result});
+              socket.emit('private image', { to: recipient, fileData: reader.result, fileType: file.type});
             } 
             else if (file.type.startsWith('video/')) {
             socket.emit('private video', { to: recipient, fileData: reader.result});
@@ -110,21 +128,20 @@ if(window.socket){
     }
     document.getElementById('file-input').value = '';
   }
-    const socket = window.socket;
-    socket.on('disconnect', function(){
-      console.log("Disconnected....Attempting to reconnect...");
-    })
+  //send function
     document.getElementById('sendButton').addEventListener('click', async() => {
     const recipient = document.getElementById('recipientInput').value;
     const message = document.getElementById('messageInput').value;
     if(recipient.trim() && message.trim() && recipient==='public'){
-      addMessageTo(message, new Date(Date.now()).toLocaleString()) ;
-      socket.emit('public message', message);
+      const date = new Date(Date.now()).toLocaleString();
+      addMessageTo(message, date) ;
+      socket.emit('public message', message, date);
       document.getElementById('messageInput').value = '';
     }
     else if (recipient.trim() && message.trim()) {
-      addMessageTo(message, new Date(Date.now()).toLocaleString()) ;
-      socket.emit('private message', { to: recipient, message });
+      const date = new Date(Date.now()).toLocaleString();
+      addMessageTo(message, date) ;
+      socket.emit('private message', { to: recipient, message , date});
       document.getElementById('messageInput').value = '';
     }
     const fileinput = document.getElementById('file-input');
@@ -316,6 +333,7 @@ if(window.socket){
   }
 
   socket.on('init activeUsers',({activeUsers, profile})=>{
+    console.log('init...');
       const activeBar = document.getElementById('active');
       const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
       activeBar.innerHTML='';
@@ -533,84 +551,95 @@ function addFileTo(time, fileData, fileName) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+}
 
 function addMessage(from, message, time ,profile) {
-    const messagesDiv = document.getElementById('messages');
-    const messageElement = document.createElement('div');
-    const profileDiv = document.createElement('img');
-    const timeDiv = document.createElement('h5');
-    const nameDiv = document.createElement('h5');
-    const time_nameDiv = document.createElement('div');
-    const messageContainer = document.createElement('div');
-    const finalContainer = document.createElement('div');
+  const messagesDiv = document.getElementById('messages');
+  const messageElement = document.createElement('div');
+  const profileDiv = document.createElement('img');
+  const timeDiv = document.createElement('h5');
+  const nameDiv = document.createElement('h5');
+  const time_nameDiv = document.createElement('div');
+  const messageContainer = document.createElement('div');
+  const finalContainer = document.createElement('div');
 
-    messageElement.textContent = message;
-    messageElement.className="message-receive";
+  messageElement.textContent = message;
+  messageElement.className="message-receive";
 
-    timeDiv.textContent=time;
-    timeDiv.style.color = '#ccc';
-    nameDiv.textContent=from;
-    nameDiv.style.color = '#ccc';
+  timeDiv.textContent=time;
+  timeDiv.style.color = '#ccc';
+  nameDiv.textContent=from;
+  nameDiv.style.color = '#ccc';
 
-    time_nameDiv.appendChild(nameDiv);
-    time_nameDiv.appendChild(timeDiv);
-    time_nameDiv.className = 'time-name-container';
+  time_nameDiv.appendChild(nameDiv);
+  time_nameDiv.appendChild(timeDiv);
+  time_nameDiv.className = 'time-name-container';
 
-    
-    profileDiv.src=profile;
-    profileDiv.className = 'receiver-profile-container';
-
-    messageContainer.appendChild(profileDiv);
-    messageContainer.appendChild(messageElement);
-    messageContainer.className = 'message-receive-container';
-
-    finalContainer.className ='final-container';
-    finalContainer.appendChild(time_nameDiv);
-    finalContainer.appendChild(messageContainer);
-
-    messagesDiv.appendChild(finalContainer);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-  }
   
-  function addMessageTo(message, time) {
-    const messagesDiv = document.getElementById('messages');
-    const messageElement = document.createElement('div');
-    const timeDiv = document.createElement('h5');
-    const messageContainer = document.createElement('div');
-    const finalContainer = document.createElement('div');
+  profileDiv.src=profile;
+  profileDiv.className = 'receiver-profile-container';
 
-    timeDiv.textContent=time;
-    timeDiv.className = 'time-container';
-    messageElement.textContent = message;
-    messageElement.className="message-send";
+  messageContainer.appendChild(profileDiv);
+  messageContainer.appendChild(messageElement);
+  messageContainer.className = 'message-receive-container';
 
-    messageContainer.className = 'message-send-container';
-    messageContainer.appendChild(messageElement);
+  finalContainer.className ='final-container';
+  finalContainer.appendChild(time_nameDiv);
+  finalContainer.appendChild(messageContainer);
 
-    finalContainer.className ='send-final-container';
-    finalContainer.appendChild(timeDiv);
-    finalContainer.appendChild(messageContainer);
+  messagesDiv.appendChild(finalContainer);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-    messagesDiv.appendChild(finalContainer);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
+}
+
+function addMessageTo(message, time) {
+  const messagesDiv = document.getElementById('messages');
+  const messageElement = document.createElement('div');
+  const timeDiv = document.createElement('h5');
+  const messageContainer = document.createElement('div');
+  const finalContainer = document.createElement('div');
+
+  timeDiv.textContent=time;
+  timeDiv.className = 'time-container';
+  messageElement.textContent = message;
+  messageElement.className="message-send";
+
+  messageContainer.className = 'message-send-container';
+  messageContainer.appendChild(messageElement);
+
+  finalContainer.className ='send-final-container';
+  finalContainer.appendChild(timeDiv);
+  finalContainer.appendChild(messageContainer);
+
+  messagesDiv.appendChild(finalContainer);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
 
 function addError(message) {
-    const messagesDiv = document.getElementById('messages');
-    const messageElement = document.createElement('div');
-    messageElement.textContent = message;
-    messageElement.style.color = 'crimson';
-    messageElement.style.backgroundColor = 'lightblue';
-    messageElement.style.borderRadius = '10px';
-    messageElement.style.padding = '5px';
-    messageElement.style.margin = '10px';
-    messageElement.style.textAlign = 'center';
-    messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
+  const messagesDiv = document.getElementById('messages');
+  const messageElement = document.createElement('div');
+  messageElement.textContent = message;
+  if(message!=='Connected')messageElement.style.color = 'crimson';
+  else messageElement.style.color = 'green';
+  messageElement.style.backgroundColor = 'lightblue';
+  messageElement.style.borderRadius = '10px';
+  messageElement.style.padding = '5px';
+  messageElement.style.margin = '10px';
+  messageElement.style.textAlign = 'center';
+  messagesDiv.appendChild(messageElement);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-}})();
+  setTimeout(()=>{
+    messageElement.style.opacity=0;
+    messageElement.style.transition = 'opacity 2s ease-out'
+    setTimeout(()=>{
+      messageElement.remove();
+    },2000)
+  },5000)
+}
+
 document.getElementById('file-input').addEventListener('change',()=>{
   document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'
 })
+})();

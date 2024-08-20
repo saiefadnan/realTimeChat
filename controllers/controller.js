@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../mongodb/user');
+const { db } = require('../firebase');
 const { BlobServiceClient, StorageSharedKeyCredential} = require('@azure/storage-blob');
 const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
 const usernames=[];
@@ -89,8 +90,34 @@ const signinData = async(req,res)=>{
     }
 }
 
+const chatData = async(req, res)=>{
+    try{
+        const {username} = req.body;
+        console.log(username);
+        const sender = await db.collection('chat').where('sender','==',username)
+        .get()
+        const receiver = await db.collection('chat').where('receiver','==',username)
+        .get()
+        console.log(sender.docs);
+        const combineData = [...sender.docs,...receiver.docs];
+        combineData.sort((a,b)=>{
+           return  a.data().timestamp.toMillis()-b.data().timestamp.toMillis()}
+        );
+
+        res.status(200).json({
+            chats: combineData.map((doc)=>({
+                id: doc.id,
+                ...doc.data()
+            }))
+        })
+    }catch(err){
+        console.error(err);
+    }
+}
+
 module.exports ={
     loginData,
     signinData,
+    chatData,
     usernames
 }
