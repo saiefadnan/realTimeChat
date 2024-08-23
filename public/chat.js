@@ -3,10 +3,8 @@
   setLogging(true);
   let offset=0;
   let receivedChunks = [];
-  
   if(sessionStorage.getItem('login')==='true'){
     if (window.socket && window.socket.connected){
-        //console.log('WebSocket is already connected.....');
         window.socket.emit('show active-users');
         retrieveChat();
     } 
@@ -18,26 +16,22 @@
       })
     }
   }
-
   async function retrieveChat(){
     const reqData ={
       username: sessionStorage.getItem('username')
     }
     const data = await window.fetchData('/api/getchats',reqData);
-    //console.log(data);
     data.chats.forEach((chat)=>{
       if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
       else addMessage(chat.sender,chat.text,chat.date,chat.imageUrl);
     })
   }
-
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
         profileDiv.src=picture;
     }
   }
-
   async function convertToMp4(file){
     try{
       const worker = createWorker({
@@ -60,7 +54,6 @@
 
   function connectWebSocket(){
     window.socket = io();
-    //console.log('connected');
     window.socket.on('connect', function(){
       addError("Connected");
       window.socket.emit('insert name',{
@@ -72,12 +65,29 @@
   }
 
 if(window.socket){
-  //reconnect
   const socket = window.socket;
-    socket.on('disconnect', function(){
-      if(document.getElementById('messages'))addError("Disconnected! Attempting to reconnect...");
-    })
-  //send chunks
+  function closeAllSockets(){
+    socket.off('disconnect');
+    socket.off('private message');
+    socket.off('public message');
+    socket.off('private image');
+    socket.off('public image');
+    socket.off('private video');
+    socket.off('public video');
+    socket.off('private file');
+    socket.off('public file');
+    socket.off('error');
+    socket.off('init activeUsers');
+    socket.off('activeUsers');
+    console.log('All sockets are closing.....');
+  }
+  //closing all sockets to prevent from creating redundant listeners
+  closeAllSockets();
+  //reconnect....
+  socket.on('disconnect', function(){
+      addError("Disconnected! Attempting to reconnect...");
+  })
+  //send chunks....
   function sendChunks(recipient, file){
     if(offset>=file.size){
       const reader = new FileReader();
@@ -92,19 +102,16 @@ if(window.socket){
           addFileTo(new Date(Date.now()).toLocaleString(), blobUrl, file.name);
         }
         socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
-        //console.log('end...');
       }
       reader.readAsArrayBuffer(file);
       return;
     }
     const chunkSize = 512*1024;
     const fileSlice = file.slice(offset,offset+chunkSize);
-    //console.log(offset);
     if(recipient==='public'){
       const reader = new FileReader();
       reader.onload = async()=>{
         if (file.type.startsWith('image/')) {
-          //console.log(file.type);
             socket.emit('public image', {fileData: reader.result, fileType: file.type});
         } else if (file.type.startsWith('video/')) {
           socket.emit('public video', {fileData: reader.result});
@@ -136,7 +143,7 @@ if(window.socket){
     document.getElementById('file-input').value = '';
   }
   //send function
-    document.getElementById('sendButton').addEventListener('click', async() => {
+  document.getElementById('sendButton').addEventListener('click', async() => {
     const recipient = document.getElementById('recipientInput').value;
     const message = document.getElementById('messageInput').value;
     if(recipient.trim() && message.trim() && recipient==='public'){
@@ -149,6 +156,7 @@ if(window.socket){
       const date = new Date(Date.now()).toLocaleString();
       addMessageTo(message, date) ;
       socket.emit('private message', { to: recipient, message , date});
+      console.log('hello');
       document.getElementById('messageInput').value = '';
     }
     const fileinput = document.getElementById('file-input');
@@ -202,7 +210,6 @@ if(window.socket){
   })
 
   //video
-
   socket.on('private video',({from,time,fileData, profile, state})=>{
     receivedChunks.push(fileData);
     if(state){
@@ -228,7 +235,6 @@ if(window.socket){
   })
 
   //file
-
   socket.on('private file',({from,time,fileData,fileName, profile, state })=>{
     receivedChunks.push(fileData);
     if(state){
@@ -253,7 +259,6 @@ if(window.socket){
   })
 
 //rest
-
   socket.on('error', ({error}) => {
     addError(`${error}`) ;
   });
@@ -300,22 +305,26 @@ if(window.socket){
     profileDiv.style.borderRadius = '50%';
     profileDiv.style.border = '2px solid #ccc';
 
-    userDiv.addEventListener('mouseover', () => {
-      userDiv.style.scale = 0.8;
-    });
-    userDiv.addEventListener('mouseout', () => {
-      userDiv.style.scale = 1;
-    });
-    userDiv.addEventListener('click', () => {
+    function Over(){userDiv.style.scale = 0.8;}
+    function Out(){userDiv.style.scale = 1;}
+    function Click(){
       document.getElementById('recipientInput').value= name;
       const unselectDivs = document.getElementById('active').querySelectorAll('div');
       unselectDivs.forEach((unselectDiv)=>{
         const name = unselectDiv.querySelector('h5').textContent;
         if(name!=='public')unselectDiv.style.backgroundColor = 'black';
         else unselectDiv.style.backgroundColor = 'crimson';
-    })
+      })
       userDiv.style.backgroundColor = 'cadetblue';
-    });
+    }
+    userDiv.addEventListener('mouseover', Over);
+    userDiv.addEventListener('mouseout', Out);
+    userDiv.addEventListener('click', Click);
+
+    window.eventListeners.push({element: userDiv, event: 'mouseover', handler: Over});
+    window.eventListeners.push({element: userDiv, event: 'mouseout', handler: Out});
+    window.eventListeners.push({element: userDiv, event: 'click', handler: Click});
+
     userDiv.appendChild(profileDiv);
 
     userNameDiv.style.padding = 0;
@@ -354,6 +363,7 @@ if(window.socket){
       //console.log('init...');
     updateStyles();
     window.addEventListener('resize', updateStyles);
+    window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
   });
 
   socket.on('activeUsers',({operation, name, photo})=>{
@@ -365,7 +375,6 @@ if(window.socket){
         RemoveActiveDiv(activeBar, name);
       }
     updateStyles();
-    window.addEventListener('resize', updateStyles);
   });
 
 
@@ -623,30 +632,31 @@ function addMessageTo(message, time) {
 }
 
 
-function addError(message) {
-  const messagesDiv = document.getElementById('messages');
-  const messageElement = document.createElement('div');
-  messageElement.textContent = message;
-  if(message!=='Connected')messageElement.style.color = 'crimson';
-  else messageElement.style.color = 'green';
-  messageElement.style.backgroundColor = 'lightblue';
-  messageElement.style.borderRadius = '10px';
-  messageElement.style.padding = '5px';
-  messageElement.style.margin = '10px';
-  messageElement.style.textAlign = 'center';
-  messagesDiv.appendChild(messageElement);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  function addError(message) {
+    const messagesDiv = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.textContent = message;
+    if(message!=='Connected')messageElement.style.color = 'crimson';
+    else messageElement.style.color = 'green';
+    messageElement.style.backgroundColor = 'lightblue';
+    messageElement.style.borderRadius = '10px';
+    messageElement.style.padding = '5px';
+    messageElement.style.margin = '10px';
+    messageElement.style.textAlign = 'center';
+    messagesDiv.appendChild(messageElement);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-  setTimeout(()=>{
-    messageElement.style.opacity=0;
-    messageElement.style.transition = 'opacity 2s ease-out'
     setTimeout(()=>{
-      messageElement.remove();
-    },2000)
-  },5000)
-}
+      messageElement.style.opacity=0;
+      messageElement.style.transition = 'opacity 2s ease-out'
+      setTimeout(()=>{
+        messageElement.remove();
+      },2000)
+    },5000)
+  }
+  function Load(){ document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'; }
+  const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', Load);
+  window.eventListeners.push({element: fileInput, event: 'change', handler: Load});
 
-document.getElementById('file-input').addEventListener('change',()=>{
-  document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'
-})
 })();

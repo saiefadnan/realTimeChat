@@ -33,13 +33,14 @@ body {
     margin-right: -70%;
   }
   .profile-container{
+    margin: 0 25px;
     background-color: antiquewhite;
     width: 280px;
     height: 280px;
     border-radius: 50%;
     padding: auto;
+    cursor: pointer;
     display: flex;
-    margin-right: 10%;
     align-items: center;
     justify-content: center;
     border: 2px solid #ccc;
@@ -465,10 +466,9 @@ textarea::-webkit-scrollbar {
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;
-    margin: 0;
     padding: 0;
     width: 100%;
-    margin: 2px;
+    margin: 10px;
   }
 }
 @media (width<1400px){
@@ -595,12 +595,6 @@ textarea::-webkit-scrollbar {
   #page,.chat-container{
     overflow: auto;
   }
-  .profile-container{
-    display: none;
-  }
-  .zoom-pic-container{
-    visibility: hidden;
-  }
   .custom-image-upload{
     visibility: visible;
   }
@@ -614,14 +608,14 @@ textarea::-webkit-scrollbar {
   }
 } 
 
-@media(width < 500px){
+@media(width < 550px){
   .chat-container {
     height: 99%;
   }
-}
-
-@media(width < 400px){
-  .profile-container{
+  .zoom-pic-container{
+    justify-content: center;
+  }
+  .custom-image-upload{
     display: none;
   }
 }

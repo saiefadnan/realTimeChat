@@ -266,7 +266,7 @@ function socketHandler(io){
                     time: Date.now(),
                     message,
                     profile: photos[socket.id] 
-            });
+                });
             }
             else{
                 io.to(socket.id).emit('error',{

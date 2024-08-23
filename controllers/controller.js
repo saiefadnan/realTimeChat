@@ -18,6 +18,7 @@ const refreshToken = async(profilePicture)=>{
     const sasToken = await generateSasToken(blobName,credential);
     return sasToken;
 }
+
 function assign(io){
     if(init){
         io_ = io;

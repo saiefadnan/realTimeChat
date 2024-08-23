@@ -1,3 +1,18 @@
+function cleanUp(existingScript){
+    //console.log(window.eventListeners.length);
+    existingScript.remove();
+    window.eventListeners.forEach(({element, event, handler}) => {
+        element.removeEventListener(event,handler);
+    });
+    window.eventListeners.length = 0;
+    const page = document.getElementById('page');
+    if(page){
+        while(page.firstChild){
+            page.removeChild(page.firstChild);
+        }
+    }
+    console.log('clean....');
+}
 export default function loadPage(content){
     fetch(content)
     .then(response=>{
@@ -7,15 +22,13 @@ export default function loadPage(content){
         return response.text();
     })
     .then(data=>{
-        document.getElementById('page').innerHTML=data;
-        const script = document.createElement('script');
+            const script = document.createElement('script');
             const Script = content.replace('.html','.js');
             const existingScript = document.querySelector(`script[src="${Script}"]`);
             if(existingScript){
-                existingScript.remove();
-                //console.log('Old script removed!!');
+                cleanUp(existingScript);
             }
-            //script.src = `${Script}?v=${new Date().getTime()}`;
+            document.getElementById('page').innerHTML=data;
             script.src = `${Script}`;
             script.onload = () => {
                 //console.log('Script loaded successfully');
