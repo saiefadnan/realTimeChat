@@ -1,16 +1,16 @@
-const {usernames} = require('./controllers/controller');
 const {uploadFile, gatherChunks} = require('./Gdrive');
 const { storeChats } = require('./storeChats');
 
-function socketHandler(io){
-    const users = {};
-    const names = {};
-    const photos ={};
+const users = {};
+const names = {};
+const photos ={};
 
-    function emitActiveUsers (operation, name, photo, socket){
+function socketHandler(io){
+    const {usernames} = require('./controllers/controller');
+    emitActiveUsers = function(operation, name, photo, socket){
         activeUsers = Object.values(names);
         profile = Object.values(photos);
-        if(operation==='init'){
+        if(operation==='init' || operation==='refresh'){
             io.to(socket.id).emit('init activeUsers',{activeUsers, profile});
         }
         else if(operation==='add'){
@@ -278,7 +278,7 @@ function socketHandler(io){
         socket.on('public message', async(message, date)=>{
             if(!names[socket.id]){
                 io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
+                    error: 'You are disconnected! Message not sent...!'
                 });
             }
             else{
@@ -306,7 +306,7 @@ function socketHandler(io){
     });
 }
 
-module.exports = socketHandler;
+module.exports = { socketHandler, names, photos, users};
 
 
 

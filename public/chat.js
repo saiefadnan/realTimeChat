@@ -3,8 +3,23 @@
   setLogging(true);
   let offset=0;
   let receivedChunks = [];
-
+  
   if(sessionStorage.getItem('login')==='true'){
+    if (window.socket && window.socket.connected){
+        console.log('WebSocket is already connected.....');
+        window.socket.emit('show active-users');
+        retrieveChat();
+    } 
+    else {
+      new Promise(resolve=>{
+        connectWebSocket();
+        retrieveChat();
+        resolve();
+      })
+    }
+  }
+
+  async function retrieveChat(){
     const reqData ={
       username: sessionStorage.getItem('username')
     }
@@ -12,17 +27,8 @@
     console.log(data);
     data.chats.forEach((chat)=>{
       if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
-      else addMessage(chat.sender,chat.text,chat.date,'');
+      else addMessage(chat.sender,chat.text,chat.date,chat.imageUrl);
     })
-    if (window.socket && window.socket.connected) {
-        console.log('WebSocket is already connected.....');
-        window.socket.emit('show active-users');
-        
-    } 
-    else{
-      connectWebSocket();
-    }
-    console.log('loading....');
   }
 
   function addPicture(picture){
@@ -54,14 +60,15 @@
 
   function connectWebSocket(){
     window.socket = io();
-    addPicture(sessionStorage.getItem('imageurl'));
+    console.log('connected');
     window.socket.on('connect', function(){
+      addError("Connected");
       window.socket.emit('insert name',{
         username: sessionStorage.getItem('username'),
         imageurl: sessionStorage.getItem('imageurl')
       })
     })
-    addError("Connected");
+    addPicture(sessionStorage.getItem('imageurl'));
   }
 
 if(window.socket){

@@ -1,5 +1,4 @@
-const { admin, db } = require('./firebase');
-
+const { admin, db} = require('./firebase');
 async function storeChats(sender, receiver, text, date){
     try{
         await db.collection('chat').add({

@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 const bodyParser = require('body-parser');
-const socketHandler = require('./socketHandler');
+const { socketHandler } = require('./socketHandler');
+const { assign } = require('./controllers/controller');
 const routes = require('./routes/route');
 const cors = require('cors');
 const app = express();
@@ -45,12 +46,13 @@ mongoose.connect(process.env.MONGODB_URL)
 });
 
 
+
 app.use(express.static(path.join(__dirname,'./public')));
 app.get("/", (req, res) => {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.use('/api',routes);
-
+assign(io);
 socketHandler(io);
 
 const PORT =4000;

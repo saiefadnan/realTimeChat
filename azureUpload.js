@@ -51,3 +51,7 @@ async function uploadImageToAzure(profile) {
 }
 
 module.exports = { uploadImageToAzure, generateSasToken };
+
+
+
+

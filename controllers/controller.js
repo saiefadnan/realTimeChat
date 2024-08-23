@@ -1,13 +1,29 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
+const deactive_avtr = 'https://cdn.create.vista.com/api/media/small/456352818/stock-vector-users-profile-account-avatar-remove-user-icon-users';
+const cron = require('node-cron');
 const User = require('../mongodb/user');
-const { db } = require('../firebase');
-const { BlobServiceClient, StorageSharedKeyCredential} = require('@azure/storage-blob');
+const { admin, db} = require('../firebase');
+const { StorageSharedKeyCredential} = require('@azure/storage-blob');
 const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
+const {names, photos, users} = require('../socketHandler');
+const { all } = require('axios');
 const usernames=[];
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
-
+const init=true;
+let io_;
+const refreshToken = async(profilePicture)=>{
+    const blobName = decodeURIComponent(profilePicture.substring(profilePicture.lastIndexOf('/')+1));
+    console.log(blobName);
+    const credential = new StorageSharedKeyCredential(accountName, accountKey);
+    const sasToken = await generateSasToken(blobName,credential);
+    return sasToken;
+}
+function assign(io){
+    if(init){
+        io_ = io;
+    }
+    else init= false;
+}
 
 const loginData = async(req,res)=>{
     try{
@@ -34,9 +50,7 @@ const loginData = async(req,res)=>{
             });
         }else if(user && pass){
             usernames.push(user.username);
-            const blobName = decodeURIComponent(user.profilePicture.substring(user.profilePicture.lastIndexOf('/')+1));
-            const credential = new StorageSharedKeyCredential(accountName, accountKey);
-            const sasToken = await generateSasToken(blobName,credential);
+            const sasToken = await refreshToken(user.profilePicture);
             console.log('Token Refreshed....');
             return res.status(200).json({
                     login:true,
@@ -94,12 +108,15 @@ const chatData = async(req, res)=>{
     try{
         const {username} = req.body;
         console.log(username);
-        const sender = await db.collection('chat').where('sender','==',username)
-        .get()
-        const receiver = await db.collection('chat').where('receiver','==',username)
-        .get()
-        console.log(sender.docs);
-        const combineData = [...sender.docs,...receiver.docs];
+        const chatRef = db.collection('chat');
+        const [sender,public,receiver]= await Promise.all([
+            chatRef.where('sender','==',username).get(),
+            chatRef.where('receiver','==','public').where('sender', '!=',username).get(),
+            chatRef.where('receiver','==',username).get()
+        ])
+
+        const combineData = [...sender.docs,...public.docs,...receiver.docs];
+
         combineData.sort((a,b)=>{
            return  a.data().timestamp.toMillis()-b.data().timestamp.toMillis()}
         );
@@ -107,7 +124,8 @@ const chatData = async(req, res)=>{
         res.status(200).json({
             chats: combineData.map((doc)=>({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
+                imageUrl: photos[users[doc.data().sender]]?photos[users[doc.data().sender]]:deactive_avtr
             }))
         })
     }catch(err){
@@ -115,9 +133,54 @@ const chatData = async(req, res)=>{
     }
 }
 
+
+const cleanUpOldChats = async()=>{
+    try{
+        console.log('yooo');
+        const fiveHourAgoMillis = admin.firestore.Timestamp.now().toMillis() - (5*3600*1000);
+        const fiveHourAgo = new admin.firestore.Timestamp( Math.floor(fiveHourAgoMillis/1000), (fiveHourAgoMillis%1000)*1000000);
+        const chatRef = db.collection('chat');
+        console.log(fiveHourAgo);
+        const snapShot = await chatRef.where('timestamp', '<', fiveHourAgo).get();
+        if(snapShot.empty){
+            console.log('Database is already clean');
+        }
+        else{
+            console.log(`Database is cleaning......(total: ${snapShot.docs.length})`);
+            const batch = db.batch();
+            snapShot.forEach((doc)=>{
+                batch.delete(doc.ref);
+            })
+            await batch.commit();
+            console.log('Database is clean');
+        }
+        //refresh token after 1 hr
+            for(let socket_id in photos){
+                const profilePic = photos[socket_id].substring(0,photos[socket_id].lastIndexOf('?'))
+                const sasToken = await refreshToken(profilePic);
+                photos[socket_id]=`${profilePic}?${sasToken}`;
+            }
+            let activeUsers,profile;
+            if(names && photos){
+                activeUsers = Object.values(names);
+                profile = Object.values(photos);
+            }
+            io_.emit('init activeUsers',{activeUsers, profile});
+            console.log('sas tokens refreshed...');
+
+    }catch(err){
+        console.error('Error cleaning database', err);
+    }
+}
+
+
+cron.schedule('0 */1 * * *', cleanUpOldChats);
+
 module.exports ={
     loginData,
     signinData,
     chatData,
+    refreshToken,
+    assign,
     usernames
 }
