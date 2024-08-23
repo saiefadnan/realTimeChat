@@ -6,7 +6,7 @@
   
   if(sessionStorage.getItem('login')==='true'){
     if (window.socket && window.socket.connected){
-        console.log('WebSocket is already connected.....');
+        //console.log('WebSocket is already connected.....');
         window.socket.emit('show active-users');
         retrieveChat();
     } 
@@ -24,7 +24,7 @@
       username: sessionStorage.getItem('username')
     }
     const data = await window.fetchData('/api/getchats',reqData);
-    console.log(data);
+    //console.log(data);
     data.chats.forEach((chat)=>{
       if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
       else addMessage(chat.sender,chat.text,chat.date,chat.imageUrl);
@@ -60,7 +60,7 @@
 
   function connectWebSocket(){
     window.socket = io();
-    console.log('connected');
+    //console.log('connected');
     window.socket.on('connect', function(){
       addError("Connected");
       window.socket.emit('insert name',{
@@ -92,19 +92,19 @@ if(window.socket){
           addFileTo(new Date(Date.now()).toLocaleString(), blobUrl, file.name);
         }
         socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
-        console.log('end...');
+        //console.log('end...');
       }
       reader.readAsArrayBuffer(file);
       return;
     }
     const chunkSize = 512*1024;
     const fileSlice = file.slice(offset,offset+chunkSize);
-    console.log(offset);
+    //console.log(offset);
     if(recipient==='public'){
       const reader = new FileReader();
       reader.onload = async()=>{
         if (file.type.startsWith('image/')) {
-          console.log(file.type);
+          //console.log(file.type);
             socket.emit('public image', {fileData: reader.result, fileType: file.type});
         } else if (file.type.startsWith('video/')) {
           socket.emit('public video', {fileData: reader.result});
@@ -340,7 +340,7 @@ if(window.socket){
   }
 
   socket.on('init activeUsers',({activeUsers, profile})=>{
-    console.log('init...');
+    //console.log('init...');
       const activeBar = document.getElementById('active');
       const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
       activeBar.innerHTML='';

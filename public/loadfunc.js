@@ -13,7 +13,7 @@ export default function loadPage(content){
             const existingScript = document.querySelector(`script[src="${Script}"]`);
             if(existingScript){
                 existingScript.remove();
-                console.log('Old script removed!!');
+                //console.log('Old script removed!!');
             }
             //script.src = `${Script}?v=${new Date().getTime()}`;
             script.src = `${Script}`;
