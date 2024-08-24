@@ -43,7 +43,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #ccc;
+    border: 2px solid #ddd;
   }
 
   .profile-container img{

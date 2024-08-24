@@ -36,12 +36,7 @@ function socketHandler(io){
         })
         socket.on('private image',async({to,fileData,fileType})=>{
             const recipientSocketId = users[to];
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else if(recipientSocketId){
+            if(recipientSocketId){
                 gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private image', {
                     from: names[socket.id],
@@ -53,40 +48,26 @@ function socketHandler(io){
 
             }
             else{
-                io.to(socket.id).emit('error',{
-                    error: `${to} is disconnected or not available`
-                });
+                gatherChunks.push(fileData);
             }
         })
     
         socket.on('public image',async({fileData, fileType})=>{
             // console.log('image sending...');
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else{
-                gatherChunks.push(fileData);
-                socket.broadcast.emit('public image',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    profile: photos[socket.id],
-                    state: false 
-                })
-            }
+            gatherChunks.push(fileData);
+            socket.broadcast.emit('public image',{
+                from: names[socket.id],
+                time: Date.now(),
+                fileData: fileData,
+                profile: photos[socket.id],
+                state: false 
+            })
         })
     
         socket.on('private video',async({to,fileData})=>{
             //console.log('video sending...');
             const recipientSocketId = users[to];
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else if(recipientSocketId){
+            if(recipientSocketId){
                 gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private video', {
                     from: names[socket.id],
@@ -97,59 +78,38 @@ function socketHandler(io){
                 });
             }
             else{
-                io.to(socket.id).emit('error',{
-                    error: `${to} is disconnected or not available`
-                });
+                gatherChunks.push(fileData);
             }
         })
     
         socket.on('public video',async({fileData})=>{
             //console.log('video sending...');
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else{
-                gatherChunks.push(fileData);
-                socket.broadcast.emit('public video',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    profile: photos[socket.id],
-                    state: false 
-                })
-            }
+            gatherChunks.push(fileData);
+            socket.broadcast.emit('public video',{
+                from: names[socket.id],
+                time: Date.now(),
+                fileData: fileData,
+                profile: photos[socket.id],
+                state: false 
+            })
         })
     
         
         socket.on('public file',async({fileData, fileName})=>{
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else{
-                gatherChunks.push(fileData);
-                socket.broadcast.emit('public file',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    fileName: fileName,
-                    profile: photos[socket.id],
-                    state: false  
-                })
-            }
+            gatherChunks.push(fileData);
+            socket.broadcast.emit('public file',{
+                from: names[socket.id],
+                time: Date.now(),
+                fileData: fileData,
+                fileName: fileName,
+                profile: photos[socket.id],
+                state: false  
+            })
         })
         socket.on('private file',async({to, fileData, fileName})=>{
             //console.log('file sending...');
             const recipientSocketId = users[to];
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else if(recipientSocketId){
+            if(recipientSocketId){
                 gatherChunks.push(fileData);
                 io.to(recipientSocketId).emit('private file', {
                     from: names[socket.id],
@@ -161,21 +121,17 @@ function socketHandler(io){
                 });
             }
             else{
-                io.to(socket.id).emit('error',{
-                    error: `${to} is disconnected or not available`
-                });
+                gatherChunks.push(fileData);
             }
         })
 
         socket.on('complete', async({to, fileType, fileName})=>{
+            const date = new Date(Date.now()).toLocaleString();
             if(to==='public'){
-                if(!names[socket.id]){
-                    io.to(socket.id).emit('error',{
-                        error: 'You are disconnected! Message not sent!'
-                    });
-                }
-                else if(fileType.startsWith('image/')){
-                    await uploadFile('image',fileName, names[socket.id]);
+                if(fileType.startsWith('image/')){
+                    const docUrl=await uploadFile('image',fileName, names[socket.id]);
+                    console.log(docUrl);
+                    await storeChats(names[socket.id], 'public', docUrl, date);
                     socket.broadcast.emit('public image',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -185,7 +141,8 @@ function socketHandler(io){
                     })
                 }
                 else if(fileType.startsWith('video/')){
-                    await uploadFile('video',fileName, names[socket.id]);
+                    const docUrl=await uploadFile('video',fileName, names[socket.id]);
+                    await storeChats(names[socket.id], 'public', docUrl, date);
                     socket.broadcast.emit('public video',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -195,7 +152,8 @@ function socketHandler(io){
                     })
                 }
                 else{
-                    await uploadFile('document',fileName, names[socket.id]);
+                    const docUrl=await uploadFile('document',fileName, names[socket.id]);
+                    await storeChats(names[socket.id], 'public', docUrl, date);
                     socket.broadcast.emit('public file',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -208,58 +166,68 @@ function socketHandler(io){
             }
             else{
                 const recipientSocketId = users[to];
-                if(!names[socket.id]){
-                    io.to(socket.id).emit('error',{
-                        error: 'You are disconnected! Message not sent!'
-                    });
+                if(fileType.startsWith('image/')){
+                    const docUrl=await uploadFile('image',fileName, names[socket.id]);
+                    console.log('url.........',docUrl);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    if(recipientSocketId){
+                        io.to(recipientSocketId).emit('private image', {
+                            from: names[socket.id],
+                            time: Date.now(),
+                            fileData: null,
+                            profile: photos[socket.id],
+                            state: true 
+                        });
+                    }
+                    else{
+                        io.to(socket.id).emit('error',{
+                            error: `${to} is not available`
+                        });
+                    }
                 }
-                else if(recipientSocketId && fileType.startsWith('image/')){
-                    await uploadFile('image',fileName, names[socket.id]);
-                    io.to(recipientSocketId).emit('private image', {
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: null,
-                        profile: photos[socket.id],
-                        state: true 
-                    });
-                }
-                else if(recipientSocketId && fileType.startsWith('video/')){
-                    await uploadFile('video',fileName, names[socket.id]);
-                    io.to(recipientSocketId).emit('private video', {
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: null,
-                        profile: photos[socket.id],
-                        state: true 
-                    });
-                }
-                else if(recipientSocketId){
-                    await uploadFile('document',fileName, names[socket.id]);
-                    io.to(recipientSocketId).emit('private file', {
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: null,
-                        fileName: fileName,
-                        profile: photos[socket.id],
-                        state: true 
-                    });
+                else if(fileType.startsWith('video/')){
+                    const docUrl=await uploadFile('video',fileName, names[socket.id]);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    if(recipientSocketId){
+                        io.to(recipientSocketId).emit('private video', {
+                            from: names[socket.id],
+                            time: Date.now(),
+                            fileData: null,
+                            profile: photos[socket.id],
+                            state: true 
+                        });
+                    }
+                    else{
+                        io.to(socket.id).emit('error',{
+                            error: `${to} is not available`
+                        });
+                    }
                 }
                 else{
-                    io.to(socket.id).emit('error',{
-                        error: `${to} is disconnected or not available`
-                    });
+                    const docUrl=await uploadFile('document',fileName, names[socket.id]);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    if(recipientSocketId){
+                        io.to(recipientSocketId).emit('private file', {
+                            from: names[socket.id],
+                            time: Date.now(),
+                            fileData: null,
+                            fileName: fileName,
+                            profile: photos[socket.id],
+                            state: true 
+                        });
+                    }
+                    else{
+                        io.to(socket.id).emit('error',{
+                            error: `${to} is not available`
+                        });
+                    }
                 }
             }
         })
         
         socket.on('private message',async({to,message,date})=>{
             const recipientSocketId = users[to];
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent!'
-                });
-            }
-            else if(recipientSocketId){
+            if(recipientSocketId){
                 await storeChats(names[socket.id], names[recipientSocketId], message, date);
                 io.to(recipientSocketId).emit('private message',{
                     from: names[socket.id],
@@ -276,20 +244,13 @@ function socketHandler(io){
         });
     
         socket.on('public message', async(message, date)=>{
-            if(!names[socket.id]){
-                io.to(socket.id).emit('error',{
-                    error: 'You are disconnected! Message not sent...!'
-                });
-            }
-            else{
-                await storeChats(names[socket.id], 'public', message, date);
-                socket.broadcast.emit('public message',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    message,
-                    profile: photos[socket.id] 
-                })
-            }
+            await storeChats(names[socket.id], 'public', message, date);
+            socket.broadcast.emit('public message',{
+                from: names[socket.id],
+                time: Date.now(),
+                message,
+                profile: photos[socket.id] 
+            })
         })
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);

@@ -1,8 +1,9 @@
 (async function(){
+  let socket;
   const {createWorker, setLogging} = FFmpeg;
   setLogging(true);
-  let offset=0;
   let receivedChunks = [];
+  const chunkSize = 512*1024;
   if(sessionStorage.getItem('login')==='true'){
     if (window.socket && window.socket.connected){
         window.socket.emit('show active-users');
@@ -21,9 +22,10 @@
       username: sessionStorage.getItem('username')
     }
     const data = await window.fetchData('/api/getchats',reqData);
+    document.getElementById('messages').innerHTML='';
     data.chats.forEach((chat)=>{
       if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
-      else addMessage(chat.sender,chat.text,chat.date,chat.imageUrl);
+      else embedDriveFiles(chat.date,chat.sender,chat.text,chat.imageUrl);
     })
   }
   function addPicture(picture){
@@ -51,7 +53,107 @@
       }
     }
   }
-
+  //send chunks....
+  function sendChunks(recipient, file, offset){
+    if(!socket.connected){
+      console.log('not connected.....');
+      window.Pending(recipient, file, offset);
+      return;
+    }
+    if(offset>=file.size){
+      socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
+      window.clearPending();
+      return;
+    }
+    const fileSlice = file.slice(offset,offset+chunkSize);
+    if(recipient==='public'){
+      const reader = new FileReader();
+      reader.onload = async()=>{
+        if (file.type.startsWith('image/')){
+            socket.emit('public image', {fileData: reader.result, fileType: file.type});
+        } else if (file.type.startsWith('video/')) {
+          socket.emit('public video', {fileData: reader.result});
+        } else {
+            socket.emit('public file', {fileData: reader.result,fileName: file.name});
+            //socket.emit('public file', {fileData, fileName: file.name, fileType: file.type });
+        }
+        sendChunks(recipient,file,offset+chunkSize);
+      }
+      reader.readAsArrayBuffer(fileSlice);
+    }else{
+      const reader = new FileReader();
+        reader.onload = () => {
+            if(file.type.startsWith('image/')) {
+              socket.emit('private image', { to: recipient, fileData: reader.result, fileType: file.type});
+            } 
+            else if (file.type.startsWith('video/')) {
+            socket.emit('private video', { to: recipient, fileData: reader.result});
+          }
+          else{
+            socket.emit('private file', { to: recipient, fileData: reader.result, fileName: file.name});
+          }
+          sendChunks(recipient,file,offset+chunkSize);
+        };
+      reader.readAsArrayBuffer(fileSlice);
+    }
+    document.getElementById('file-input').value = '';
+  }
+  //send message
+  async function sendMessage(rec=null, msg=null){
+    let recipient = document.getElementById('recipientInput').value;
+    let message = document.getElementById('messageInput').value;
+    if(rec && msg){
+      recipient = rec;
+      message = msg;
+    }
+    if(recipient.trim() && message.trim() && recipient==='public'){
+      const date = new Date(Date.now()).toLocaleString();
+      addMessageTo(message, date) ;
+      if(!socket.connected){
+        console.log('not connected.....');
+        window.Pending(recipient, message, -1);
+        message = '';
+        return;
+      }
+      socket.emit('public message', message, date);
+    }
+    else if (recipient.trim() && message.trim()) {
+      const date = new Date(Date.now()).toLocaleString();
+      addMessageTo(message, date) ;
+      if(!socket.connected){
+        console.log('not connected.....');
+        window.Pending(recipient, message, -1);
+        message = '';
+        return;
+      }
+      socket.emit('private message', { to: recipient, message , date});
+    }
+    message = '';
+    const fileinput = document.getElementById('file-input');
+    let file = fileinput.files[0];
+    if(file && recipient.trim()) {
+      document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
+      offset=0;
+      if(file.type.startsWith('video/') && file.type!=='video/mp4'){
+        file = await convertToMp4(file);
+      }
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const arrayBuffer = reader.result;
+        const blobUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: file.type }));
+        if (file.type.startsWith('image/')) {
+          addImageTo(new Date(Date.now()).toLocaleString(), blobUrl);
+        } else if (file.type.startsWith('video/')) {
+          addVideoTo(new Date(Date.now()).toLocaleString(), blobUrl);
+        } else {
+          addFileTo(new Date(Date.now()).toLocaleString(), blobUrl, file.name);
+        }
+      }
+      reader.readAsArrayBuffer(file);
+      sendChunks(recipient, file,0);
+    }
+  }
+  //connect
   function connectWebSocket(){
     window.socket = io();
     window.socket.on('connect', function(){
@@ -60,12 +162,22 @@
         username: sessionStorage.getItem('username'),
         imageurl: sessionStorage.getItem('imageurl')
       })
+      setTimeout(()=>{
+      const pending = window.pending;
+      if(pending.status && pending.offset>=0){
+        console.log(pending.status);
+        sendChunks(pending.recipient,pending.content,pending.offset);
+      }
+      else if(pending.status){
+        sendMessage(pending.recipient,pending.content);
+      }
+      },5000)
     })
     addPicture(sessionStorage.getItem('imageurl'));
   }
 
 if(window.socket){
-  const socket = window.socket;
+  socket = window.socket;
   function closeAllSockets(){
     socket.off('disconnect');
     socket.off('private message');
@@ -87,96 +199,15 @@ if(window.socket){
   socket.on('disconnect', function(){
       addError("Disconnected! Attempting to reconnect...");
   })
-  //send chunks....
-  function sendChunks(recipient, file){
-    if(offset>=file.size){
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        const arrayBuffer = reader.result;
-        const blobUrl = URL.createObjectURL(new Blob([arrayBuffer], { type: file.type }));
-        if (file.type.startsWith('image/')) {
-          addImageTo(new Date(Date.now()).toLocaleString(), blobUrl);
-        } else if (file.type.startsWith('video/')) {
-          addVideoTo(new Date(Date.now()).toLocaleString(), blobUrl);
-        } else {
-          addFileTo(new Date(Date.now()).toLocaleString(), blobUrl, file.name);
-        }
-        socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
-      }
-      reader.readAsArrayBuffer(file);
-      return;
-    }
-    const chunkSize = 512*1024;
-    const fileSlice = file.slice(offset,offset+chunkSize);
-    if(recipient==='public'){
-      const reader = new FileReader();
-      reader.onload = async()=>{
-        if (file.type.startsWith('image/')) {
-            socket.emit('public image', {fileData: reader.result, fileType: file.type});
-        } else if (file.type.startsWith('video/')) {
-          socket.emit('public video', {fileData: reader.result});
-        } else {
-            socket.emit('public file', {fileData: reader.result,fileName: file.name});
-            //socket.emit('public file', {fileData, fileName: file.name, fileType: file.type });
-        }
-        offset+=chunkSize;
-        sendChunks(recipient,file);
-      }
-      reader.readAsArrayBuffer(fileSlice);
-    }else{
-      const reader = new FileReader();
-        reader.onload = () => {
-            if(file.type.startsWith('image/')) {
-              socket.emit('private image', { to: recipient, fileData: reader.result, fileType: file.type});
-            } 
-            else if (file.type.startsWith('video/')) {
-            socket.emit('private video', { to: recipient, fileData: reader.result});
-          }
-          else{
-            socket.emit('private file', { to: recipient, fileData: reader.result, fileName: file.name});
-          }
-            offset+=chunkSize;
-            sendChunks(recipient,file);
-        };
-      reader.readAsArrayBuffer(fileSlice);
-    }
-    document.getElementById('file-input').value = '';
-  }
-  //send function
-  document.getElementById('sendButton').addEventListener('click', async() => {
-    const recipient = document.getElementById('recipientInput').value;
-    const message = document.getElementById('messageInput').value;
-    if(recipient.trim() && message.trim() && recipient==='public'){
-      const date = new Date(Date.now()).toLocaleString();
-      addMessageTo(message, date) ;
-      socket.emit('public message', message, date);
-      document.getElementById('messageInput').value = '';
-    }
-    else if (recipient.trim() && message.trim()) {
-      const date = new Date(Date.now()).toLocaleString();
-      addMessageTo(message, date) ;
-      socket.emit('private message', { to: recipient, message , date});
-      console.log('hello');
-      document.getElementById('messageInput').value = '';
-    }
-    const fileinput = document.getElementById('file-input');
-    let file = fileinput.files[0];
-    if(file && recipient.trim()) {
-      document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
-      offset=0;
-      if(file.type.startsWith('video/') && file.type!=='video/mp4'){
-        file = await convertToMp4(file);
-      }
-      sendChunks(recipient, file);
-    }
-  });
-
+  //send message
+  const sendButton = document.getElementById('sendButton');
+  sendButton.addEventListener('click', sendMessage);
+  window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
   //message
   socket.on('private message', ({ from, time, message, profile }) => {
     const date = new Date(time).toLocaleString();
     addMessage(from, message, date, profile) ;
   });
-
 
   socket.on('public message', ({ from, time, message, profile  }) => {
     const date = new Date(time).toLocaleString();
@@ -186,7 +217,6 @@ if(window.socket){
   //image
   socket.on('private image',({from,time,fileData, profile, state })=>{
     receivedChunks.push(fileData);
-    
     if(state){
       //console.log('sent success.........');
       const date = new Date(time).toLocaleString();
@@ -260,6 +290,7 @@ if(window.socket){
 
 //rest
   socket.on('error', ({error}) => {
+    console.log('hell');
     addError(`${error}`) ;
   });
 
@@ -658,5 +689,58 @@ function addMessageTo(message, time) {
   const fileInput = document.getElementById('file-input');
   fileInput.addEventListener('change', Load);
   window.eventListeners.push({element: fileInput, event: 'change', handler: Load});
+
+  function embedDriveFiles(time, to, file_id, profile){
+    const messageElement = document.createElement('div');
+    const messagesDiv = document.getElementById('messages');
+    const profileDiv = document.createElement('img');
+    const messageContainer = document.createElement('div');
+    messageElement.innerHTML =
+     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
+    <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
+    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; max-height: 215px; 
+    border: none;
+    overflow: hidden;
+    transform: scale(1);
+    transform-origin: 0 0;"
+    />`;
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === 1 && node.classList.contains('ndfHFb-c4YZDc-nJjxad-nK2kYb-i5oIFb')) {
+                  node.style.display = 'none';
+              }
+          });
+      });
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+    messageElement.style.width= '100%';
+    messageElement.style.height= 'auto';
+    messageElement.style.display = 'flex';
+    messageElement.style.flexDirection = 'column';
+    messageContainer.style.alignItems = 'flex-start';
+    messageContainer.style.justifyContent = 'center';
+
+    profileDiv.src=profile;
+    profileDiv.style.width = '70px';
+    profileDiv.style.height = '70px';
+    profileDiv.style.borderRadius = '50%';
+    profileDiv.style.border = '1px soild #ccc';
+    profileDiv.style.padding = '10px';
+
+    messageContainer.style.width = '98%';
+    messageContainer.style.height = 'auto';
+    messageContainer.style.padding = '8px';
+    messageContainer.style.display = 'flex';
+    messageContainer.style.justifyContent = 'flex-start';
+    messageContainer.style.alignItems = 'flex-end';
+    messageContainer.appendChild(profileDiv);
+    messageContainer.appendChild(messageElement);
+                      
+    messagesDiv.appendChild(messageContainer);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+  }
 
 })();

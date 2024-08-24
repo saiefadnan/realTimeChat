@@ -2,10 +2,10 @@ const {google} = require('googleapis');
 const crypto = require('crypto');
 const path = require('path');
 const { Readable } = require('stream');
-const User = require('./mongodb/user');
+const { storeChats } = require('./storeChats');
 const {v4: uuidv4} = require('uuid');
 const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname, '/etc/secrets/realtimechat59-4f88949d8c8b.json'),
+    keyFile: path.join(__dirname, 'private/realtimechat59-4f88949d8c8b.json'),
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
 const drive = google.drive({version: 'v3', auth});
@@ -21,6 +21,24 @@ async function calculateFileHash(file){
     })
 }
 
+async function sharePublic(fileId) {
+    const permissions = {
+        type: 'anyone',
+        role: 'reader'
+    };
+
+    try {
+        const response = await drive.permissions.create({
+            resource: permissions,
+            fileId: fileId,
+            fields: 'id'
+        });
+        console.log(`Permission ID: ${response.data.id}`);
+    } catch (error) {
+        console.error('Error sharing folder:', error.message);
+    }
+}
+
 async function fileExists(fileType, file){
     let id='';
     if(fileType==='document') id=documentsId;
@@ -32,16 +50,16 @@ async function fileExists(fileType, file){
         q: `'${id}' in parents and properties has {key='file_hash' and value='${fileHash}'} and trashed = false`,
         fields: 'files(id, name)',
     })
-    console.log(response.data,response.data.files.length);
-    return response.data.files.length>0;
+    if(response.data.files.length>0) return {status: true, webUrl: response.data.files[0].id}
+    return { status: false, webUrl: null};
 
 }
 
 async function uploadOperation(fileType,fileName,fileBuffer){
     let id='';
-    if(fileType==='document') id=documentsId;
+    if(fileType==='video') id=videoId;
     else if(fileType==='image') id=imageId;
-    else id=videoId;
+    else id=documentsId;
     const fileMetadata = {
         name: fileName,
         parents: [id],
@@ -61,28 +79,27 @@ async function uploadOperation(fileType,fileName,fileBuffer){
         media: media,
         fields: 'id'
     });
-    console.log('Uploaded file ID:', response.data.id, fileType);
+    console.log('upload',response.data.id, fileType);
+    return response.data.id;
 }
 async function uploadFile(fileType,fileName,Username){
     try{
         console.log(gatherChunks.length);
         const file = Buffer.concat(gatherChunks);
-        if(await fileExists(fileType, file)){
-            console.log('file already exists!!!');
-            return;
+        const exists = await fileExists(fileType, file);
+        if(exists.status){
+            console.log('file already exists!!!',exists.webUrl);
+            return exists.webUrl;
         }
-        await uploadOperation(fileType,`${uuidv4()}-${fileName}`, file);
-        // const result = await User.findOneAndUpdate(
-        //     { username: Username },      
-        //     { $addToSet: { folderIds: folderId } },
-        //     { new: true, useFindAndModify: false }
-        //   );
-        // console.log('Updated User:', result);
+        const file_id = await uploadOperation(fileType,`${uuidv4()}-${fileName}`, file);
+        sharePublic(file_id);
+        return file_id;
     }catch(err){
         console.log(err);
     }
     finally{
         gatherChunks.length = 0;
+        console.log('size', gatherChunks.length);
     }
 
 }
@@ -140,21 +157,3 @@ module.exports = {uploadFile, gatherChunks};
 //     return folder.data.id;
 // }
 
-// async function shareFolder(folderId) {
-//     const permissions = {
-//         type: 'user',
-//         role: 'reader', // or 'writer' for read-write access
-//         emailAddress: 'saifnemesis@gmail.com'
-//     };
-
-//     try {
-//         const response = await drive.permissions.create({
-//             resource: permissions,
-//             fileId: folderId,
-//             fields: 'id'
-//         });
-//         console.log(`Permission ID: ${response.data.id}`);
-//     } catch (error) {
-//         console.error('Error sharing folder:', error.message);
-//     }
-// }

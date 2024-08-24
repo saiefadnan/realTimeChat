@@ -33,9 +33,18 @@
 <script type="module">
     import loadPage from './loadfunc.js'; 
     import fetchData from './fetchData.js';
+    import { Pending, clearPending }from './pending.js'
     window.loadPage = loadPage;
     window.fetchData = fetchData;
+    window.Pending = Pending;
+    window.clearPending = clearPending;
     window.eventListeners = [];
+    window.pending ={
+        status:false,
+        recipient: null,
+        content: null,
+        offset: 0
+    }
 </script>
 <script type="module" src="loadComp.js"></script>
 </body>
