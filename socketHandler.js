@@ -129,9 +129,9 @@ function socketHandler(io){
             const date = new Date(Date.now()).toLocaleString();
             if(to==='public'){
                 if(fileType.startsWith('image/')){
-                    const docUrl=await uploadFile('image',fileName, names[socket.id]);
+                    const docUrl=await uploadFile('image',fileName);
                     console.log(docUrl);
-                    await storeChats(names[socket.id], 'public', docUrl, date);
+                    await storeChats(names[socket.id], 'public', docUrl, 'image', date);
                     socket.broadcast.emit('public image',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -141,8 +141,8 @@ function socketHandler(io){
                     })
                 }
                 else if(fileType.startsWith('video/')){
-                    const docUrl=await uploadFile('video',fileName, names[socket.id]);
-                    await storeChats(names[socket.id], 'public', docUrl, date);
+                    const docUrl=await uploadFile('video',fileName);
+                    await storeChats(names[socket.id], 'public', docUrl, 'video', date);
                     socket.broadcast.emit('public video',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -152,8 +152,8 @@ function socketHandler(io){
                     })
                 }
                 else{
-                    const docUrl=await uploadFile('document',fileName, names[socket.id]);
-                    await storeChats(names[socket.id], 'public', docUrl, date);
+                    const docUrl=await uploadFile('document',fileName);
+                    await storeChats(names[socket.id], 'public', docUrl, 'document', date);
                     socket.broadcast.emit('public file',{
                         from: names[socket.id],
                         time: Date.now(),
@@ -167,9 +167,9 @@ function socketHandler(io){
             else{
                 const recipientSocketId = users[to];
                 if(fileType.startsWith('image/')){
-                    const docUrl=await uploadFile('image',fileName, names[socket.id]);
+                    const docUrl=await uploadFile('image',fileName);
                     console.log('url.........',docUrl);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'image', date);
                     if(recipientSocketId){
                         io.to(recipientSocketId).emit('private image', {
                             from: names[socket.id],
@@ -186,8 +186,8 @@ function socketHandler(io){
                     }
                 }
                 else if(fileType.startsWith('video/')){
-                    const docUrl=await uploadFile('video',fileName, names[socket.id]);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    const docUrl=await uploadFile('video',fileName);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'video', date);
                     if(recipientSocketId){
                         io.to(recipientSocketId).emit('private video', {
                             from: names[socket.id],
@@ -204,8 +204,8 @@ function socketHandler(io){
                     }
                 }
                 else{
-                    const docUrl=await uploadFile('document',fileName, names[socket.id]);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, date);
+                    const docUrl=await uploadFile('document',fileName);
+                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'document', date);
                     if(recipientSocketId){
                         io.to(recipientSocketId).emit('private file', {
                             from: names[socket.id],
@@ -228,7 +228,7 @@ function socketHandler(io){
         socket.on('private message',async({to,message,date})=>{
             const recipientSocketId = users[to];
             if(recipientSocketId){
-                await storeChats(names[socket.id], names[recipientSocketId], message, date);
+                await storeChats(names[socket.id], names[recipientSocketId], message, 'text', date);
                 io.to(recipientSocketId).emit('private message',{
                     from: names[socket.id],
                     time: Date.now(),
@@ -244,7 +244,7 @@ function socketHandler(io){
         });
     
         socket.on('public message', async(message, date)=>{
-            await storeChats(names[socket.id], 'public', message, date);
+            await storeChats(names[socket.id], 'public', message, 'text', date);
             socket.broadcast.emit('public message',{
                 from: names[socket.id],
                 time: Date.now(),

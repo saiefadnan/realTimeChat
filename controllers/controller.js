@@ -5,7 +5,7 @@ const { admin, db} = require('../firebase');
 const { StorageSharedKeyCredential} = require('@azure/storage-blob');
 const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
 const {names, photos, users} = require('../socketHandler');
-const { all } = require('axios');
+const { drive } = require('../Gdrive');
 const usernames=[];
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
@@ -24,6 +24,15 @@ function assign(io){
         io_ = io;
     }
     else init= false;
+}
+async function deleteFile(file_id){
+    console.log(file_id);
+    try{
+        await drive.files.delete({fileId : file_id});
+        console.log(`File with ID: ${file_id} has been deleted.`);
+    }catch(err){
+        console.error('File deletion failed', err);
+    }
 }
 
 const loginData = async(req,res)=>{
@@ -149,9 +158,11 @@ const cleanUpOldChats = async()=>{
         else{
             console.log(`Database is cleaning......(total: ${snapShot.docs.length})`);
             const batch = db.batch();
-            snapShot.forEach((doc)=>{
+            for(const doc of snapShot.docs){
+                const data = doc.data();
+                if(data.type!=='text') await deleteFile(data.content);  //delete file from gdrive
                 batch.delete(doc.ref);
-            })
+            }
             await batch.commit();
             console.log('Database is clean');
         }

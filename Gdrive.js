@@ -2,10 +2,9 @@ const {google} = require('googleapis');
 const crypto = require('crypto');
 const path = require('path');
 const { Readable } = require('stream');
-const { storeChats } = require('./storeChats');
 const {v4: uuidv4} = require('uuid');
 const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname, '/etc/secrets/realtimechat59-4f88949d8c8b.json'),
+    keyFile: path.join(__dirname, 'private/realtimechat59-4f88949d8c8b.json'),
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
 const drive = google.drive({version: 'v3', auth});
@@ -50,6 +49,7 @@ async function fileExists(fileType, file){
         q: `'${id}' in parents and properties has {key='file_hash' and value='${fileHash}'} and trashed = false`,
         fields: 'files(id, name)',
     })
+    console.log(response.data);
     if(response.data.files.length>0) return {status: true, webUrl: response.data.files[0].id}
     return { status: false, webUrl: null};
 
@@ -79,10 +79,11 @@ async function uploadOperation(fileType,fileName,fileBuffer){
         media: media,
         fields: 'id'
     });
-    console.log('upload',response.data.id, fileType);
+    console.log('uploading......');
+    console.log(response.data);
     return response.data.id;
 }
-async function uploadFile(fileType,fileName,Username){
+async function uploadFile(fileType,fileName){
     try{
         console.log(gatherChunks.length);
         const file = Buffer.concat(gatherChunks);
@@ -99,12 +100,11 @@ async function uploadFile(fileType,fileName,Username){
     }
     finally{
         gatherChunks.length = 0;
-        console.log('size', gatherChunks.length);
     }
 
 }
 
-module.exports = {uploadFile, gatherChunks};
+module.exports = {drive, uploadFile, gatherChunks};
 
 
 

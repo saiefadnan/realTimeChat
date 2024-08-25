@@ -24,8 +24,14 @@
     const data = await window.fetchData('/api/getchats',reqData);
     document.getElementById('messages').innerHTML='';
     data.chats.forEach((chat)=>{
-      if(chat.sender===sessionStorage.getItem('username'))addMessageTo(chat.text,chat.date);
-      else embedDriveFiles(chat.date,chat.sender,chat.text,chat.imageUrl);
+      if(chat.sender===sessionStorage.getItem('username')){
+        if(chat.type!=='text')embedDriveFilesTo(chat.date,chat.content);
+        else addMessageTo(chat.content,chat.date);
+      }
+      else {
+        if(chat.type!=='text')embedDriveFiles(chat.date,chat.sender,chat.content,chat.imageUrl);
+        else addMessage(chat.sender,chat.content, chat.date, chat.imageUrl)
+      }
     })
   }
   function addPicture(picture){
@@ -112,7 +118,7 @@
       if(!socket.connected){
         console.log('not connected.....');
         window.Pending(recipient, message, -1);
-        message = '';
+        document.getElementById('messageInput').value = '';
         return;
       }
       socket.emit('public message', message, date);
@@ -123,12 +129,12 @@
       if(!socket.connected){
         console.log('not connected.....');
         window.Pending(recipient, message, -1);
-        message = '';
+        document.getElementById('messageInput').value = '';
         return;
       }
       socket.emit('private message', { to: recipient, message , date});
     }
-    message = '';
+    document.getElementById('messageInput').value = '';
     const fileinput = document.getElementById('file-input');
     let file = fileinput.files[0];
     if(file && recipient.trim()) {
@@ -485,7 +491,7 @@ function addVideoTo(time, videoData) {
 
     messageElement.innerHTML = 
     `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
-    <video controls style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">
+    <video controls style="max-width: 230px; max-height: 230px;margin: 0;padding: 0;">
     <source src="${videoData}" type="video/mp4">
     <source src="${videoData}" type="video/webm">
     <source src="${videoData}" type="video/ogg">
@@ -704,17 +710,6 @@ function addMessageTo(message, time) {
     transform: scale(1);
     transform-origin: 0 0;"
     />`;
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-              if (node.nodeType === 1 && node.classList.contains('ndfHFb-c4YZDc-nJjxad-nK2kYb-i5oIFb')) {
-                  node.style.display = 'none';
-              }
-          });
-      });
-  });
-  
-  observer.observe(document.body, { childList: true, subtree: true });
     messageElement.style.width= '100%';
     messageElement.style.height= 'auto';
     messageElement.style.display = 'flex';
@@ -743,4 +738,35 @@ function addMessageTo(message, time) {
 
   }
 
+  function embedDriveFilesTo(time, file_id) {
+    const messagesDiv = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+
+    messageElement.style.display = 'flex';
+    messageElement.style.flexDirection = 'column';
+    messageElement.style.alignItems = 'flex-end';
+    messageElement.style.justifyContent = 'center';
+    messageElement.style.padding = '8px';
+    messageElement.style.width = '98%';
+    messageElement.style.height = 'auto';
+
+    messageElement.innerHTML = 
+    `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
+    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; max-height: 215px; 
+    border: none;
+    overflow: hidden;
+    transform: scale(1);
+    transform-origin: 0 0;"
+    />`;
+    messagesDiv.appendChild(messageElement);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+const chatHeader = document.getElementById('chat-header');
+function Hide(){
+  chatHeader.style.display='none';
+}
+chatHeader.addEventListener('click',Hide);
+chatHeader.style.cursor='pointer';
+eventListeners.push({element: chatHeader, event: 'click', handler: Hide});
 })();
