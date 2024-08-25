@@ -4,7 +4,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const {v4: uuidv4} = require('uuid');
 const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname, '/etc/secrets/realtimechat59-4f88949d8c8b.json'),
+    keyFile: path.join(__dirname, 'private/realtimechat59-4f88949d8c8b.json'),
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
 const drive = google.drive({version: 'v3', auth});
@@ -93,7 +93,7 @@ async function uploadFile(fileType,fileName){
             return exists.webUrl;
         }
         const file_id = await uploadOperation(fileType,`${uuidv4()}-${fileName}`, file);
-        sharePublic(file_id);
+        await sharePublic(file_id);
         return file_id;
     }catch(err){
         console.log(err);

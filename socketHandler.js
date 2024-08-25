@@ -130,7 +130,6 @@ function socketHandler(io){
             if(to==='public'){
                 if(fileType.startsWith('image/')){
                     const docUrl=await uploadFile('image',fileName);
-                    console.log(docUrl);
                     await storeChats(names[socket.id], 'public', docUrl, 'image', date);
                     socket.broadcast.emit('public image',{
                         from: names[socket.id],
