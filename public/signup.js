@@ -50,9 +50,10 @@
                 reader.onload = async() => {
                 const fileData = reader.result.split(',')[1];
                 reqData.profile.data = fileData;
-                    const {signin,notify,username,imageurl} = await fetchData('/api/signin',reqData);
+                    const {signin,notify,token} = await fetchData('/api/signin',reqData);
                     if(signin){
-                        shownote(notify,username,imageurl);
+                        Cookies.set('token', token, { expires: 30, secure: true, sameSite: 'Strict' });
+                        shownote(notify);
                     }
                     else{
                         showerror(notify);
@@ -60,9 +61,10 @@
                 }
                 reader.readAsDataURL(profile);
             }else{
-                const {signin,notify,username,imageurl} = await fetchData('/api/signin',reqData);
+                const {signin,notify,token} = await fetchData('/api/signin',reqData);
                     if(signin){
-                        shownote(notify,username,imageurl);
+                        Cookies.set('token', token, { expires: 30, secure: true, sameSite: 'Strict' });
+                        shownote(notify);
                     }
                 else{
                     showerror(notify);
@@ -79,14 +81,11 @@
         errorbox.textContent = field;
     }
 
-    function shownote(msg,username,imageurl){
+    function shownote(msg){
         const errorbox = document.getElementById('error-box');
         errorbox.style.display = 'block';
         errorbox.style.color = 'green'
         errorbox.textContent = msg;
-        sessionStorage.setItem('login','true');
-        sessionStorage.setItem('username',username);
-        sessionStorage.setItem('imageurl',imageurl);
         window.loadPage('chat.html');
     }
 

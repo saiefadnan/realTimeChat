@@ -1,6 +1,8 @@
 (function(){
   const login = document.getElementById('loginButton');
-
+  if(Cookies.get('token')){
+    showerror('Seems like u are logged in some where else');
+  }
   async function Login(e){
     e.preventDefault();
       const email = document.getElementById('logemailInput').value;
@@ -18,9 +20,10 @@
               email: email,
               password: password
             }
-            const {login,notify,username,imageurl} = await window.fetchData('/api/login',reqData);
+            const {login,notify, token} = await window.fetchData('/api/login',reqData);
             if(login){
-              shownote(notify,username,imageurl);
+              Cookies.set('token', token, { expires: 30, secure: true, sameSite: 'Strict' });
+              shownote(notify);
             }
             else{
               showerror(notify);
@@ -36,16 +39,15 @@
       const errorbox = document.getElementById('error-box');
       errorbox.style.display = 'block';
       errorbox.textContent = field;
+      console.log(field);
   }
 
-  function shownote(msg,username,imageurl){
+  function shownote(msg){
       const errorbox = document.getElementById('error-box');
       errorbox.style.display = 'block';
       errorbox.style.color = 'green'
       errorbox.textContent = msg;
-      sessionStorage.setItem('login','true');
-      sessionStorage.setItem('username',username);
-      sessionStorage.setItem('imageurl',imageurl);
+      console.log('going.......');
       window.loadPage('chat.html');
   }
 

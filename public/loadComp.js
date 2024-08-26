@@ -1,4 +1,4 @@
 document.addEventListener('DOMContentLoaded',()=>{
-    window.loadPage('login.html');
-    sessionStorage.setItem('login','false');
+    if(!Cookies.get('token')) window.loadPage('login.html');
+    else window.loadPage('chat.html');
 })

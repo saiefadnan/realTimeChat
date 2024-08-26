@@ -29,16 +29,25 @@
 </div>  
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.7.0/dist/ffmpeg.min.js"></script>  
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+
 
 <script type="module">
     import loadPage from './loadfunc.js'; 
     import fetchData from './fetchData.js';
     import { Pending, clearPending }from './pending.js'
+    import  setUserInfo from './userInfo.js'
     window.loadPage = loadPage;
     window.fetchData = fetchData;
     window.Pending = Pending;
     window.clearPending = clearPending;
+    window.setUserInfo = setUserInfo;
     window.eventListeners = [];
+    window.userInfo = {
+        status:false,
+        username: null,
+        imageurl: null
+    }
     window.pending ={
         status:false,
         recipient: null,

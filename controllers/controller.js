@@ -1,6 +1,7 @@
 const deactive_avtr = 'https://cdn.create.vista.com/api/media/small/456352818/stock-vector-users-profile-account-avatar-remove-user-icon-users';
 const cron = require('node-cron');
 const User = require('../mongodb/user');
+const jwt = require('jsonwebtoken');
 const { admin, db} = require('../firebase');
 const { StorageSharedKeyCredential} = require('@azure/storage-blob');
 const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
@@ -9,6 +10,7 @@ const { drive } = require('../Gdrive');
 const usernames=[];
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
+const secretKey = process.env.JWT_SECRET;
 const init=true;
 let io_;
 const refreshToken = async(profilePicture)=>{
@@ -53,7 +55,7 @@ const loginData = async(req,res)=>{
                 notify: `Invalid login attempt`
             });
         }
-        if(usernames.includes(user.username)){
+        if(users[user.username]){
             return res.status(200).json({
                 login: false,
                 notify: `You are currently logged in else where!`
@@ -61,12 +63,18 @@ const loginData = async(req,res)=>{
         }else if(user && pass){
             usernames.push(user.username);
             const sasToken = await refreshToken(user.profilePicture);
-            console.log('Token Refreshed....');
+            console.log(user.username);
+            const jwtoken = jwt.sign(
+                {
+                    username: user.username, 
+                    imageurl: `${user.profilePicture}?${sasToken}`
+                }, 
+                secretKey, {expiresIn: '30d'} );
+            console.log('jwt', jwtoken);
             return res.status(200).json({
                     login:true,
                     notify: `Welcome ${user.username}!`,
-                    username: user.username,
-                    imageurl: `${user.profilePicture}?${sasToken}`
+                    token: jwtoken
             });
         }
     }
@@ -93,11 +101,17 @@ const signinData = async(req,res)=>{
             user = new User({username,password,email,profilePicture: blobPath_});
             await user.save();
             usernames.push(username);
+            const jwtoken = jwt.sign(
+                {
+                    username: user.username, 
+                    imageurl: `${user.profilePicture}?${sasToken}`
+                }, 
+                secretKey, {expiresIn: '30d'} );
+            console.log('jwt', jwtoken);
             res.status(200).json({
                 signin:true,
                 notify: `Sucessfully registered!! Welcome ${user.username}!`,
-                username: user.username,
-                imageurl: `${blobPath_}?${sasToken_}`
+                token: jwtoken
             });
         }
         else{
@@ -114,10 +128,23 @@ const signinData = async(req,res)=>{
     }
 }
 
+const getUserInfo = async(req,res)=>{
+    try{
+        const {token} = req.body;
+        const decoded= jwt.verify(token, secretKey);
+        res.status(200).json({
+            userinfo:{
+                username: decoded.username,
+                imageurl: decoded.imageurl
+    }})
+    }catch(err){
+        console.error(err);
+    }
+}
+
 const chatData = async(req, res)=>{
     try{
-        const {username} = req.body;
-        console.log(username);
+        const { username } = req.body;
         const chatRef = db.collection('chat');
         const [sender,public,receiver]= await Promise.all([
             chatRef.where('sender','==',username).get(),
@@ -146,7 +173,6 @@ const chatData = async(req, res)=>{
 
 const cleanUpOldChats = async()=>{
     try{
-        console.log('yooo');
         const fiveHourAgoMillis = admin.firestore.Timestamp.now().toMillis() - (5*3600*1000);
         const fiveHourAgo = new admin.firestore.Timestamp( Math.floor(fiveHourAgoMillis/1000), (fiveHourAgoMillis%1000)*1000000);
         const chatRef = db.collection('chat');
@@ -194,5 +220,6 @@ module.exports ={
     chatData,
     refreshToken,
     assign,
+    getUserInfo,
     usernames
 }

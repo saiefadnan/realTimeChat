@@ -1,5 +1,7 @@
 const {uploadFile, gatherChunks} = require('./Gdrive');
 const { storeChats } = require('./storeChats');
+const jwt = require('jsonwebtoken');
+const secretKey = process.env.JWT_SECRET;
 
 const users = {};
 const names = {};
@@ -23,15 +25,34 @@ function socketHandler(io){
         socket.on('show active-users',async()=>{
             if(Object.keys(names).length>0)emitActiveUsers('init',null,null,socket);
         })
-        socket.on('insert name',async({username,imageurl})=>{
-            if(!usernames.includes(username)) usernames.push(username);
-            users[username] = socket.id;
-            names[socket.id] = username;
-            photos[socket.id] = imageurl
-            console.log('username saved');
-            if(Object.keys(names).length>0){
-                emitActiveUsers('init',null,null,socket);
-                emitActiveUsers('add',username,imageurl,socket);
+        socket.on('insert name',async( {jwtoken})=>{
+            let username, imageurl;
+            try{
+                const decoded= jwt.verify(jwtoken, secretKey);
+                username = decoded.username;
+                imageurl = decoded.imageurl;
+            }catch(err){
+                console.error(err);
+            }
+            if(!usernames.includes(username)){
+                io.to(socket.id).emit('error',{
+                    error: `Your session is over babe!`
+                });
+            }
+            else if(!users[username]){
+                users[username] = socket.id;
+                names[socket.id] = username;
+                photos[socket.id] = imageurl
+                console.log('username saved');
+                if(Object.keys(names).length>0){
+                    emitActiveUsers('init',null,null,socket);
+                    emitActiveUsers('add',username,imageurl,socket);
+                }
+            }
+            else{
+                io.to(socket.id).emit('error',{
+                    error: '999'
+                });
             }
         })
         socket.on('private image',async({to,fileData,fileType})=>{
@@ -254,14 +275,15 @@ function socketHandler(io){
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);
             const index = usernames.indexOf(names[socket.id]);
-            if(index!==-1){
-                usernames.splice(index,1);
-                console.log('total concurrent active users ',usernames.length);
-            }
+            // if(index!==-1){
+            //     usernames.splice(index,1);
+            //     console.log('total concurrent active users ',usernames.length);
+            // }
             if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);
             delete users[names[socket.id]];
             delete names[socket.id];
             delete photos[socket.id];
+            console.log('total concurrent active users ',Object.keys(users).length);
         });
     });
 }

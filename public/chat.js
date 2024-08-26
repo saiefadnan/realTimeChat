@@ -1,30 +1,21 @@
 (async function(){
   let socket;
+
   const {createWorker, setLogging} = FFmpeg;
   setLogging(true);
   let receivedChunks = [];
   const chunkSize = 512*1024;
-  if(sessionStorage.getItem('login')==='true'){
-    if (window.socket && window.socket.connected){
-        window.socket.emit('show active-users');
-        retrieveChat();
-    } 
-    else {
-      new Promise(resolve=>{
-        connectWebSocket();
-        retrieveChat();
-        resolve();
-      })
-    }
-  }
   async function retrieveChat(){
     const reqData ={
-      username: sessionStorage.getItem('username')
+      username: window.userInfo.username
     }
     const data = await window.fetchData('/api/getchats',reqData);
-    document.getElementById('messages').innerHTML='';
+    const messages = document.getElementById('messages');
+    if(!messages) return;
+    if(messages)messages.innerHTML='';
+    console.log('why??');
     data.chats.forEach((chat)=>{
-      if(chat.sender===sessionStorage.getItem('username')){
+      if(chat.sender===window.userInfo.username){
         if(chat.type!=='text')embedDriveFilesTo(chat.date,chat.content);
         else addMessageTo(chat.content,chat.date);
       }
@@ -34,10 +25,47 @@
       }
     })
   }
+  function closeAllSockets(socket){
+    socket.off('disconnect');
+    socket.off('private message');
+    socket.off('public message');
+    socket.off('private image');
+    socket.off('public image');
+    socket.off('private video');
+    socket.off('public video');
+    socket.off('private file');
+    socket.off('public file');
+    socket.off('error');
+    socket.off('init activeUsers');
+    socket.off('activeUsers');
+    console.log('All sockets are closing.....');
+  }
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
         profileDiv.src=picture;
+    }
+  }
+  if(Cookies.get('token') && !window.userInfo.username){
+    const reqData = {
+      token: Cookies.get('token')
+    }
+    const data = await window.fetchData('/api/userData',reqData);
+    setUserInfo(data.userinfo.username, data.userinfo.imageurl);
+    console.log(data.userinfo.username, data.userinfo.imageurl)
+  }
+
+  if(Cookies.get('token')){
+    if (window.socket && window.socket.connected){
+        await retrieveChat();
+        window.socket.emit('show active-users');
+    } 
+    else {
+      new Promise(async(resolve,reject)=>{
+        await connectWebSocket();
+        await retrieveChat();
+        resolve();
+      })
     }
   }
   async function convertToMp4(file){
@@ -160,14 +188,14 @@
     }
   }
   //connect
-  function connectWebSocket(){
+  async function connectWebSocket(){
     window.socket = io();
     window.socket.on('connect', function(){
-      addError("Connected");
       window.socket.emit('insert name',{
-        username: sessionStorage.getItem('username'),
-        imageurl: sessionStorage.getItem('imageurl')
+        jwtoken: Cookies.get('token'),
       })
+    })
+      addError("Connected");
       setTimeout(()=>{
       const pending = window.pending;
       if(pending.status && pending.offset>=0){
@@ -178,29 +206,14 @@
         sendMessage(pending.recipient,pending.content);
       }
       },5000)
-    })
-    addPicture(sessionStorage.getItem('imageurl'));
+    
+    addPicture(window.userInfo.imageurl);
   }
 
 if(window.socket){
   socket = window.socket;
-  function closeAllSockets(){
-    socket.off('disconnect');
-    socket.off('private message');
-    socket.off('public message');
-    socket.off('private image');
-    socket.off('public image');
-    socket.off('private video');
-    socket.off('public video');
-    socket.off('private file');
-    socket.off('public file');
-    socket.off('error');
-    socket.off('init activeUsers');
-    socket.off('activeUsers');
-    console.log('All sockets are closing.....');
-  }
   //closing all sockets to prevent from creating redundant listeners
-  closeAllSockets();
+  closeAllSockets(socket);
   //reconnect....
   socket.on('disconnect', function(){
       addError("Disconnected! Attempting to reconnect...");
@@ -296,8 +309,10 @@ if(window.socket){
 
 //rest
   socket.on('error', ({error}) => {
-    console.log('hell');
-    addError(`${error}`) ;
+    if(error==='999') {
+      loadPage('login.html');
+    }
+    else addError(`${error}`) ;
   });
 
   function updateStyles() {
@@ -342,9 +357,9 @@ if(window.socket){
     profileDiv.style.borderRadius = '50%';
     profileDiv.style.border = '2px solid #ccc';
 
-    function Over(){userDiv.style.scale = 0.8;}
-    function Out(){userDiv.style.scale = 1;}
-    function Click(){
+      function Over(){userDiv.style.scale = 0.8;}
+      function Out(){userDiv.style.scale = 1;}
+      function Click(){
       document.getElementById('recipientInput').value= name;
       const unselectDivs = document.getElementById('active').querySelectorAll('div');
       unselectDivs.forEach((unselectDiv)=>{
@@ -357,7 +372,6 @@ if(window.socket){
     userDiv.addEventListener('mouseover', Over);
     userDiv.addEventListener('mouseout', Out);
     userDiv.addEventListener('click', Click);
-
     window.eventListeners.push({element: userDiv, event: 'mouseover', handler: Over});
     window.eventListeners.push({element: userDiv, event: 'mouseout', handler: Out});
     window.eventListeners.push({element: userDiv, event: 'click', handler: Click});
@@ -367,7 +381,7 @@ if(window.socket){
     userNameDiv.style.padding = 0;
     userNameDiv.style.margin = 0;
 
-    if(sessionStorage.getItem('username')===name)userNameDiv.textContent = `${name}(me)`;
+    if(window.userInfo.username===name)userNameDiv.textContent = `${name}(me)`;
     else userNameDiv.textContent = name;
     userDiv.appendChild(userNameDiv);
     activeBar.appendChild(userDiv);
@@ -390,10 +404,10 @@ if(window.socket){
       const activeBar = document.getElementById('active');
       const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
       activeBar.innerHTML='';
-      BuildActiveDiv(activeBar,sessionStorage.getItem('username'), sessionStorage.getItem('imageurl'));
+      BuildActiveDiv(activeBar, window.userInfo.username, window.userInfo.imageurl);
       BuildActiveDiv(activeBar,'public', publicUrl);
       activeUsers.forEach((name, index) => {
-          if(name!=='public' && name!==sessionStorage.getItem('username')){
+          if(name!=='public' && name!==window.userInfo.username){
             BuildActiveDiv(activeBar,name, profile[index]);
           }
       });
@@ -430,7 +444,7 @@ function addImageTo(time, imageData){
 
     messageElement.innerHTML = 
     `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
-    <img src="${imageData}" alt="Image" style="max-width: 215px; max-width: 215px;">`;
+    <img src="${imageData}" alt="Image" style="max-width: 215px; height: 215px;">`;
     messagesDiv.appendChild(messageElement);
     messageElement.querySelector('img').style.cursor = 'pointer';
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -446,7 +460,7 @@ function addImage(time,from, imageData,profile){
     messageElement.innerHTML = 
     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${from}</h5>
-    <img src="${imageData}" alt="Image" style="max-width: 215px; max-height: 215px;margin: 0;padding: 0;">`;
+    <img src="${imageData}" alt="Image" style="max-width: 185px; height: 215px;margin: 0;padding: 0;">`;
     messageElement.style.width= '100%';
     messageElement.style.height= 'auto';
     messageElement.style.display = 'flex';
@@ -491,7 +505,7 @@ function addVideoTo(time, videoData) {
 
     messageElement.innerHTML = 
     `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
-    <video controls style="max-width: 230px; max-height: 230px;margin: 0;padding: 0;">
+    <video controls style="width: 215px; height: 230px;margin: 0;padding: 0;">
     <source src="${videoData}" type="video/mp4">
     <source src="${videoData}" type="video/webm">
     <source src="${videoData}" type="video/ogg">
@@ -509,7 +523,7 @@ function addVideo(time,to, videoData, profile) {
     messageElement.innerHTML =
      `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
-    <video controls style="max-width: 215px; max-height: 215px;">
+    <video controls style="width: 215px; height: 215px;">
       <source src="${videoData}" type="video/mp4">
       <source src="${videoData}" type="video/webm">
       <source src="${videoData}" type="video/ogg">
@@ -670,7 +684,9 @@ function addMessageTo(message, time) {
 
 
   function addError(message) {
+    console.log(message);
     const messagesDiv = document.getElementById('messages');
+    if(!messagesDiv) return;
     const messageElement = document.createElement('div');
     messageElement.textContent = message;
     if(message!=='Connected')messageElement.style.color = 'crimson';
@@ -688,7 +704,7 @@ function addMessageTo(message, time) {
       messageElement.style.transition = 'opacity 2s ease-out'
       setTimeout(()=>{
         messageElement.remove();
-      },2000)
+      },5000)
     },5000)
   }
   function Load(){ document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'; }
@@ -704,7 +720,7 @@ function addMessageTo(message, time) {
     messageElement.innerHTML =
      `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; max-height: 215px; 
+    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; height: 215px; 
     border: none;
     overflow: hidden;
     transform: scale(1);
@@ -752,7 +768,7 @@ function addMessageTo(message, time) {
 
     messageElement.innerHTML = 
     `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; max-height: 215px; 
+    <iframe src = https://drive.google.com/file/d/${file_id}/preview style="max-width: 215px; height: 215px; 
     border: none;
     overflow: hidden;
     transform: scale(1);
