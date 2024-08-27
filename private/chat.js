@@ -3,10 +3,46 @@
   const chunkSize = 512*1024;
 
   // 1)retrieveChat
-  (function(_0x2de039,_0x29f5c0){const _0x49f946=_0x52b0,_0x35d642=_0x2de039();while(!![]){try{const _0x457feb=-parseInt(_0x49f946(0x15a))/0x1*(-parseInt(_0x49f946(0x159))/0x2)+parseInt(_0x49f946(0x148))/0x3+parseInt(_0x49f946(0x153))/0x4+-parseInt(_0x49f946(0x155))/0x5+-parseInt(_0x49f946(0x150))/0x6*(-parseInt(_0x49f946(0x154))/0x7)+parseInt(_0x49f946(0x158))/0x8+-parseInt(_0x49f946(0x152))/0x9;if(_0x457feb===_0x29f5c0)break;else _0x35d642['push'](_0x35d642['shift']());}catch(_0x4bce91){_0x35d642['push'](_0x35d642['shift']());}}}(_0x4161,0xeed4a));async function retrieveChat(){const _0x49cd48=_0x52b0,_0x1f40e0={'username':window[_0x49cd48(0x14d)][_0x49cd48(0x156)]},_0x63cb2c=await window[_0x49cd48(0x149)](_0x49cd48(0x14f),_0x1f40e0),_0x7cb28b=document[_0x49cd48(0x146)](_0x49cd48(0x157));if(!_0x7cb28b)return;if(_0x7cb28b)_0x7cb28b[_0x49cd48(0x15c)]='';_0x63cb2c[_0x49cd48(0x14a)][_0x49cd48(0x145)](_0x152023=>{const _0x143504=_0x49cd48;if(_0x152023[_0x143504(0x151)]===window['userInfo'][_0x143504(0x156)]){if(_0x152023[_0x143504(0x147)]!=='text')embedDriveFilesTo(_0x152023[_0x143504(0x14c)],_0x152023['content']);else addMessageTo(_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)]);}else{if(_0x152023[_0x143504(0x147)]!==_0x143504(0x14e))embedDriveFiles(_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x15b)]);else addMessage(_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x15b)]);}});}function _0x52b0(_0x370f21,_0x194c87){const _0x416101=_0x4161();return _0x52b0=function(_0x52b0b3,_0x30b3f4){_0x52b0b3=_0x52b0b3-0x145;let _0x4bd317=_0x416101[_0x52b0b3];return _0x4bd317;},_0x52b0(_0x370f21,_0x194c87);}function _0x4161(){const _0x39b1bd=['username','messages','10152296dmKvZs','72368mZcRfC','1nZnzXw','imageUrl','innerHTML','forEach','getElementById','type','521622bCoXMR','fetchData','chats','content','date','userInfo','text','/api/getchats','6582GVuhDO','sender','13404780FrLTSG','7639252FsdGRp','3031RXvyyB','6981195rOdLtm'];_0x4161=function(){return _0x39b1bd;};return _0x4161();}
+  async function retrieveChat(){
+    const reqData ={
+      username: window.userInfo.username
+    }
+    const data = await window.fetchData('/api/getchats',reqData);
+    const messages = document.getElementById('messages');
+    if(!messages) return;
+    if(messages)messages.innerHTML='';
+    data.chats.forEach((chat)=>{
+      if(chat.sender===window.userInfo.username){
+        if(chat.type!=='text')embedDriveFilesTo(chat.date,chat.content);
+        else addMessageTo(chat.content,chat.date);
+      }
+      else {
+        if(chat.type!=='text')embedDriveFiles(chat.date,chat.sender,chat.content,chat.imageUrl);
+        else addMessage(chat.sender,chat.content, chat.date, chat.imageUrl)
+      }
+    })
+  }
 
   // 2)connectWebSocket
-  (function(_0x4242ca,_0x3695b1){const _0x1c3601=_0x269a,_0x1cd9fe=_0x4242ca();while(!![]){try{const _0x428d49=-parseInt(_0x1c3601(0x143))/0x1*(parseInt(_0x1c3601(0x139))/0x2)+-parseInt(_0x1c3601(0x13d))/0x3*(parseInt(_0x1c3601(0x149))/0x4)+-parseInt(_0x1c3601(0x147))/0x5+-parseInt(_0x1c3601(0x14d))/0x6*(parseInt(_0x1c3601(0x13a))/0x7)+parseInt(_0x1c3601(0x141))/0x8*(parseInt(_0x1c3601(0x148))/0x9)+-parseInt(_0x1c3601(0x14a))/0xa*(parseInt(_0x1c3601(0x13f))/0xb)+parseInt(_0x1c3601(0x142))/0xc*(parseInt(_0x1c3601(0x137))/0xd);if(_0x428d49===_0x3695b1)break;else _0x1cd9fe['push'](_0x1cd9fe['shift']());}catch(_0x230bd5){_0x1cd9fe['push'](_0x1cd9fe['shift']());}}}(_0x4d42,0xc7a8a));function _0x269a(_0x4d55fa,_0x1f4749){const _0x4d42c7=_0x4d42();return _0x269a=function(_0x269a24,_0x52176d){_0x269a24=_0x269a24-0x136;let _0x4eb21b=_0x4d42c7[_0x269a24];return _0x4eb21b;},_0x269a(_0x4d55fa,_0x1f4749);}async function connectWebSocket(){const _0x2c1898=_0x269a;window[_0x2c1898(0x136)]=io(),window['socket']['on'](_0x2c1898(0x14f),function(){const _0x29cc08=_0x2c1898;window['socket'][_0x29cc08(0x13c)](_0x29cc08(0x13e),{'jwtoken':Cookies[_0x29cc08(0x13b)](_0x29cc08(0x150))});}),addError(_0x2c1898(0x14c)),setTimeout(()=>{const _0x3ce5bf=_0x2c1898,_0x4f4dad=window[_0x3ce5bf(0x138)];if(_0x4f4dad[_0x3ce5bf(0x14e)]&&_0x4f4dad[_0x3ce5bf(0x145)]>=0x0)sendChunks(_0x4f4dad[_0x3ce5bf(0x144)],_0x4f4dad[_0x3ce5bf(0x146)],_0x4f4dad[_0x3ce5bf(0x145)]);else _0x4f4dad[_0x3ce5bf(0x14e)]&&sendMessage(_0x4f4dad[_0x3ce5bf(0x144)],_0x4f4dad[_0x3ce5bf(0x146)]);},0x1388),addPicture(window[_0x2c1898(0x140)][_0x2c1898(0x14b)]);}function _0x4d42(){const _0x2f72fa=['emit','12066rjXGDX','insert\x20name','6422636XFIoUK','userInfo','413352BXJdLm','12FuffoY','3ocTuBb','recipient','offset','content','2465485XPLlgp','9pbxLjS','564tSuJKK','20AICwUT','imageurl','Connected','12ShZpIQ','status','connect','token','socket','66214343swqbzf','pending','386566SEvKnE','5318173KMKxli','get'];_0x4d42=function(){return _0x2f72fa;};return _0x4d42();}
+  async function connectWebSocket(){
+    window.socket = io();
+    window.socket.on('connect', function(){
+      window.socket.emit('insert name',{
+        jwtoken: Cookies.get('token'),
+      })
+    })
+      addError("Connected");
+      setTimeout(()=>{
+      const pending = window.pending;
+      if(pending.status && pending.offset>=0){
+        sendChunks(pending.recipient,pending.content,pending.offset);
+      }
+      else if(pending.status){
+        sendMessage(pending.recipient,pending.content);
+      }
+      },5000)
+      addPicture(window.userInfo.imageurl);
+  }
 
   function closeAllSockets(socket){
     socket.off('disconnect');
@@ -216,22 +252,6 @@ if(window.socket){
     }
   })
 
-  // 6)init activeUsers
-  socket.on('init activeUsers',({activeUsers, profile})=>{
-    const activeBar = document.getElementById('active');
-    const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
-    activeBar.innerHTML='';
-    BuildActiveDiv(activeBar, window.userInfo.username, window.userInfo.imageurl);
-    BuildActiveDiv(activeBar,'public', publicUrl);
-    activeUsers.forEach((name, index) => {
-        if(name!=='public' && name!==window.userInfo.username){
-          BuildActiveDiv(activeBar,name, profile[index]);
-        }
-    });
-  updateStyles();
-  window.addEventListener('resize', updateStyles);
-  window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
-});
 
 //rest
   socket.on('error', ({error}) => {
@@ -260,7 +280,7 @@ if(window.socket){
 }
 
 
-// 7)BuildActiveDiv
+// 6)BuildActiveDiv
   function BuildActiveDiv(activeBar, name, profile_src){
     const userDiv = document.createElement('div');
     const userNameDiv = document.createElement('h5');
@@ -315,8 +335,6 @@ if(window.socket){
     activeBar.appendChild(userDiv);
   }
 
-
-  
   function RemoveActiveDiv(activeBar, name){
     const userDivs = document.getElementById('active').querySelectorAll('div');
     for(let i=0;i<userDivs.length;++i){
@@ -327,6 +345,22 @@ if(window.socket){
     }
   }
 
+  // 7)init activeUsers
+  socket.on('init activeUsers',({activeUsers, profile})=>{
+      const activeBar = document.getElementById('active');
+      const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
+      activeBar.innerHTML='';
+      BuildActiveDiv(activeBar, window.userInfo.username, window.userInfo.imageurl);
+      BuildActiveDiv(activeBar,'public', publicUrl);
+      activeUsers.forEach((name, index) => {
+          if(name!=='public' && name!==window.userInfo.username){
+            BuildActiveDiv(activeBar,name, profile[index]);
+          }
+      });
+    updateStyles();
+    window.addEventListener('resize', updateStyles);
+    window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
+  });
 
   socket.on('activeUsers',({operation, name, photo})=>{
     const activeBar = document.getElementById('active');
@@ -566,3 +600,246 @@ eventListeners.push({element: chatHeader, event: 'click', handler: Hide});
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// function addImageTo(time, imageData){
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+//   messageElement.style.display = 'flex';
+//   messageElement.style.flexDirection = 'column';
+//   messageElement.style.alignItems = 'flex-end';
+//   messageElement.style.justifyContent = 'center';
+//   messageElement.style.padding = '8px';
+//   messageElement.style.textAlign = 'left';
+//   messageElement.style.width = '98%';
+//   messageElement.style.height = 'auto';
+//   messageElement.style.color = 'black';
+
+//   messageElement.innerHTML = 
+//   `<h5 style="width:90%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
+//   <img src="${imageData}" alt="Image" style="max-width: 215px; height: 215px;">`;
+//   messagesDiv.appendChild(messageElement);
+//   messageElement.querySelector('img').style.cursor = 'pointer';
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+
+// function addImage(time,from, imageData,profile){
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+//   const profileDiv = document.createElement('img');
+//   const messageContainer = document.createElement('div');
+
+//   messageElement.innerHTML = 
+//   `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
+//   <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${from}</h5>
+//   <img src="${imageData}" alt="Image" style="max-width: 185px; height: 215px;margin: 0;padding: 0;">`;
+//   messageElement.style.width= '100%';
+//   messageElement.style.height= 'auto';
+//   messageElement.style.display = 'flex';
+//   messageElement.style.flexDirection = 'column';
+//   messageElement.querySelector('img').style.cursor = 'pointer';
+//   messageContainer.style.alignItems = 'flex-start';
+//   messageContainer.style.justifyContent = 'center';
+  
+
+//   profileDiv.src=profile;
+//   profileDiv.style.width = '70px';
+//   profileDiv.style.height = '70px';
+//   profileDiv.style.borderRadius = '50%';
+//   profileDiv.style.border = '1px soild #ccc';
+//   profileDiv.style.padding = '10px';
+
+//   messageContainer.style.width = '98%';
+//   messageContainer.style.height = 'auto';
+//   messageContainer.style.padding = '8px';
+//   messageContainer.appendChild(profileDiv);
+//   messageContainer.appendChild(messageElement);
+//   messageContainer.style.display = 'flex';
+//   messageContainer.style.justifyContent = 'flex-start';
+//   messageContainer.style.alignItems = 'flex-end';
+  
+//   messagesDiv.appendChild(messageContainer);
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+
+// function addVideoTo(time, videoData) {
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+
+//   messageElement.style.display = 'flex';
+//   messageElement.style.flexDirection = 'column';
+//   messageElement.style.alignItems = 'flex-end';
+//   messageElement.style.justifyContent = 'center';
+//   messageElement.style.padding = '8px';
+//   messageElement.style.width = '98%';
+//   messageElement.style.height = 'auto';
+
+//   messageElement.innerHTML = 
+//   `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
+//   <video controls style="width: 215px; height: 230px;margin: 0;padding: 0;">
+//   <source src="${videoData}" type="video/mp4">
+//   <source src="${videoData}" type="video/webm">
+//   <source src="${videoData}" type="video/ogg">
+//   Your browser does not support the video tag.
+//   </video>`;
+//   messagesDiv.appendChild(messageElement);
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+// function addVideo(time,to, videoData, profile) {
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+//   const profileDiv = document.createElement('img');
+//   const messageContainer = document.createElement('div');
+//   messageElement.innerHTML =
+//    `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
+//   <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
+//   <video controls style="width: 215px; height: 215px;">
+//     <source src="${videoData}" type="video/mp4">
+//     <source src="${videoData}" type="video/webm">
+//     <source src="${videoData}" type="video/ogg">
+//     Your browser does not support the video tag.
+//   </video>`;
+//   messageElement.style.width= '100%';
+//   messageElement.style.height= 'auto';
+//   messageElement.style.display = 'flex';
+//   messageElement.style.flexDirection = 'column';
+//   messageContainer.style.alignItems = 'flex-start';
+//   messageContainer.style.justifyContent = 'center';
+
+//   profileDiv.src=profile;
+//   profileDiv.style.width = '70px';
+//   profileDiv.style.height = '70px';
+//   profileDiv.style.borderRadius = '50%';
+//   profileDiv.style.border = '1px soild #ccc';
+//   profileDiv.style.padding = '10px';
+
+//   messageContainer.style.width = '98%';
+//   messageContainer.style.height = 'auto';
+//   messageContainer.style.padding = '8px';
+//   messageContainer.style.display = 'flex';
+//   messageContainer.style.justifyContent = 'flex-start';
+//   messageContainer.style.alignItems = 'flex-end';
+//   messageContainer.appendChild(profileDiv);
+//   messageContainer.appendChild(messageElement);
+                    
+//   messagesDiv.appendChild(messageContainer);
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+
+// function addFile(time, to, fileData, fileName, profile) {
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+//   const profileDiv = document.createElement('img');
+//   const messageContainer = document.createElement('div');
+//   const finalContainer = document.createElement('div');
+//   const timeDiv = document.createElement('h5');
+//   const nameDiv = document.createElement('h5');
+//   const time_nameDiv = document.createElement('div');
+
+//   messageElement.innerHTML = `<a href="${fileData}" download="${fileName}">${fileName}</a>`;
+//   messageElement.className="message-receive";
+
+//   timeDiv.textContent=time;
+//   timeDiv.style.color = '#ccc';
+//   nameDiv.textContent=to;
+//   nameDiv.style.color = '#ccc';
+
+//   time_nameDiv.className = 'time-name-container';
+//   time_nameDiv.appendChild(nameDiv);
+//   time_nameDiv.appendChild(timeDiv);
+
+//   profileDiv.src=profile;
+//   profileDiv.className = 'receiver-profile-container';
+
+//   messageContainer.appendChild(profileDiv);
+//   messageContainer.appendChild(messageElement);
+//   messageContainer.className = 'message-receive-container';
+
+//   finalContainer.appendChild(time_nameDiv);
+//   finalContainer.appendChild(messageContainer);
+//   finalContainer.className ='final-container';
+
+//   messagesDiv.appendChild(finalContainer);
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+// function addFileTo(time, fileData, fileName) {
+//   const messagesDiv = document.getElementById('messages');
+//   const messageElement = document.createElement('div');
+//   const timeDiv = document.createElement('h5');
+//   const messageContainer = document.createElement('div');
+//   const finalContainer = document.createElement('div');
+
+//   timeDiv.textContent=time;
+//   timeDiv.className = 'time-container';
+//   messageElement.innerHTML = `<a href="${fileData}" download="${fileName}">${fileName}</a>`;
+//   messageElement.className="message-send";
+  
+//   messageContainer.className = 'message-send-container';
+//   messageContainer.appendChild(messageElement);
+
+//   finalContainer.className ='send-final-container';
+//   finalContainer.appendChild(timeDiv);
+//   finalContainer.appendChild(messageContainer);
+  
+
+//   messagesDiv.appendChild(finalContainer);
+//   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+// }
+
+ // const {createWorker, setLogging} = FFmpeg;
+  // setLogging(true);
+// if(file.type.startsWith('video/') && file.type!=='video/mp4'){
+      //   file = await convertToMp4(file);
+      // }
+  // async function convertToMp4(file){
+  //   try{
+  //     const worker = createWorker({
+  //       logger: ({ message }) => console.log(message),
+  //   });
+  //     await worker.load();
+  //     const arrayBuffer = await file.arrayBuffer();
+  //     await worker.write('input.mkv', new Uint8Array(arrayBuffer));
+  //     await  worker.transcode('input.mkv', 'output.mp4');
+  //     const { data } = await worker.read('output.mp4');
+  //     await worker.terminate();
+  //     return new Blob([data], { type: 'video/mp4' });
+  //   }catch(err){
+  //     console.error(err);
+  //     if(worker){
+  //       await worker.terminate();
+  //     }
+  //   }
+  // }
