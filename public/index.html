@@ -10,27 +10,36 @@
   <link rel="icon" type="image/png" href="https://png.pngtree.com/png-vector/20220527/ourmid/pngtree-chat-box-icon-web-white-png-image_4756254.png">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
 </head>
 <body>
-<nav class="navbar">
-    <div class="navbar-container">
-            <h1>Chit-chat<span role="img" aria-label="Bangladesh Flag">🇧🇩</span></h1> 
-            <ul class="navbar-menu">
+<nav style="background-color: #333;">
+    <div class="nav-wrapper">
+        <a href="#" class="brand-logo" style="padding:0 10px;">Chit-chat</a>
+        <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+            <ul id="nav-mobile" class="right hide-on-med-and-down">
                 <li onclick="window.loadPage('signup.html')" style="cursor: pointer;"><a href="#">Signup</a></li>
                 <li onclick="window.loadPage('login.html')" style="cursor: pointer;"><a href="#">Login</a></li>
                 <li onclick="window.loadPage('chat.html')" style="cursor: pointer;"><a href="#">Chat</a></li>
+                <li onclick="window.loadPage('room.html')" style="cursor: pointer;"><a href="#">Room</a></li>
+                <img class="circle responsive-img" id="nav-profile" style="margin: 10px 10px; height: 50px;width:50px;border: 2px solid #ddd;" src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif" alt="Profile Picture" />
             </ul>
-            <div id="nav-profile-container" class="nav-profile-container" style="cursor: pointer;">
-                <img src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif" alt="Profile Picture" />
-            </div>
     </div>
 </nav>
+<ul class="sidenav" style="background-color: rgb(55, 88, 89);" id="mobile-demo">
+    <li onclick="window.loadPage('signup.html')" style="cursor: pointer;"><a href="#">Signup</a></li>
+    <li onclick="window.loadPage('login.html')" style="cursor: pointer;"><a href="#">Login</a></li>
+    <li onclick="window.loadPage('chat.html')" style="cursor: pointer;"><a href="#">Chat</a></li>
+    <li onclick="window.loadPage('room.html')" style="cursor: pointer;"><a href="#">Room</a></li>
+    <img class="circle responsive-img" id="nav-profile" style="margin: 10px 30px; height: 200px;width:200px;border: 2px solid #ddd;" src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif" alt="Profile Picture" />
+</ul>
 <div id="page">
+    
 </div>  
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
-
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script type="module">
     import loadPage from './loadfunc.js'; 
     import fetchData from './fetchData.js';

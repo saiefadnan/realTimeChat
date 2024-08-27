@@ -1,7 +1,7 @@
 (function(){
   const login = document.getElementById('loginButton');
   if(Cookies.get('token')){
-    showerror('Seems like u are logged in some where else');
+    showerror('Seems like u are already logged!');
   }
   async function Login(e){
     e.preventDefault();

@@ -24,7 +24,7 @@
     //console.log('All sockets are closing...');
   }
   function addPicture(picture){
-    const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
+    const profileDiv = document.getElementById('nav-profile');
     if(picture){
         profileDiv.src=picture;
     }
@@ -276,7 +276,9 @@ if(window.socket){
     userDiv.style.border = '1px solid black'
     userDiv.style.borderRadius = '10px';
     userDiv.style.padding = '2.5px 0';
-    userDiv.style.cursor = 'pointer'; 
+    userDiv.style.cursor = 'pointer';
+    userDiv.style.overflowX = 'auto'; 
+    userDiv.style.overflowY = 'hidden';
     if(name!=='public') userDiv.style.backgroundColor = 'black';
     else userDiv.style.backgroundColor = 'crimson';
 
@@ -308,8 +310,9 @@ if(window.socket){
     userDiv.appendChild(profileDiv);
 
     userNameDiv.style.padding = 0;
-    userNameDiv.style.margin = 0;
-
+    userNameDiv.style.margin = 'auto';
+    userNameDiv.style.fontSize = 'small';
+    userNameDiv.style.fontWeight = 'bold';
     if(window.userInfo.username===name)userNameDiv.textContent = `${name}(me)`;
     else userNameDiv.textContent = name;
     userDiv.appendChild(userNameDiv);
