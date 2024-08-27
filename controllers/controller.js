@@ -91,7 +91,7 @@ const signinData = async(req,res)=>{
         let users = await User.findOne({username});
         const emails = await User.findOne({email});
         if(!users && !emails){
-            let blobPath_ = "https://img6.arthub.ai/65f2201a-1b80.webp";
+            let blobPath_ = "https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif";
             let sasToken_='';
             if(profile){
                 const { blobPath, sasToken } = await uploadImageToAzure(profile);
@@ -102,7 +102,7 @@ const signinData = async(req,res)=>{
             await user.save();
             const jwtoken = jwt.sign({
                     username: user.username, 
-                    imageurl: `${user.profilePicture}?${sasToken}`
+                    imageurl: `${user.profilePicture}?${sasToken_}`
                 }, 
                 secretKey, {expiresIn: '30d'} );
             // console.log('jwt', jwtoken);

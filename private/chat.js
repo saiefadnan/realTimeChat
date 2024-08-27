@@ -41,7 +41,6 @@
         sendMessage(pending.recipient,pending.content);
       }
       },5000)
-      addPicture(window.userInfo.imageurl);
   }
 
   function closeAllSockets(socket){
@@ -71,6 +70,7 @@
     }
     const data = await window.fetchData('/api/userData',reqData);
     setUserInfo(data.userinfo.username, data.userinfo.imageurl);
+    addPicture(data.userinfo.imageurl);
   }
 
   if(Cookies.get('token')){
