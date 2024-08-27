@@ -8,7 +8,7 @@ async function generateSasToken(blobName, blobCredential){
         blobName: blobName,
         permissions: ContainerSASPermissions.parse("r"),
         startsOn: new Date(new Date().getTime() - 5 * 60 * 1000),
-        expiresOn: moment().add(1,'hour').toDate()
+        expiresOn: moment().add(30,'day').toDate()
     }
 
     return generateBlobSASQueryParameters(sasOptions,blobCredential).toString();

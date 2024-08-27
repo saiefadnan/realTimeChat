@@ -39,7 +39,6 @@
       const errorbox = document.getElementById('error-box');
       errorbox.style.display = 'block';
       errorbox.textContent = field;
-      console.log(field);
   }
 
   function shownote(msg){
@@ -47,7 +46,6 @@
       errorbox.style.display = 'block';
       errorbox.style.color = 'green'
       errorbox.textContent = msg;
-      console.log('going.......');
       window.loadPage('chat.html');
   }
 

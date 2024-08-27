@@ -11,7 +11,7 @@ function cleanUp(existingScript){
             page.removeChild(page.firstChild);
         }
     }
-    console.log('clean....');
+    //('clean....');
 }
 export default function loadPage(content){
     fetch(content)

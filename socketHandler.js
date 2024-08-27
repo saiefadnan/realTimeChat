@@ -8,7 +8,6 @@ const names = {};
 const photos ={};
 
 function socketHandler(io){
-    const {usernames} = require('./controllers/controller');
     emitActiveUsers = function(operation, name, photo, socket){
         activeUsers = Object.values(names);
         profile = Object.values(photos);
@@ -33,13 +32,13 @@ function socketHandler(io){
                 imageurl = decoded.imageurl;
             }catch(err){
                 console.error(err);
+                if(!usernames.includes(username)){
+                    io.to(socket.id).emit('error',{
+                        error: `Your session is over babe!`
+                    });
+                }
             }
-            if(!usernames.includes(username)){
-                io.to(socket.id).emit('error',{
-                    error: `Your session is over babe!`
-                });
-            }
-            else if(!users[username]){
+            if(!users[username]){
                 users[username] = socket.id;
                 names[socket.id] = username;
                 photos[socket.id] = imageurl
@@ -55,95 +54,24 @@ function socketHandler(io){
                 });
             }
         })
-        socket.on('private image',async({to,fileData,fileType})=>{
-            const recipientSocketId = users[to];
-            if(recipientSocketId){
-                gatherChunks.push(fileData);
-                io.to(recipientSocketId).emit('private image', {
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    profile: photos[socket.id],
-                    state: false 
-                });
 
-            }
-            else{
-                gatherChunks.push(fileData);
-            }
+        socket.on('private image',async({to,fileData,fileType})=>{
+            gatherChunks.push(fileData);
         })
-    
         socket.on('public image',async({fileData, fileType})=>{
-            // console.log('image sending...');
             gatherChunks.push(fileData);
-            socket.broadcast.emit('public image',{
-                from: names[socket.id],
-                time: Date.now(),
-                fileData: fileData,
-                profile: photos[socket.id],
-                state: false 
-            })
         })
-    
         socket.on('private video',async({to,fileData})=>{
-            //console.log('video sending...');
-            const recipientSocketId = users[to];
-            if(recipientSocketId){
-                gatherChunks.push(fileData);
-                io.to(recipientSocketId).emit('private video', {
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    profile: photos[socket.id],
-                    state: false 
-                });
-            }
-            else{
-                gatherChunks.push(fileData);
-            }
-        })
-    
-        socket.on('public video',async({fileData})=>{
-            //console.log('video sending...');
             gatherChunks.push(fileData);
-            socket.broadcast.emit('public video',{
-                from: names[socket.id],
-                time: Date.now(),
-                fileData: fileData,
-                profile: photos[socket.id],
-                state: false 
-            })
         })
-    
-        
+        socket.on('public video',async({fileData})=>{
+            gatherChunks.push(fileData);
+        })
         socket.on('public file',async({fileData, fileName})=>{
             gatherChunks.push(fileData);
-            socket.broadcast.emit('public file',{
-                from: names[socket.id],
-                time: Date.now(),
-                fileData: fileData,
-                fileName: fileName,
-                profile: photos[socket.id],
-                state: false  
-            })
         })
         socket.on('private file',async({to, fileData, fileName})=>{
-            //console.log('file sending...');
-            const recipientSocketId = users[to];
-            if(recipientSocketId){
-                gatherChunks.push(fileData);
-                io.to(recipientSocketId).emit('private file', {
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: fileData,
-                    fileName: fileName,
-                    profile: photos[socket.id],
-                    state: false  
-                });
-            }
-            else{
-                gatherChunks.push(fileData);
-            }
+            gatherChunks.push(fileData);
         })
 
         socket.on('complete', async({to, fileType, fileName})=>{
@@ -152,10 +80,10 @@ function socketHandler(io){
                 if(fileType.startsWith('image/')){
                     const docUrl=await uploadFile('image',fileName);
                     await storeChats(names[socket.id], 'public', docUrl, 'image', date);
-                    socket.broadcast.emit('public image',{
+                    io.emit('public image',{
                         from: names[socket.id],
                         time: Date.now(),
-                        fileData: null,
+                        fileData: docUrl,
                         profile: photos[socket.id],
                         state: true
                     })
@@ -163,10 +91,10 @@ function socketHandler(io){
                 else if(fileType.startsWith('video/')){
                     const docUrl=await uploadFile('video',fileName);
                     await storeChats(names[socket.id], 'public', docUrl, 'video', date);
-                    socket.broadcast.emit('public video',{
+                    io.emit('public video',{
                         from: names[socket.id],
                         time: Date.now(),
-                        fileData: null,
+                        fileData: docUrl,
                         profile: photos[socket.id],
                         state: true
                     })
@@ -174,10 +102,10 @@ function socketHandler(io){
                 else{
                     const docUrl=await uploadFile('document',fileName);
                     await storeChats(names[socket.id], 'public', docUrl, 'document', date);
-                    socket.broadcast.emit('public file',{
+                    io.emit('public file',{
                         from: names[socket.id],
                         time: Date.now(),
-                        fileData: null,
+                        fileData: docUrl,
                         fileName: fileName,
                         profile: photos[socket.id],
                         state: true 
@@ -194,7 +122,7 @@ function socketHandler(io){
                         io.to(recipientSocketId).emit('private image', {
                             from: names[socket.id],
                             time: Date.now(),
-                            fileData: null,
+                            fileData: docUrl,
                             profile: photos[socket.id],
                             state: true 
                         });
@@ -212,7 +140,7 @@ function socketHandler(io){
                         io.to(recipientSocketId).emit('private video', {
                             from: names[socket.id],
                             time: Date.now(),
-                            fileData: null,
+                            fileData: docUrl,
                             profile: photos[socket.id],
                             state: true 
                         });
@@ -230,7 +158,7 @@ function socketHandler(io){
                         io.to(recipientSocketId).emit('private file', {
                             from: names[socket.id],
                             time: Date.now(),
-                            fileData: null,
+                            fileData: docUrl,
                             fileName: fileName,
                             profile: photos[socket.id],
                             state: true 
@@ -274,11 +202,6 @@ function socketHandler(io){
         })
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);
-            const index = usernames.indexOf(names[socket.id]);
-            // if(index!==-1){
-            //     usernames.splice(index,1);
-            //     console.log('total concurrent active users ',usernames.length);
-            // }
             if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);
             delete users[names[socket.id]];
             delete names[socket.id];

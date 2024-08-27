@@ -7,7 +7,6 @@ const { StorageSharedKeyCredential} = require('@azure/storage-blob');
 const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
 const {names, photos, users} = require('../socketHandler');
 const { drive } = require('../Gdrive');
-const usernames=[];
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
 const secretKey = process.env.JWT_SECRET;
@@ -61,7 +60,6 @@ const loginData = async(req,res)=>{
                 notify: `You are currently logged in else where!`
             });
         }else if(user && pass){
-            usernames.push(user.username);
             const sasToken = await refreshToken(user.profilePicture);
             console.log(user.username);
             const jwtoken = jwt.sign(
@@ -88,9 +86,9 @@ const signinData = async(req,res)=>{
     try{
         const {email, username ,password, profile} = req.body;
         console.log(email);
-        let user = await User.findOne({username});
+        let users = await User.findOne({username});
         const emails = await User.findOne({email});
-        if(!user && !emails && !usernames.includes(username)){
+        if(!users && !emails){
             let blobPath_ = "https://img6.arthub.ai/65f2201a-1b80.webp";
             let sasToken_='';
             if(profile){
@@ -100,7 +98,6 @@ const signinData = async(req,res)=>{
             }
             user = new User({username,password,email,profilePicture: blobPath_});
             await user.save();
-            usernames.push(username);
             const jwtoken = jwt.sign(
                 {
                     username: user.username, 
@@ -211,7 +208,7 @@ const cleanUpOldChats = async()=>{
     }
 }
 
-
+cleanUpOldChats();
 cron.schedule('0 */1 * * *', cleanUpOldChats);
 
 module.exports ={
@@ -220,6 +217,5 @@ module.exports ={
     chatData,
     refreshToken,
     assign,
-    getUserInfo,
-    usernames
+    getUserInfo
 }
