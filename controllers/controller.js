@@ -68,7 +68,7 @@ const loginData = async(req,res)=>{
                     imageurl: `${user.profilePicture}?${sasToken}`
                 }, 
                 secretKey, {expiresIn: '30d'} );
-            console.log('jwt', jwtoken);
+            //console.log('jwt', jwtoken);
             return res.status(200).json({
                     login:true,
                     notify: `Welcome ${user.username}!`,
@@ -96,15 +96,14 @@ const signinData = async(req,res)=>{
                 blobPath_ = blobPath;
                 sasToken_ = sasToken;
             }
-            user = new User({username,password,email,profilePicture: blobPath_});
+            const user = new User({username,password,email,profilePicture: blobPath_});
             await user.save();
-            const jwtoken = jwt.sign(
-                {
+            const jwtoken = jwt.sign({
                     username: user.username, 
                     imageurl: `${user.profilePicture}?${sasToken}`
                 }, 
                 secretKey, {expiresIn: '30d'} );
-            console.log('jwt', jwtoken);
+            // console.log('jwt', jwtoken);
             res.status(200).json({
                 signin:true,
                 notify: `Sucessfully registered!! Welcome ${user.username}!`,

@@ -466,9 +466,7 @@ function addMessageTo(message, time) {
     overflow: hidden;
     display: flex;
     align-items: center;
-    justify-content: center;
-    transform: scale(1);
-    transform-origin: 0 0;"
+    justify-content: center;"
     />`;
     messageElement.style.width= '100%';
     messageElement.style.height= 'auto';

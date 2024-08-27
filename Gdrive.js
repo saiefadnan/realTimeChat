@@ -10,9 +10,9 @@ const auth = new google.auth.GoogleAuth({
 const drive = google.drive({version: 'v3', auth});
 console.log('gdrive connected...');
 const gatherChunks = [];
-const documentsId = '184PugQuK9uoTYYZzW40ueoJ-etTLeLY5';
-const imageId = '1SJJRpr8nseA3c-TRHYa8-E2iyBn7OhTN';
-const videoId = '1KJA4bEkaaOWh1_C__nyQmX2GrNuzeDmn';
+const documentsId = process.env.DOCUMENTS_ID;
+const imageId = process.env.IMAGE_ID;
+const videoId = process.env.VIDEO_ID;
 async function calculateFileHash(file){
     return new Promise((resolve,reject)=>{
         const hash = crypto.createHash('sha256');
@@ -50,7 +50,7 @@ async function fileExists(fileType, file){
         q: `'${id}' in parents and properties has {key='file_hash' and value='${fileHash}'} and trashed = false`,
         fields: 'files(id, name)',
     })
-    console.log(response.data);
+    //console.log(response.data);
     if(response.data.files.length>0) return {status: true, webUrl: response.data.files[0].id}
     return { status: false, webUrl: null};
 
@@ -81,7 +81,7 @@ async function uploadOperation(fileType,fileName,fileBuffer){
         fields: 'id'
     });
     console.log('uploading......');
-    console.log(response.data);
+    //console.log(response.data);
     return response.data.id;
 }
 async function uploadFile(fileType,fileName){

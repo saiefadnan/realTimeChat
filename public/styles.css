@@ -464,14 +464,9 @@ textarea::-webkit-scrollbar {
    border-color:#0056b3;
   }
 
-  .example-class::-webkit-scrollbar {
-    display: none;
-}
-
-/* Hide scrollbar for IE, Edge, and Firefox */
-  .example-class {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
+  .iframe-container {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
   }
 @media(width<1700px){
   .custom-image-upload{
