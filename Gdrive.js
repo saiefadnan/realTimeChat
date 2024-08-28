@@ -71,7 +71,7 @@ async function uploadOperation(fileType,fileName,fileBuffer){
     const readableStream = new Readable();
     readableStream.push(fileBuffer);
     readableStream.push(null);
-    const media = {y
+    const media = {
         mimeType: 'application/octet-stream',
         body: readableStream
     }
