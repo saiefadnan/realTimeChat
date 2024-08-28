@@ -32,11 +32,6 @@ function socketHandler(io){
                 imageurl = decoded.imageurl;
             }catch(err){
                 console.error(err);
-                if(!usernames.includes(username)){
-                    io.to(socket.id).emit('error',{
-                        error: `Your session is over babe!`
-                    });
-                }
             }
             if(!users[username]){
                 users[username] = socket.id;
@@ -119,13 +114,16 @@ function socketHandler(io){
                     console.log('url.........',docUrl);
                     await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'image', date);
                     if(recipientSocketId){
-                        io.to(recipientSocketId).emit('private image', {
-                            from: names[socket.id],
-                            time: Date.now(),
-                            fileData: docUrl,
-                            profile: photos[socket.id],
-                            state: true 
-                        });
+                        const sockets = [recipientSocketId, socket.id];
+                        sockets.forEach((id)=>{
+                            io.to(id).emit('private image', {
+                                from: names[socket.id],
+                                time: Date.now(),
+                                fileData: docUrl,
+                                profile: photos[socket.id],
+                                state: true 
+                            });
+                        })
                     }
                     else{
                         io.to(socket.id).emit('error',{
@@ -137,13 +135,16 @@ function socketHandler(io){
                     const docUrl=await uploadFile('video',fileName);
                     await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'video', date);
                     if(recipientSocketId){
-                        io.to(recipientSocketId).emit('private video', {
+                        const sockets = [recipientSocketId, socket.id];
+                        sockets.forEach((id)=>{
+                        io.to(id).emit('private video', {
                             from: names[socket.id],
                             time: Date.now(),
                             fileData: docUrl,
                             profile: photos[socket.id],
                             state: true 
                         });
+                    })
                     }
                     else{
                         io.to(socket.id).emit('error',{
@@ -155,7 +156,9 @@ function socketHandler(io){
                     const docUrl=await uploadFile('document',fileName);
                     await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'document', date);
                     if(recipientSocketId){
-                        io.to(recipientSocketId).emit('private file', {
+                        const sockets = [recipientSocketId, socket.id];
+                        sockets.forEach((id)=>{
+                        io.to(id).emit('private file', {
                             from: names[socket.id],
                             time: Date.now(),
                             fileData: docUrl,
@@ -163,6 +166,7 @@ function socketHandler(io){
                             profile: photos[socket.id],
                             state: true 
                         });
+                    })
                     }
                     else{
                         io.to(socket.id).emit('error',{

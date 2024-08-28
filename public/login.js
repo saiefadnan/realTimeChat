@@ -1,7 +1,7 @@
 (function(){
   const login = document.getElementById('loginButton');
   if(Cookies.get('token')){
-    showerror('Seems like u are already logged!');
+    showerror('Seems like u are already logged in!');
   }
   async function Login(e){
     e.preventDefault();
@@ -46,7 +46,7 @@
       errorbox.style.display = 'block';
       errorbox.style.color = 'green'
       errorbox.textContent = msg;
-      window.loadPage('chat.html');
+      window.loadPage('chat.html', 'chat');
   }
 
 })()

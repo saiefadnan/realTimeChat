@@ -30,8 +30,8 @@
       window.socket.emit('insert name',{
         jwtoken: Cookies.get('token'),
       })
-    })
       addError("Connected");
+    })
       setTimeout(()=>{
       const pending = window.pending;
       if(pending.status && pending.offset>=0){
@@ -256,7 +256,7 @@ if(window.socket){
 //rest
   socket.on('error', ({error}) => {
     if(error==='999') {
-      loadPage('login.html');
+      loadPage('login.html','login');
     }
     else addError(`${error}`) ;
   });

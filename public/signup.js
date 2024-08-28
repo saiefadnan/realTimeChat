@@ -86,7 +86,7 @@
         errorbox.style.display = 'block';
         errorbox.style.color = 'green'
         errorbox.textContent = msg;
-        window.loadPage('chat.html');
+        window.loadPage('chat.html', 'chat');
     }
 
 })();

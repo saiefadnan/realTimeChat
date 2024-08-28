@@ -3,7 +3,7 @@
   const chunkSize = 512*1024;
 
   // 1)retrieveChat
-  (function(_0x2de039,_0x29f5c0){const _0x49f946=_0x52b0,_0x35d642=_0x2de039();while(!![]){try{const _0x457feb=-parseInt(_0x49f946(0x15a))/0x1*(-parseInt(_0x49f946(0x159))/0x2)+parseInt(_0x49f946(0x148))/0x3+parseInt(_0x49f946(0x153))/0x4+-parseInt(_0x49f946(0x155))/0x5+-parseInt(_0x49f946(0x150))/0x6*(-parseInt(_0x49f946(0x154))/0x7)+parseInt(_0x49f946(0x158))/0x8+-parseInt(_0x49f946(0x152))/0x9;if(_0x457feb===_0x29f5c0)break;else _0x35d642['push'](_0x35d642['shift']());}catch(_0x4bce91){_0x35d642['push'](_0x35d642['shift']());}}}(_0x4161,0xeed4a));async function retrieveChat(){const _0x49cd48=_0x52b0,_0x1f40e0={'username':window[_0x49cd48(0x14d)][_0x49cd48(0x156)]},_0x63cb2c=await window[_0x49cd48(0x149)](_0x49cd48(0x14f),_0x1f40e0),_0x7cb28b=document[_0x49cd48(0x146)](_0x49cd48(0x157));if(!_0x7cb28b)return;if(_0x7cb28b)_0x7cb28b[_0x49cd48(0x15c)]='';_0x63cb2c[_0x49cd48(0x14a)][_0x49cd48(0x145)](_0x152023=>{const _0x143504=_0x49cd48;if(_0x152023[_0x143504(0x151)]===window['userInfo'][_0x143504(0x156)]){if(_0x152023[_0x143504(0x147)]!=='text')embedDriveFilesTo(_0x152023[_0x143504(0x14c)],_0x152023['content']);else addMessageTo(_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)]);}else{if(_0x152023[_0x143504(0x147)]!==_0x143504(0x14e))embedDriveFiles(_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x15b)]);else addMessage(_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x15b)]);}});}function _0x52b0(_0x370f21,_0x194c87){const _0x416101=_0x4161();return _0x52b0=function(_0x52b0b3,_0x30b3f4){_0x52b0b3=_0x52b0b3-0x145;let _0x4bd317=_0x416101[_0x52b0b3];return _0x4bd317;},_0x52b0(_0x370f21,_0x194c87);}function _0x4161(){const _0x39b1bd=['username','messages','10152296dmKvZs','72368mZcRfC','1nZnzXw','imageUrl','innerHTML','forEach','getElementById','type','521622bCoXMR','fetchData','chats','content','date','userInfo','text','/api/getchats','6582GVuhDO','sender','13404780FrLTSG','7639252FsdGRp','3031RXvyyB','6981195rOdLtm'];_0x4161=function(){return _0x39b1bd;};return _0x4161();}
+  (function(_0x2de039,_0x29f5c0){const _0x49f946=_0x52b0,_0x35d642=_0x2de039();while(!![]){try{const _0x457feb=-parseInt(_0x49f946(0x15a))/0x1*(-parseInt(_0x49f946(0x159))/0x2)+parseInt(_0x49f946(0x148))/0x3+parseInt(_0x49f946(0x153))/0x4+-parseInt(_0x49f946(0x155))/0x5+-parseInt(_0x49f946(0x150))/0x6*(-parseInt(_0x49f946(0x154))/0x7)+parseInt(_0x49f946(0x158))/0x8+-parseInt(_0x49f946(0x152))/0x9;if(_0x457feb===_0x29f5c0)break;else _0x35d642['push'](_0x35d642['shift']());}catch(_0x4bce91){_0x35d642['push'](_0x35d642['shift']());}}}(_0x4161,0xeed4a));async function retrieveChat(){const _0x49cd48=_0x52b0,_0x1f40e0={'username':window[_0x49cd48(0x14d)][_0x49cd48(0x156)]},_0x63cb2c=await window[_0x49cd48(0x149)](_0x49cd48(0x14f),_0x1f40e0),_0x7cb28b=document[_0x49cd48(0x146)](_0x49cd48(0x157));if(!_0x7cb28b)return;if(_0x7cb28b)_0x7cb28b[_0x49cd48(0x15c)]='';_0x63cb2c[_0x49cd48(0x14a)][_0x49cd48(0x145)](_0x152023=>{const _0x143504=_0x49cd48;if(_0x152023[_0x143504(0x151)]===window['userInfo'][_0x143504(0x156)]){if(_0x152023[_0x143504(0x147)]!=='text')embedDriveFilesTo(_0x152023[_0x143504(0x14c)],_0x152023['content']);else addMessageTo(_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)]);}else{if(_0x152023[_0x143504(0x147)]!==_0x143504(0x14e))embedDriveFiles(_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x15b)]);else addMessage(_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x15b)]);}});}function _0x52b0(_0x370f21,_0x194c87){const _0x416101=_0x4161();return _0x52b0=function(_0x52b0b3,_0x30b3f4){_0x52b0b3=_0x52b0b3-0x145;let _0x4bd317=_0x416101[_0x52b0b3];return _0x4bd317;},_0x52b0(_0x370f21,_0x194c87);}function _0x4161(){const _0x39b1bd=['username','chat-content','10152296dmKvZs','72368mZcRfC','1nZnzXw','imageUrl','innerHTML','forEach','getElementById','type','521622bCoXMR','fetchData','chats','content','date','userInfo','text','/api/getchats','6582GVuhDO','sender','13404780FrLTSG','7639252FsdGRp','3031RXvyyB','6981195rOdLtm'];_0x4161=function(){return _0x39b1bd;};return _0x4161();}
 
   // 2)connectWebSocket
   function _0x1725(_0x2e048f,_0x124e24){const _0xcd510a=_0xcd51();return _0x1725=function(_0x1725ee,_0x15fe8f){_0x1725ee=_0x1725ee-0x13e;let _0xded32=_0xcd510a[_0x1725ee];return _0xded32;},_0x1725(_0x2e048f,_0x124e24);}(function(_0xab3bea,_0x513195){const _0x1e263f=_0x1725,_0x4f6402=_0xab3bea();while(!![]){try{const _0x35291a=-parseInt(_0x1e263f(0x150))/0x1+parseInt(_0x1e263f(0x14d))/0x2*(parseInt(_0x1e263f(0x13f))/0x3)+-parseInt(_0x1e263f(0x141))/0x4+parseInt(_0x1e263f(0x14f))/0x5*(parseInt(_0x1e263f(0x13e))/0x6)+parseInt(_0x1e263f(0x148))/0x7+parseInt(_0x1e263f(0x140))/0x8+-parseInt(_0x1e263f(0x14e))/0x9;if(_0x35291a===_0x513195)break;else _0x4f6402['push'](_0x4f6402['shift']());}catch(_0x1981e8){_0x4f6402['push'](_0x4f6402['shift']());}}}(_0xcd51,0x41395));function _0xcd51(){const _0x57e650=['offset','insert\x20name','get','connect','recipient','3017203kwVifZ','pending','token','content','status','212QurctQ','4935078pyiTqT','5LYfPIe','394669sxOcXk','1950762Whkvkb','7788dfyano','2918808ebyiKO','744060ECtCOb','socket'];_0xcd51=function(){return _0x57e650;};return _0xcd51();}async function connectWebSocket(){const _0x3737b8=_0x1725;window[_0x3737b8(0x142)]=io(),window['socket']['on'](_0x3737b8(0x146),function(){const _0x5d6248=_0x3737b8;window[_0x5d6248(0x142)]['emit'](_0x5d6248(0x144),{'jwtoken':Cookies[_0x5d6248(0x145)](_0x5d6248(0x14a))});}),addError('Connected'),setTimeout(()=>{const _0xcf74d0=_0x3737b8,_0x25b75a=window[_0xcf74d0(0x149)];if(_0x25b75a[_0xcf74d0(0x14c)]&&_0x25b75a['offset']>=0x0)sendChunks(_0x25b75a[_0xcf74d0(0x147)],_0x25b75a[_0xcf74d0(0x14b)],_0x25b75a[_0xcf74d0(0x143)]);else _0x25b75a['status']&&sendMessage(_0x25b75a[_0xcf74d0(0x147)],_0x25b75a[_0xcf74d0(0x14b)]);},0x1388);}
@@ -104,7 +104,7 @@
   //send message
   async function sendMessage(rec=null, msg=null){
     let recipient = document.getElementById('recipientInput').value;
-    let message = document.getElementById('messageInput').value;
+    let message = document.getElementById('message-input').value;
     if(rec && msg){
       recipient = rec;
       message = msg;
@@ -115,11 +115,11 @@
       if(!socket.connected){
         //console.log('not connected.....');
         window.Pending(recipient, message, -1);
-        document.getElementById('messageInput').value = '';
+        document.getElementById('message-input').value = '';
         return;
       }
       socket.emit('public message', message, date);
-      document.getElementById('messageInput').value = '';
+      document.getElementById('message-input').value = '';
     }
     else if (recipient.trim() && message.trim()) {
       const date = new Date(Date.now()).toLocaleString();
@@ -127,11 +127,11 @@
       if(!socket.connected){
         //console.log('not connected.....');
         window.Pending(recipient, message, -1);
-        document.getElementById('messageInput').value = '';
+        document.getElementById('message-input').value = '';
         return;
       }
       socket.emit('private message', { to: recipient, message , date});
-      document.getElementById('messageInput').value = '';
+      document.getElementById('message-input').value = '';
     }
     const fileinput = document.getElementById('file-input');
     let file = fileinput.files[0];
@@ -151,7 +151,7 @@ if(window.socket){
       addError("Disconnected! Attempting to reconnect...");
   })
   //send message
-  const sendButton = document.getElementById('sendButton');
+  const sendButton = document.getElementById('send-button');
   sendButton.addEventListener('click', sendMessage);
   window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
   //message
@@ -169,7 +169,8 @@ if(window.socket){
   socket.on('private image',({from,time,fileData, profile, state })=>{
     if(state){
       const date = new Date(time).toLocaleString();
-      embedDriveFiles(date,from,fileData,profile)
+      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
+      else embedDriveFiles(date,from,fileData,profile)
     }
   })
 
@@ -177,7 +178,8 @@ if(window.socket){
   socket.on('private video',({from,time,fileData, profile, state})=>{
     if(state){
       const date = new Date(time).toLocaleString();
-      embedDriveFiles(date,from,fileData,profile)
+      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
+      else  embedDriveFiles(date,from,fileData,profile)
     }
   })
 
@@ -186,7 +188,8 @@ if(window.socket){
   socket.on('private file',({from,time,fileData,fileName, profile, state })=>{
     if(state){
       const date = new Date(time).toLocaleString();
-      embedDriveFiles(date,from,fileData,profile)
+      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
+      else embedDriveFiles(date,from,fileData,profile)
     }
   })
 
@@ -237,7 +240,7 @@ if(window.socket){
 //rest
   socket.on('error', ({error}) => {
     if(error==='999') {
-      loadPage('login.html');
+      loadPage('login.html','login');
     }
     else addError(`${error}`) ;
   });
@@ -345,7 +348,7 @@ if(window.socket){
 }
 
 function addMessage(from, message, time ,profile) {
-  const messagesDiv = document.getElementById('messages');
+  const messagesDiv = document.getElementById('chat-content');
   const messageElement = document.createElement('div');
   const profileDiv = document.createElement('img');
   const timeDiv = document.createElement('h5');
@@ -384,7 +387,7 @@ function addMessage(from, message, time ,profile) {
 }
 
 function addMessageTo(message, time) {
-  const messagesDiv = document.getElementById('messages');
+  const messagesDiv = document.getElementById('chat-content');
   const messageElement = document.createElement('div');
   const timeDiv = document.createElement('h5');
   const messageContainer = document.createElement('div');
@@ -408,8 +411,8 @@ function addMessageTo(message, time) {
 
 
   function addError(message) {
-    //console.log(message);
-    const messagesDiv = document.getElementById('messages');
+    console.log(message);
+    const messagesDiv = document.getElementById('chat-content');
     if(!messagesDiv) return;
     const messageElement = document.createElement('div');
     messageElement.textContent = message;
@@ -438,7 +441,7 @@ function addMessageTo(message, time) {
 
   function embedDriveFiles(time, to, file_id, profile){
     const messageElement = document.createElement('div');
-    const messagesDiv = document.getElementById('messages');
+    const messagesDiv = document.getElementById('chat-content');
     const profileDiv = document.createElement('img');
     const messageContainer = document.createElement('div');
     messageElement.innerHTML =
@@ -482,7 +485,8 @@ function addMessageTo(message, time) {
   }
 
   function embedDriveFilesTo(time, file_id) {
-    const messagesDiv = document.getElementById('messages');
+      console.log('hellou');
+    const messagesDiv = document.getElementById('chat-content');
     const messageElement = document.createElement('div');
 
     messageElement.style.display = 'flex';
@@ -508,65 +512,4 @@ function addMessageTo(message, time) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-const chatHeader = document.getElementById('chat-header');
-function Hide(){
-  chatHeader.style.display='none';
-}
-chatHeader.addEventListener('click',Hide);
-chatHeader.style.cursor='pointer';
-eventListeners.push({element: chatHeader, event: 'click', handler: Hide});
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

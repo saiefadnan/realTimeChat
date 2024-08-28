@@ -6,7 +6,6 @@ body {
     width: 100vw;
     margin: 0 0;
     background-color: rgb(55, 88, 89);
-    overflow: hidden;
   }
 
   .navbar{
@@ -88,7 +87,7 @@ body {
 
   #page{
     width: 100%;
-    height: 100%;
+    height: 93%;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -119,14 +118,16 @@ body {
   }
   #active-container{
     width: 15%;
-    height: 88.5%;
-    border-radius: 0 0 20px 20px;
+    height: 95%;
+    border-radius: 20px 0 20px 0;
     border: 2px solid #333;
     text-align: center;
     display: flex;
     align-items: center;
     flex-direction: column;
     padding: 5px;
+    margin: auto;
+    overflow: hidden;
   }
   legend{
     margin: 10px;
@@ -254,6 +255,10 @@ body {
     box-sizing: border-box;
   }
 
+  .clicked{
+    color:#0056b3;
+  }
+
   .custom-image-upload {
     margin:0 50px;
     width: 45%;
@@ -277,13 +282,14 @@ body {
   height: auto;
   display: flex;
   justify-content: center;
-  padding: 8px 12px;
+  padding: 10px 15px;
   cursor: pointer;
   background-color: #007bff;
   align-items: center;
   color: #333;
   border-radius: 5px;
   text-align: center;
+  
 }
 .label-text{
   font-size: 16px;
@@ -316,8 +322,8 @@ body {
   justify-content: space-between;
   width: 99%;
   height: 100%;
-  margin-top: 20px;
   overflow: auto;
+  gap: 5px;
 }
 
 .chat-block{
@@ -329,9 +335,8 @@ body {
   justify-content: center;
   gap: 20px;
 }
-
-.chat-block textarea{
-  width: 65%;
+ textarea{
+  max-width: 65%;
   height: 100%;
   font-size: 20px;
   font-weight: bold;
@@ -339,7 +344,7 @@ body {
   border-radius: 0 0 15px 0;
   resize: none;
   background-color: transparent;
-  color: #ccc;
+  border: 1px solid #ddd;
 }
 
 textarea::-webkit-scrollbar {
@@ -353,9 +358,10 @@ textarea::-webkit-scrollbar {
 }
 
 #recipientInput{
-  width: 30%;
+  width: 100%;
   min-width: 80px;
   font-size: 16px;
+  color: #ddd;
   font-weight: bold;
   border-radius: 15px 0 15px 0;
   margin: auto;
@@ -478,6 +484,46 @@ textarea::-webkit-scrollbar {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  #chat-container{
+    width: 95%;
+    height: 95%;
+    padding: 10px;
+    display: flex;
+    margin: auto;
+    flex-direction: column;
+    align-items: center;
+    background-color: #333;
+    gap: 5px;
+  }
+  #chat-content{
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    width: 100%;
+    height: 95%;
+    margin: auto;
+  }
+  .chat-footer{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: auto;
+    height: auto;
+    gap: 25px;
+  }
+  #send-button{
+    padding: 10px 15px;
+    width: auto;
+    height: auto;
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: #333;
+  }
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;
@@ -507,7 +553,6 @@ textarea::-webkit-scrollbar {
   .chat-container {
     display: flex;
     flex-direction: column;
-    padding-top: 20px;
     justify-content: flex-start;
     margin: 0;
   }
@@ -528,9 +573,8 @@ textarea::-webkit-scrollbar {
   }
   #active-container{
     flex-direction: row;
-    width: 98%;
-    height: 12%;
-    min-height: 10px;
+    width: 97%;
+    height: 100px;
     border-radius: 20px 0 20px 0;
   }
   .users-active-list{
@@ -551,8 +595,14 @@ textarea::-webkit-scrollbar {
     width: 130px;
     height: 130px;
   }
-  #messages{
-    width: 98%;
+ #chat-container{
+  height: 86%;
+ }
+ #chat-content{
+  height: 80%;
+ }
+  #recipientInput{
+    display: none;
   }
 }
 
@@ -567,9 +617,6 @@ textarea::-webkit-scrollbar {
   .profile-container{
     width: 100px;
     height: 100px;
-  }
-  #active-container{
-    width: 97%;
   }
 }
 

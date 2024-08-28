@@ -13,7 +13,7 @@ function cleanUp(existingScript){
     }
     //('clean....');
 }
-export default function loadPage(content){
+export function loadPage(content,element=null){
     fetch(content)
     .then(response=>{
         if(!response.ok){
@@ -36,9 +36,22 @@ export default function loadPage(content){
             script.onerror = (error) => {
                 console.error('Error loading script', error);
             };
+            if(element){
+                const links = document.querySelectorAll('.tab');
+                links.forEach((link)=>{link.classList.remove('clicked')});
+                document.getElementById(element).classList.toggle('clicked');
+            }
             document.body.appendChild(script);
+            
     })
     .catch(error=>{
         console.error('Content fetched failed',error);
     })
+}
+
+export function toggleColor(element){
+    console.log('clicked..');
+    const links = document.querySelectorAll('.tab');
+    links.forEach((link)=>{link.classList.remove('clicked')});
+    element.classList.toggle('clicked');
 }
