@@ -1,6 +1,6 @@
 (function(){
     const profile = document.getElementById('profile-pic');
-    const signup = document.getElementById('registerButton');
+    const signup = document.getElementById('signup-button');
 
     function Profile(event){
         const image = document.getElementById('profile-container').querySelector('img');
@@ -19,9 +19,9 @@
     async function Signup(e){
         e.preventDefault();
         const avatar = document.getElementById('profile-pic');
-        const email = document.getElementById('emailInput').value;
-        const username = document.getElementById('usernameInput').value;
-        const password = document.getElementById('passwordInput').value;
+        const email = document.getElementById('email').value;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
         const profile = avatar.files[0];
         const reqData ={
             email: email,

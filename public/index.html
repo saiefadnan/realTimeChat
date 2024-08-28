@@ -28,9 +28,9 @@
                 <li onclick="window.loadPage('login.html')" style="cursor: pointer;"><a onclick="window.toggleColor(this);" href="#" id="login" class="tab">Login</a></li>
                 <li onclick="
                     Cookies.remove('token');
-                    window.loadPage('login.html');" 
+                    window.loadPage('login.html','login');" 
                     style="cursor: pointer;">
-                    <a onclick="window.toggleColor(this);" href="#" id="logout" class="tab">Logout</a>
+                    <a href="#" id="logout" class="tab">Logout</a>
                 </li>
                 <img class="circle responsive-img" id="nav-profile" style="margin: 10px 10px; height: 50px;width:50px;border: 2px solid #ddd;" src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif" alt="Profile Picture" />
             </ul>
@@ -44,9 +44,9 @@
     <li onclick="window.loadPage('login.html')" style="cursor: pointer;"><a onclick="window.toggleColor(this);" href="#" id="login" class="tab" style="font-weight: bold;border: 1px solid #333;margin: 3px 3px;">Login</a></li>
     <li onclick="
         Cookies.remove('token');
-        window.loadPage('login.html');" 
+        window.loadPage('login.html','login');" 
         style="cursor: pointer;">
-        <a onclick="window.toggleColor(this);" href="#" id="logout" class="tab" style="font-weight: bold;border: 1px solid #333;margin: 3px 3px;">Logout</a>
+        <a href="#" id="logout" class="tab" style="font-weight: bold;border: 1px solid #333;margin: 3px 3px;">Logout</a>
     </li>
 </ul>
 <div id="page">

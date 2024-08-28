@@ -1,13 +1,25 @@
 <div class="background-animation">
     <img   src="https://ugokawaii.com/wp-content/uploads/2023/06/conversation.gif"/>
 </div>
-<div id="box">
-    <h2 style="color: #ccc;">Login</h2>
-        <hr/>
-    <form id="form-box" class="form-box">
-        <input type="text" id="logemailInput" placeholder="Email">
-        <input type="password" id="logpasswordInput" placeholder="Password">
-        <button id="loginButton">Login</button>
-        <div id="error-box" class="error-box" style="display: none;">error</div>
-    </form>
+<div id="container" style="border: 1px solid #ddd;border-radius: 8px;margin:auto">
+    <h4 class="center-align" style="color: #ddd;">Login</h4>
+    <div class="row">
+        <form class="col s12">
+            <div class="input-field col s12">
+                <input id="email" type="email" class="validate">
+                <label for="email">Email</label>
+                <span class="helper-text" data-error="Invalid email" data-success="Valid email"></span>
+            </div>
+            <div class="input-field col s12">
+                <input id="password" type="password" class="validate">
+                <label for="password">Password</label>
+            </div>
+            <div class="input-field col s12">
+                <button id="login-button" class="btn waves-effect waves-light" type="submit" name="action">Login
+                  <i class="material-icons right">send</i>
+                </button>
+            </div>
+            <div id="error-box" class="input-field col s12" style="display: none;"></div>
+        </form>
+    </div>
 </div>

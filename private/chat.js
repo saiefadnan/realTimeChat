@@ -31,16 +31,16 @@
         jwtoken: Cookies.get('token'),
       })
       addError("Connected");
-    })
       setTimeout(()=>{
-      const pending = window.pending;
-      if(pending.status && pending.offset>=0){
-        sendChunks(pending.recipient,pending.content,pending.offset);
-      }
-      else if(pending.status){
-        sendMessage(pending.recipient,pending.content);
-      }
-      },5000)
+        const pending = window.pending;
+        if(pending.status && pending.offset>=0){
+          sendChunks(pending.recipient,pending.content,pending.offset);
+        }
+        else if(pending.status){
+          sendMessage(pending.recipient,pending.content);
+        }
+        },5000)
+    })
   }
 
   function closeAllSockets(socket){

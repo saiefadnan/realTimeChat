@@ -50,7 +50,7 @@ export function loadPage(content,element=null){
 }
 
 export function toggleColor(element){
-    console.log('clicked..');
+    //console.log('clicked..');
     const links = document.querySelectorAll('.tab');
     links.forEach((link)=>{link.classList.remove('clicked')});
     element.classList.toggle('clicked');

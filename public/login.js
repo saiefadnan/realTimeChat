@@ -1,12 +1,12 @@
 (function(){
-  const login = document.getElementById('loginButton');
+  const login = document.getElementById('login-button');
   if(Cookies.get('token')){
     showerror('Seems like u are already logged in!');
   }
   async function Login(e){
     e.preventDefault();
-      const email = document.getElementById('logemailInput').value;
-      const password = document.getElementById('logpasswordInput').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
       if(!email.trim()){
           showerror('Email is missing');
       }
