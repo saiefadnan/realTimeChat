@@ -361,7 +361,7 @@ function addMessage(from, message, time ,profile) {
   messageElement.className="message-receive";
 
   timeDiv.textContent=time;
-  timeDiv.style.color = '#ccc';
+  timeDiv.className = 'time-container';
   nameDiv.textContent=from;
   nameDiv.style.color = '#ccc';
 
@@ -445,7 +445,7 @@ function addMessageTo(message, time) {
     const profileDiv = document.createElement('img');
     const messageContainer = document.createElement('div');
     messageElement.innerHTML =
-     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc">${time}</h5>
+     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc;font-size:small;">${time}</h5>
     <h5 style="color: #ccc;margin: 0 10px;padding: 0;">${to}</h5>
     <iframe src = https://drive.google.com/file/d/${file_id}/preview 
     style="max-width: 300px; 
@@ -498,7 +498,7 @@ function addMessageTo(message, time) {
     messageElement.style.height = 'auto';
 
     messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;color: #ccc">${time}</h5>
+    `<h5 style="width:90%;text-align: center;color: #ccc;font-size:small;">${time}</h5>
     <iframe src = https://drive.google.com/file/d/${file_id}/preview 
     style="max-width: 300px; 
     height: 215px; 
