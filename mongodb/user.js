@@ -21,10 +21,6 @@ const userSchema = new Schema({
     type: String,
     default: ''
   },
-  folderIds: {
-    type: [String],
-    default: []
-  },
   lastLogin: {
     type: Date,
     default: Date.now

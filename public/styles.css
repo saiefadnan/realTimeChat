@@ -517,6 +517,27 @@ textarea::-webkit-scrollbar {
     border: none;
     color: #333;
   }
+  .input-field input[type="search"]:focus + .label-icon {
+    visibility: hidden;
+  }
+  #item-list{
+    gap: 5px;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .list-box{
+    margin: 2px auto;
+    height: 30px;
+    width: 50%;
+    color: #ddd;
+    background-color: #333;
+    border: 1px solid #ddd;
+    box-sizing: border-box;
+    text-align: center;
+    cursor: pointer;
+  }
 @media(width<1700px){
   .custom-image-upload{
     align-items: center;

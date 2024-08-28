@@ -167,7 +167,24 @@ const chatData = async(req, res)=>{
         console.error(err);
     }
 }
+const queryUser = async(req, res)=>{
+    try{
+        const {query} =  req.body;
+        const queryUsers = await User.find({username: {$regex: query, $options: 'i'}});
+        if(!queryUsers) return res.status(200).json({
+            messsage: 'No homies found!'
+        });
+        res.status(200).json({
+            messsage: `${queryUsers.length} homies found!`,
+            querynames: queryUsers.map((query)=>({
+                name: query.username
+            }))
+        })
+    }catch(err){
+        console.error(err);
+    }
 
+}
 
 const cleanUpOldChats = async()=>{
     try{
@@ -218,5 +235,6 @@ module.exports ={
     chatData,
     refreshToken,
     assign,
-    getUserInfo
+    getUserInfo,
+    queryUser
 }

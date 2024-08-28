@@ -1,11 +1,20 @@
-<div id="box">
-    <h2 class="-header" style="color: #ccc;">Soon!</h2>
-    <hr/>
-    <form id="form-box" class="form-box" id="signup-box">
-        <p style="color: #ddd;">
-            Wanna create rooms with homies??<br/>
-            Hold tight & keep patience buddy!<br/>
-            We are coming to blow your mind!!!<br/>
-        </p>
-    </form>
-</div>
+<a class="waves-effect waves-light btn modal-trigger" href="#search-modal">add Homies</a>
+
+<div id="search-modal" class="modal">
+    <div class="modal-content">
+      <h4>Search Homies</h4>
+      <form>
+        <div class="input-field" style="display: flex;align-items:center;">
+            <i class="material-icons">search</i>
+          <input id="search" type="search" required>
+          <i class="material-icons" id="clear" onclick="">close</i>
+        </div>
+        <div id="item-list">
+        </div>
+    
+      </form>
+    </div>
+    <div class="modal-footer">
+      <a href="#!" style="border: 1px solid #ddd;" class="modal-close waves-effect waves-green btn-flat">Close</a>
+    </div>
+  </div>
