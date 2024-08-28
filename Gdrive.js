@@ -4,7 +4,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const {v4: uuidv4} = require('uuid');
 const auth = new google.auth.GoogleAuth({
-    keyFile: '/etc/secrets/realtimechat59-4f88949d8c8b.json',
+    keyFile: 'private/realtimechat59-4f88949d8c8b.json',
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
 const drive = google.drive({version: 'v3', auth});
@@ -71,7 +71,7 @@ async function uploadOperation(fileType,fileName,fileBuffer){
     const readableStream = new Readable();
     readableStream.push(fileBuffer);
     readableStream.push(null);
-    const media = {
+    const media = {y
         mimeType: 'application/octet-stream',
         body: readableStream
     }

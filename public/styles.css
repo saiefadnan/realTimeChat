@@ -608,6 +608,9 @@ textarea::-webkit-scrollbar {
     width: 100px;
     height: 100px;
   }
+  #page{
+    flex-direction: column;
+  }
 }
 
 @media(height<750px){
