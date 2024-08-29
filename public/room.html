@@ -1,20 +1,62 @@
-<a class="waves-effect waves-light btn modal-trigger" href="#search-modal">add Homies</a>
-
-<div id="search-modal" class="modal">
-    <div class="modal-content">
-      <h4>Search Homies</h4>
-      <form>
-        <div class="input-field" style="display: flex;align-items:center;">
-            <i class="material-icons">search</i>
-          <input id="search" type="search" required>
-          <i class="material-icons" id="clear" onclick="">close</i>
-        </div>
-        <div id="item-list">
-        </div>
-    
-      </form>
-    </div>
-    <div class="modal-footer">
-      <a href="#!" style="border: 1px solid #ddd;" class="modal-close waves-effect waves-green btn-flat">Close</a>
+<div class="room-container">
+  <div id="room-container" class="room-container">
+    <h5 style="font-weight:bold;font-size:small">Rooms</h5> 
+    <div id="room-list">
+      <a class="waves-effect waves-light btn modal-trigger" style="padding: 20px;display:flex;align-items:center;" href="#room-creation-modal">Create Rooms</a>
     </div>
   </div>
+
+  <div id="chat-container">
+    <legend id="room-header"></legend>
+    <a class="waves-effect waves-light btn modal-trigger" href="#search-modal">Invite Homies</a>
+    <div id="chat-content" class="chat-content"></div>
+    <div class="chat-footer">
+        <textarea id="message-input" class="message-input" rows="4" cols="15" placeholder="Type your message...."></textarea>
+        <button id="send-button"><i class="fas fa-paper-plane send-icon"></i></button>
+        <label for="file-input" class="file-label">
+            <div class="custom-file-upload" id="custom-file-upload">
+                <i class="fas fa-file upload-icon"></i>
+            </div>
+            <input type="file" id="file-input" class="file-input" placeholder="file" accept="*/*" style="display: none;">
+        </label>
+    </div>
+</div>
+
+  <div id="search-modal" class="modal">
+      <div class="modal-content">
+        <h4>Search Homies</h4>
+        <form>
+          <div class="input-field" style="display: flex;align-items:center;">
+              <i class="material-icons">search</i>
+            <input id="search" type="search" required>
+            <i class="material-icons" id="clear" onclick="">close</i>
+          </div>
+          <div id="item-list">
+          </div>
+      
+        </form>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" style="border: 1px solid #ddd;" class="modal-close waves-effect waves-green btn-flat">Close</a>
+      </div>
+    </div>
+
+
+    <div id="room-creation-modal" class="modal">
+      <div class="modal-content">
+        <h4>Room Creation</h4>
+        <form>
+          <div class="input-field">
+            <input id="room-name" type="text" class="validate" required>
+            <label for="room-name">Room Name</label>
+          </div>
+        </form>
+      </div>
+      <div class="input-field" style="display: flex;justify-content: center;">
+        <button id="create-room" class="waves-effect waves-light btn" type="submit">Create Room</button>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" style="border: 1px solid #ddd;" class="modal-close waves-effect waves-green btn-flat">Close</a>
+      </div>
+    </div>
+</div>

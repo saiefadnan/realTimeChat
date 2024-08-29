@@ -117,6 +117,20 @@ body {
     flex-direction: column;
     border-radius: 0 0 15px 0;
   }
+
+  #room-list{
+    width: 100%;
+    height: 95%;
+    overflow-y: auto;
+    background-color: #333;
+    display: flex;
+    align-items: center;
+    margin: auto;
+    padding: 5px auto;
+    flex-direction: column;
+    border-radius: 0 0 15px 0;
+  }
+
   #active-container{
     width: 15%;
     height: 95%;
@@ -128,6 +142,19 @@ body {
     flex-direction: column;
     padding: 5px;
     margin: auto;
+    overflow: hidden;
+  }
+
+  #room-container{
+    width: 15%;
+    height: 95%;
+    border-radius: 20px 0 20px 0;
+    border: 2px solid #333;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 5px;
     overflow: hidden;
   }
   legend{
@@ -322,6 +349,14 @@ body {
   height: 100%;
   overflow: auto;
   gap: 5px;
+}
+
+.room-container{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 99%;
+  height: 100%;
 }
 
 .chat-block{
@@ -570,6 +605,12 @@ textarea::-webkit-scrollbar {
     justify-content: flex-start;
     margin: 0;
   }
+  .room-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    margin: 0;
+  }
   #page{
     padding-top: 0;
     height: 96%;
@@ -588,8 +629,22 @@ textarea::-webkit-scrollbar {
     height: 100px;
     border-radius: 20px 0 20px 0;
   }
+  #room-container{
+    flex-direction: row;
+    width: 100%;
+    height: 100px;
+    border-radius: 20px 0 20px 0;
+  }
   .users-active-list{
     width: 10px;
+  }
+  #room-list{
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    border-radius: 15px 0 15px 0;
   }
   #active{
     overflow-x: auto;
