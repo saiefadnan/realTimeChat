@@ -1,8 +1,9 @@
 function cleanUp(existingScript){
-    //console.log(window.eventListeners.length);
+    console.log(window.eventListeners.length);
     existingScript.remove();
     window.eventListeners.forEach(({element, event, handler}) => {
         element.removeEventListener(event,handler);
+        console.log(element);
     });
     window.eventListeners.length = 0;
     const page = document.getElementById('page');
@@ -14,7 +15,8 @@ function cleanUp(existingScript){
     //('clean....');
 }
 export function loadPage(content,element=null){
-    fetch(content)
+    const page= `dynamic_${content.replace('.html','')}_91235.html`;
+    fetch(page)
     .then(response=>{
         if(!response.ok){
             throw new Error('Network status not good',response.statusText);
@@ -23,15 +25,22 @@ export function loadPage(content,element=null){
     })
     .then(data=>{
             const script = document.createElement('script');
-            const Script = content.replace('.html','.js');
-            const existingScript = document.querySelector(`script[src="${Script}"]`);
-            if(existingScript){
-                cleanUp(existingScript);
+            const Script = page.replace('.html','.js');
+            const existingScripts = document.querySelectorAll('script');
+            if(existingScripts){
+                existingScripts?.forEach((existingScript)=>{
+                    const srcName = existingScript?.getAttribute('src');
+                    if(srcName && srcName.includes('dynamic_') && srcName.includes('_91235')){
+                        console.log(existingScript.getAttribute('src'));
+                        cleanUp(existingScript);
+                    }
+                })
             }
+            
             document.getElementById('page').innerHTML=data;
-            script.src = `${Script}`;
+            script.src = Script;
             script.onload = () => {
-                //console.log('Script loaded successfully');
+                console.log(`${Script} loaded successfully`);
             };
             script.onerror = (error) => {
                 console.error('Error loading script', error);

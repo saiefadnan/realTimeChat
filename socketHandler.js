@@ -1,3 +1,4 @@
+const { Socket } = require('socket.io');
 const {uploadFile, gatherChunks} = require('./Gdrive');
 const { storeChats } = require('./storeChats');
 const jwt = require('jsonwebtoken');
@@ -6,6 +7,7 @@ const secretKey = process.env.JWT_SECRET;
 const users = {};
 const names = {};
 const photos ={};
+const socIns ={};
 
 function socketHandler(io){
     emitActiveUsers = function(operation, name, photo, socket){
@@ -36,7 +38,8 @@ function socketHandler(io){
             if(!users[username]){
                 users[username] = socket.id;
                 names[socket.id] = username;
-                photos[socket.id] = imageurl
+                photos[socket.id] = imageurl;
+                socIns[username]= socket;
                 console.log('username saved');
                 if(Object.keys(names).length>0){
                     emitActiveUsers('init',null,null,socket);
@@ -204,6 +207,80 @@ function socketHandler(io){
                 profile: photos[socket.id] 
             })
         })
+        //room
+        socket.on('create-room',({room})=>{
+            socket.join(room.name);
+            console.log(room.name);
+            io.to(room.name).emit('room-created',{notify: `Room ${room.name} created by ${room.admin}`});
+        })
+
+        socket.on('invite',({room, usernames})=>{
+            for(let i=0;i< usernames.length;++i){
+                if(socIns[usernames[i]])socIns[usernames[i]].join(room.name);
+                else{
+                    //store in database
+                }
+            }
+            console.log(room.name);
+            socket.broadcast.to(room.name).emit('invitation', {
+                name: room.name, 
+                notify: `${names[socket.id]} has added u in ${room.name}`
+            })
+            io.to(socket.id).emit('invited',{
+                notify: `${usernames} are invited`
+            });
+        })
+
+        socket.on('room message', ({room, message, date})=>{
+            socket.broadcast.to(room.name).emit('room message',{
+                from: names[socket.id],
+                time: Date.now(),
+                message,
+                profile: photos[socket.id] 
+            })
+        })
+
+        socket.on('room file',async({fileData})=>{
+            gatherChunks.push(fileData);
+        })
+
+        socket.on('room file complete', async({room, fileType, fileName})=>{
+            //const date = new Date(Date.now()).toLocaleString();
+            if(fileType.startsWith('image/')){
+                const docUrl=await uploadFile('image',fileName);
+                //await storeChats(names[socket.id], 'public', docUrl, 'image', date);
+                io.to(room.name).emit('room file',{
+                    from: names[socket.id],
+                    time: Date.now(),
+                    fileData: docUrl,
+                    profile: photos[socket.id]
+                })
+            }
+            else if(fileType.startsWith('video/')){
+                const docUrl=await uploadFile('video',fileName);
+                // await storeChats(names[socket.id], 'public', docUrl, 'video', date);
+                console.log(room.name,'video...',docUrl);
+                io.to(room.name).emit('room file',{
+                    from: names[socket.id],
+                    time: Date.now(),
+                    fileData: docUrl,
+                    profile: photos[socket.id]
+                })
+            }
+            else{
+                const docUrl=await uploadFile('document',fileName);
+                // await storeChats(names[socket.id], 'public', docUrl, 'document', date);
+                io.to(room.name).emit('room file',{
+                    from: names[socket.id],
+                    time: Date.now(),
+                    fileData: docUrl,
+                    fileName: fileName,
+                    profile: photos[socket.id]
+                })
+            }
+        })
+
+        //disconnect
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);
             if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);

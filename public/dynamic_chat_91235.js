@@ -263,7 +263,7 @@ if(window.socket){
         userDiv.style.width = '80%';
       })
     }
-}
+  }
 
 
 // 7)BuildActiveDiv

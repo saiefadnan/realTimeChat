@@ -2,13 +2,15 @@
   <div id="room-container" class="room-container">
     <h5 style="font-weight:bold;font-size:small">Rooms</h5> 
     <div id="room-list">
-      <a class="waves-effect waves-light btn modal-trigger" style="padding: 20px;display:flex;align-items:center;" href="#room-creation-modal">Create Rooms</a>
+      <a class="waves-effect waves-light btn modal-trigger" style="padding: 20px;display:flex;align-items:center;" href="#room-creation-modal">+ Room</a>
     </div>
   </div>
 
   <div id="chat-container">
-    <legend id="room-header"></legend>
-    <a class="waves-effect waves-light btn modal-trigger" href="#search-modal">Invite Homies</a>
+    <div class="room-header" style="width: auto;display: flex;align-items:center;gap: 10px;">
+      <legend id="room-header"></legend>
+      <a class="waves-effect waves-light btn modal-trigger" href="#search-modal">Invite Homies</a>
+    </div>
     <div id="chat-content" class="chat-content"></div>
     <div class="chat-footer">
         <textarea id="message-input" class="message-input" rows="4" cols="15" placeholder="Type your message...."></textarea>
@@ -33,7 +35,9 @@
           </div>
           <div id="item-list">
           </div>
-      
+          <div class="input-field" style="display: flex;justify-content: center;">
+            <button id="invite-user" class="waves-effect waves-light btn" type="submit">Invite</button>
+          </div>
         </form>
       </div>
       <div class="modal-footer">
