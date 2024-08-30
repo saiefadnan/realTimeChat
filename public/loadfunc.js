@@ -1,9 +1,8 @@
 function cleanUp(existingScript){
-    console.log(window.eventListeners.length);
+    // console.log(window.eventListeners.length);
     existingScript.remove();
     window.eventListeners.forEach(({element, event, handler}) => {
         element.removeEventListener(event,handler);
-        console.log(element);
     });
     window.eventListeners.length = 0;
     const page = document.getElementById('page');
@@ -31,7 +30,6 @@ export function loadPage(content,element=null){
                 existingScripts?.forEach((existingScript)=>{
                     const srcName = existingScript?.getAttribute('src');
                     if(srcName && srcName.includes('dynamic_') && srcName.includes('_91235')){
-                        console.log(existingScript.getAttribute('src'));
                         cleanUp(existingScript);
                     }
                 })
@@ -40,7 +38,7 @@ export function loadPage(content,element=null){
             document.getElementById('page').innerHTML=data;
             script.src = Script;
             script.onload = () => {
-                console.log(`${Script} loaded successfully`);
+                //console.log(`${Script} loaded successfully`);
             };
             script.onerror = (error) => {
                 console.error('Error loading script', error);

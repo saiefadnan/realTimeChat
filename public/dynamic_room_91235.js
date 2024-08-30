@@ -81,7 +81,6 @@
         };
     }
     async function Invite(){
-      console.log(currentRoom);
       if(currentRoom===undefined){
         M.toast({html: 'Select a room from list!', classes: 'rounded'});
       }else{
@@ -98,7 +97,6 @@
       instance.close();
     }
     async function handleInvite(list, username){
-      console.log(username);
       if(list.style.backgroundColor ==='blue'){
         list.style.backgroundColor ='#333';
         invited.splice(invited.indexOf(username),1);
@@ -356,7 +354,6 @@
   }
 
   function embedDriveFilesTo(time, file_id) {
-      console.log('hellou');
     const messagesDiv = document.getElementById('chat-content');
     const messageElement = document.createElement('div');
 
@@ -393,7 +390,6 @@
       addError(notify);
     })
     socket.on('room message',({from, time, message, profile})=>{
-      console.log('laagse..');
       const date = new Date(time).toLocaleString();
       addMessage(from, message, date, profile)
     })
@@ -411,7 +407,6 @@
     })
 
     socket.on('room file',({from, time, fileData, fileName, profile})=>{
-      console.log('here...');
       const date = new Date(time).toLocaleString();
       if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
       else embedDriveFiles(date,from,fileData,profile)

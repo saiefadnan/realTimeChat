@@ -415,7 +415,7 @@ function addMessageTo(message, time) {
 
 
   function addError(message) {
-    console.log(message);
+    //console.log(message);
     const messagesDiv = document.getElementById('chat-content');
     if(!messagesDiv) return;
     const messageElement = document.createElement('div');
@@ -489,7 +489,6 @@ function addMessageTo(message, time) {
   }
 
   function embedDriveFilesTo(time, file_id) {
-      console.log('hellou');
     const messagesDiv = document.getElementById('chat-content');
     const messageElement = document.createElement('div');
 
