@@ -394,6 +394,7 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }   
     async function createPeerConnection(){
+      console.log('yo');
       peerConnection = new RTCPeerConnection(configuration);
       peerConnection.ontrack = event =>{
         remoteVideo.srcObject = event.streams[0];
@@ -420,16 +421,16 @@
     }
 
     async function videoCall(){
-      navigator.mediaDevices.getUserMedia({video: true, audio: true})
-      .then(async(stream)=>{
-        localStream = stream;
-        localVideo.srcObject = stream;
-        await createPeerConnection();
-      })
-      .catch(error => {
-        console.error('Error accessing media devices.', error);
-      });
-    }
+      try{
+          console.log('yooo');
+          const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
+          localStream = stream;
+          localVideo.srcObject = stream;
+          await createPeerConnection();
+        }catch(err){
+            console.error('Error accessing media devices.', err);
+        }
+      }
 
     function exitVideoCall(){
       if(localStream){
@@ -470,11 +471,12 @@
 
     socket.on('signal',async(data)=>{
       if(!peerConnection){
-        await createPeerConnection();
+        await videoCall();
       }
       if(data.signal.sdp){
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
-        if(data.signal.sdp.type === 'offer'){
+        const desp = new RTCSessionDescription(data.signal.sdp);
+        if(desp.type === 'offer'){
+          await peerConnection.setRemoteDescription(desp);
           const answer =  await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
           socket.emit('signal',{
