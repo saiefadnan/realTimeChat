@@ -469,9 +469,34 @@
       }
     })
 
+    async function receiveVideoCall(){
+      try{
+        console.log('receive');
+        const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
+        localStream = stream;
+        localVideo.srcObject = stream;
+
+        peerConnection = new RTCPeerConnection(configuration);
+        peerConnection.ontrack = event =>{
+          remoteVideo.srcObject = event.streams[0];
+        }
+        peerConnection.onicecandidate = event =>{
+          if(event.candidate){
+            socket.emit('signal',{
+              room: currentRoom,
+              from: window.userInfo,
+              signal: {candidate: event.candidate}
+            })
+          }
+      }
+      }catch(err){
+          console.error('Error accessing media devices.', err);
+      }
+    }
+
     socket.on('signal',async(data)=>{
       if(!peerConnection){
-        await videoCall();
+        await receiveVideoCall();
       }
       if(data.signal.sdp){
         const desp = new RTCSessionDescription(data.signal.sdp);
