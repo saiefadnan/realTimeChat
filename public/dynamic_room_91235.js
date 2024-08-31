@@ -472,10 +472,11 @@
     async function receiveVideoCall(){
       try{
         console.log('receive');
+        var instance = M.Modal.getInstance(videoModal);
+        instance.open();
         const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
         localStream = stream;
         localVideo.srcObject = stream;
-
         peerConnection = new RTCPeerConnection(configuration);
         peerConnection.ontrack = event =>{
           remoteVideo.srcObject = event.streams[0];
