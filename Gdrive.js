@@ -4,7 +4,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const {v4: uuidv4} = require('uuid');
 const auth = new google.auth.GoogleAuth({
-    keyFile: '/etc/secrets/realtimechat59-4f88949d8c8b.json',
+    keyFile: 'etc/secrets/realtimechat59-4f88949d8c8b.json',
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
 const drive = google.drive({version: 'v3', auth});

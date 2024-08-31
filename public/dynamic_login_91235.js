@@ -22,7 +22,7 @@
             }
             const {login,notify, token} = await window.fetchData('/api/login',reqData);
             if(login){
-              Cookies.set('token', token, { expires: 30, secure: true, sameSite: 'Strict' });
+              Cookies.set('token', token, { expires: 30, sameSite: 'Strict' });
               shownote(notify);
             }
             else{

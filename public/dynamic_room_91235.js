@@ -1,5 +1,4 @@
 (async function(){
-    let debounceTimer;
     const socket = window.socket;
     const chunkSize = 512*1024;
     const invited = [];
@@ -16,7 +15,22 @@
     const Currentroom = document.getElementById('current-room');
     const sendButton = document.getElementById('send-button');
     const fileInput = document.getElementById('file-input');
+    const videoBtn = document.getElementById('video-call-btn');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const exitVideo = document.getElementById('exit-video');
+    const videoModal = document.getElementById('video-modal');
+    let debounceTimer;
+    let localStream;
     let currentRoom;
+    let peerConnection;
+    const configuration = {
+      iceServers: [
+          {
+              urls: 'stun:stun.l.google.com:19302'
+          }
+      ]
+  };
     function load() {
         var elems = document.querySelectorAll('.modal');
         var instances = M.Modal.init(elems);
@@ -378,9 +392,57 @@
     />`;
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
+}   
+    async function createPeerConnection(){
+      peerConnection = new RTCPeerConnection(configuration);
+      peerConnection.ontrack = event =>{
+        remoteVideo.srcObject = event.streams[0];
+      }
+
+      peerConnection.onicecandidate = event =>{
+        if(event.candidate){
+          socket.emit('signal',{
+            room: currentRoom,
+            from: window.userInfo,
+            signal: {candidate: event.candidate}
+          })
+        }
+      }
+
+      peerConnection.createOffer().then(offer=>{
+        peerConnection.setLocalDescription(offer);
+        socket.emit('signal',{
+          room: currentRoom,
+          from: window.userInfo,
+          signal: {sdp: offer}
+        })
+      })
+    }
+
+    async function videoCall(){
+      navigator.mediaDevices.getUserMedia({video: true, audio: true})
+      .then(async(stream)=>{
+        localStream = stream;
+        localVideo.srcObject = stream;
+        await createPeerConnection();
+      })
+      .catch(error => {
+        console.error('Error accessing media devices.', error);
+      });
+    }
+
+    function exitVideoCall(){
+      if(localStream){
+        localStream.getTracks().forEach(track=>track.stop());
+        localVideo.srcObject=null;
+        var instance = M.Modal.getInstance(videoModal);
+        instance.close();
+      }
+    }
 
     load();
+
+    
 
     socket.on('room-created',({notify})=>{
       addError(notify);
@@ -406,6 +468,27 @@
       }
     })
 
+    socket.on('signal',async(data)=>{
+      if(!peerConnection){
+        await createPeerConnection();
+      }
+      if(data.signal.sdp){
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal.sdp));
+        if(data.signal.sdp.type === 'offer'){
+          const answer =  await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('signal',{
+            room: currentRoom,
+            from: window.userInfo,
+            signal: {sdp: answer}
+          })
+        }
+      }
+      else if(data.signal.candidate){
+        peerConnection.addIceCandidate(data.signal.candidate)
+      }
+    })
+
     socket.on('room file',({from, time, fileData, fileName, profile})=>{
       const date = new Date(time).toLocaleString();
       if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
@@ -418,6 +501,8 @@
     roomCreate.addEventListener('click',handleSubmit);
     inviteBtn.addEventListener('click',Invite);
     sendButton.addEventListener('click', sendMessage);
+    videoBtn.addEventListener('click',videoCall);
+    exitVideo.addEventListener('click', exitVideoCall)
 
     window.eventListeners.push({element: search, event: 'input',handler: debounce});
     window.eventListeners.push({element: clear, event: 'click',handler: clearSearch});
@@ -426,6 +511,8 @@
     window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
     window.eventListeners.push({element: fileInput, event: 'change', handler: Load});
     window.eventListeners.push({element: inviteBtn, event: 'click', handler: Invite});
+    window.eventListeners.push({element: videoBtn, event: 'click', handler: videoCall});
+    window.eventListeners.push({element: exitVideo, event: 'click', handler: exitVideoCall});
 })();
   
   

@@ -280,6 +280,13 @@ function socketHandler(io){
             }
         })
 
+        socket.on('signal',data=>{
+            socket.broadcast.to(data.room).emit('signal',{
+                from: data.from,
+                signal: data.signal
+            })
+        })
+
         //disconnect
         socket.on('disconnect',()=>{
             console.log('A user disconnected: ',socket.id);

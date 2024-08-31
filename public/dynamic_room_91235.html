@@ -10,6 +10,9 @@
       <div class="input-field" style="display: flex;align-items:center;justify-content: space-between;border: 1px solid #ddd;padding: 5px;width: 100%;">
         <legend id="current-room" style="width: 100px;"></legend>
         <a class="waves-effect waves-light btn modal-trigger" href="#search-modal">Invite Homies</a>
+        <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger" style="background-color: #2196F3;">
+          <i class="material-icons left">videocam</i>Start Video Call
+      </a>
       </div>
     <div id="chat-content" class="chat-content"></div>
     <div class="chat-footer">
@@ -23,6 +26,16 @@
         </label>
     </div>
 </div>
+
+  <div id="video-modal" class="modal">
+    <div class="modal-content">
+      <div class="input-field" style="display: flex;justify-content: flex-end;">
+        <button id="exit-video" class="waves-effect waves-light btn red" type="button"><i class="material-icons left">exit_to_app</i></button>
+      </div>
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+  </div>
 
   <div id="search-modal" class="modal">
       <div class="modal-content">
