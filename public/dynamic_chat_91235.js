@@ -7,22 +7,7 @@
 
   // 2)connectWebSocket
   (function(_0x4580ca,_0x58b734){const _0x9d8973=_0x3eca,_0x1a7264=_0x4580ca();while(!![]){try{const _0x355057=-parseInt(_0x9d8973(0x1e6))/0x1*(parseInt(_0x9d8973(0x1e8))/0x2)+parseInt(_0x9d8973(0x1f1))/0x3*(-parseInt(_0x9d8973(0x1ef))/0x4)+-parseInt(_0x9d8973(0x1ed))/0x5+-parseInt(_0x9d8973(0x1f4))/0x6*(-parseInt(_0x9d8973(0x1e4))/0x7)+parseInt(_0x9d8973(0x1ec))/0x8*(parseInt(_0x9d8973(0x1e7))/0x9)+parseInt(_0x9d8973(0x1ee))/0xa+-parseInt(_0x9d8973(0x1f6))/0xb*(parseInt(_0x9d8973(0x1f3))/0xc);if(_0x355057===_0x58b734)break;else _0x1a7264['push'](_0x1a7264['shift']());}catch(_0x379cc2){_0x1a7264['push'](_0x1a7264['shift']());}}}(_0x3466,0xc51fa));function _0x3466(){const _0x34cdf7=['recipient','3510600RLoFQL','644230KFlsAC','7646740yWLbzf','4lxVmTi','pending','394791eqRazg','content','757572yhlVMx','870VHrbFS','emit','110WKsMAH','offset','34461EOaFBz','get','19833jgyZLT','9iBBrkJ','22BvhPTz','token','socket'];_0x3466=function(){return _0x34cdf7;};return _0x3466();}function _0x3eca(_0x56aa9d,_0x332319){const _0x3466d9=_0x3466();return _0x3eca=function(_0x3eca77,_0x505ffb){_0x3eca77=_0x3eca77-0x1e4;let _0x18ec65=_0x3466d9[_0x3eca77];return _0x18ec65;},_0x3eca(_0x56aa9d,_0x332319);}async function connectWebSocket(){const _0x479b12=_0x3eca;window['socket']=io(),window[_0x479b12(0x1ea)]['on']('connect',function(){const _0x50c9af=_0x479b12;window['socket'][_0x50c9af(0x1f5)]('insert\x20name',{'jwtoken':Cookies[_0x50c9af(0x1e5)](_0x50c9af(0x1e9))}),addError('Connected'),setTimeout(()=>{const _0x49fdfb=_0x50c9af,_0x5eeb6b=window[_0x49fdfb(0x1f0)];if(_0x5eeb6b['status']&&_0x5eeb6b[_0x49fdfb(0x1f7)]>=0x0)sendChunks(_0x5eeb6b[_0x49fdfb(0x1eb)],_0x5eeb6b[_0x49fdfb(0x1f2)],_0x5eeb6b[_0x49fdfb(0x1f7)]);else _0x5eeb6b['status']&&sendMessage(_0x5eeb6b[_0x49fdfb(0x1eb)],_0x5eeb6b[_0x49fdfb(0x1f2)]);},0x1388);});}
-  
-  function closeAllSockets(socket){
-    socket.off('disconnect');
-    socket.off('private message');
-    socket.off('public message');
-    socket.off('private image');
-    socket.off('public image');
-    socket.off('private video');
-    socket.off('public video');
-    socket.off('private file');
-    socket.off('public file');
-    socket.off('error');
-    socket.off('init activeUsers');
-    socket.off('activeUsers');
-    //console.log('All sockets are closing...');
-  }
+  //add photo
   function addPicture(picture){
     const profileDivs = document.getElementsByClassName('circle responsive-img');
     if(picture){
@@ -146,8 +131,6 @@
 
 if(window.socket){
   socket = window.socket;
-  //closing all sockets to prevent from creating redundant listeners
-  closeAllSockets(socket);
   //reconnect....
   socket.on('disconnect', function(){
       addError("Disconnected! Attempting to reconnect...");

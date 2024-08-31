@@ -13,7 +13,7 @@
     const createBtn = activeRoom.querySelector('a');
     const inviteBtn = document.getElementById('invite-user');
     const items = document.getElementById('item-list');
-    const roomHeader = document.getElementById('room-header');
+    const Currentroom = document.getElementById('current-room');
     const sendButton = document.getElementById('send-button');
     const fileInput = document.getElementById('file-input');
     let currentRoom;
@@ -55,23 +55,23 @@
     }
 
     function updateStyles() {
-        if (window.innerWidth < 1000) {
-          createBtn.textContent == '+';
-          const userDivs = activeRoom.querySelectorAll('div');
-          userDivs.forEach((userDiv)=>{
-            userDiv.style.width = '70px';
-            userDiv.style.margin = '5px';
-          })
-        }
-        else{
-          const userDivs = activeRoom.querySelectorAll('div');
-          userDivs.forEach((userDiv)=>{
-            userDiv.style.margin ='0';
-            userDiv.style.marginTop ='5px';
-            userDiv.style.width = '80%';
-          })
-        }
+      if (window.innerWidth < 1000) {
+        createBtn.textContent == '+';
+        const userDivs = activeRoom.querySelectorAll('div');
+        userDivs.forEach((userDiv)=>{
+          userDiv.style.width = '70px';
+          userDiv.style.margin = '5px';
+        })
       }
+      else{
+        const userDivs = activeRoom.querySelectorAll('div');
+        userDivs.forEach((userDiv)=>{
+          userDiv.style.margin ='0';
+          userDiv.style.marginTop ='5px';
+          userDiv.style.width = '80%';
+        })
+      }
+    }
 
     function clearSearch(){search.value = '';}
     function debounce(func, delay) {
@@ -228,7 +228,7 @@
             const unselectDivs = document.getElementById('room-list').querySelectorAll('div');
             unselectDivs.forEach((unselectDiv)=>{ unselectDiv.style.backgroundColor = 'black';})
             userDiv.style.backgroundColor = 'cadetblue';
-            roomHeader.textContent = name;
+            Currentroom.textContent = `Room: ${name}`;
         }
         userDiv.addEventListener('mouseover', Over);
         userDiv.addEventListener('mouseout', Out);
@@ -411,7 +411,6 @@
       if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
       else embedDriveFiles(date,from,fileData,profile)
     })
-
 
     fileInput.addEventListener('change', Load);
     search.addEventListener('input', debounce(handleSearch,500));

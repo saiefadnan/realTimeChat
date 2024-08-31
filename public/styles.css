@@ -75,11 +75,6 @@ body {
     gap: 5px;
   }
 
-  .navbar-container legend{
-    color: cadetblue;
-    font-weight: bold;
-  }
-
   li a{
     color: cadetblue;
     font-weight: bold;
@@ -160,9 +155,6 @@ body {
     flex-direction: column;
     padding: 5px;
     overflow: hidden;
-  }
-  legend{
-    margin: 10px;
   }
   
   #app {
@@ -382,6 +374,12 @@ body {
   resize: none;
   background-color: transparent;
   border: 1px solid #ddd;
+  color: #ddd;
+}
+
+#current-room{
+  color: #ddd;
+  font-weight: bold;
 }
 
 textarea::-webkit-scrollbar {
