@@ -43,21 +43,6 @@
     })
   }
 
-  function closeAllSockets(socket){
-    socket.off('disconnect');
-    socket.off('private message');
-    socket.off('public message');
-    socket.off('private image');
-    socket.off('public image');
-    socket.off('private video');
-    socket.off('public video');
-    socket.off('private file');
-    socket.off('public file');
-    socket.off('error');
-    socket.off('init activeUsers');
-    socket.off('activeUsers');
-    //console.log('All sockets are closing...');
-  }
   function addPicture(picture){
     const profileDiv = document.getElementById('nav-profile-container').querySelector('img');
     if(picture){
@@ -179,8 +164,6 @@
 
 if(window.socket){
   socket = window.socket;
-  //closing all sockets to prevent from creating redundant listeners
-  closeAllSockets(socket);
   //reconnect....
   socket.on('disconnect', function(){
       addError("Disconnected! Attempting to reconnect...");

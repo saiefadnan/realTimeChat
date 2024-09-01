@@ -1,17 +1,17 @@
 <div class="room-container">
   <div id="room-container" class="room-container">
-    <h5 style="font-weight:bold;font-size:small">Rooms</h5> 
+    <h5 id="list-header" style="font-weight:bold;font-size:small">Rooms</h5> 
     <div id="room-list">
-      <a class="waves-effect waves-light btn modal-trigger" style="padding: 20px;display:flex;align-items:center;" href="#room-creation-modal">+ Room</a>
     </div>
   </div>
 
   <div id="chat-container">
-      <div class="input-field" style="display: flex;align-items:center;justify-content: space-between;border: 1px solid #ddd;padding: 5px;width: 100%;">
+      <div class="input-field" style="display: flex;align-items:center;justify-content: center;border: 1px solid #ddd;gap:20px;padding: 5px;width: 100%;">
         <legend id="current-room" style="width: 100px;"></legend>
-        <a class="waves-effect waves-light btn modal-trigger" href="#search-modal">Invite Homies</a>
-        <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger" style="background-color: #2196F3;">
-          <i class="material-icons left">videocam</i>Start Video Call
+        <a class="waves-effect waves-light btn modal-trigger" href="#room-creation-modal"><i class="material-icons left">add</i></a>
+        <a class="waves-effect waves-light btn modal-trigger" href="#search-modal"><i class="material-icons left">group_add</i></a>
+        <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger" style="background-color: #2196F3;display: flex;justify-content:center;">
+          <i class="material-icons left">videocam</i>
       </a>
       </div>
     <div id="chat-content" class="chat-content"></div>
@@ -32,14 +32,14 @@
       <div class="input-field" style="display: flex;justify-content: flex-end;">
         <button id="exit-video" class="waves-effect waves-light btn red" type="button"><i class="material-icons left">exit_to_app</i></button>
       </div>
-      <video id="localVideo" autoplay muted></video>
-      <video id="remoteVideo" autoplay></video>
+      <video id="localVideo" autoplay muted style="background-color: #2196F3;width: auto;height: 400px;"></video>
+      <video id="remoteVideo" autoplay style="background-color: green;width: auto;height: 400px;"></video>
     </div>
   </div>
 
   <div id="search-modal" class="modal">
       <div class="modal-content">
-        <h4>Search Homies</h4>
+        <h4>Search & add Homies</h4>
         <form>
           <div class="input-field" style="display: flex;align-items:center;">
               <i class="material-icons">search</i>

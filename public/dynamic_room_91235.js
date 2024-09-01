@@ -9,7 +9,6 @@
     const roomCreate = document.getElementById('create-room');
     const roomName =  document.getElementById('room-name');
     const activeRoom = document.getElementById('room-list');
-    const createBtn = activeRoom.querySelector('a');
     const inviteBtn = document.getElementById('invite-user');
     const items = document.getElementById('item-list');
     const Currentroom = document.getElementById('current-room');
@@ -20,6 +19,8 @@
     const remoteVideo = document.getElementById('remoteVideo');
     const exitVideo = document.getElementById('exit-video');
     const videoModal = document.getElementById('video-modal');
+    const listHeader  = document.getElementById('list-header');
+    const messagesDiv = document.getElementById('chat-content');
     let debounceTimer;
     let localStream;
     let currentRoom;
@@ -70,7 +71,7 @@
 
     function updateStyles() {
       if (window.innerWidth < 1000) {
-        createBtn.textContent == '+';
+        listHeader.textContent='';
         const userDivs = activeRoom.querySelectorAll('div');
         userDivs.forEach((userDiv)=>{
           userDiv.style.width = '70px';
@@ -78,6 +79,8 @@
         })
       }
       else{
+        console.log(room.textContent);
+        listHeader.textContent='Rooms';
         const userDivs = activeRoom.querySelectorAll('div');
         userDivs.forEach((userDiv)=>{
           userDiv.style.margin ='0';
@@ -192,7 +195,6 @@
     }
     function addError(message) {
         console.log(message);
-        const messagesDiv = document.getElementById('chat-content');
         if(!messagesDiv) return;
         const messageElement = document.createElement('div');
         messageElement.textContent = message;
@@ -259,7 +261,6 @@
         activeRoom.appendChild(userDiv);
     }
     function addMessageTo(message, time) {
-      const messagesDiv = document.getElementById('chat-content');
       const messageElement = document.createElement('div');
       const timeDiv = document.createElement('h5');
       const messageContainer = document.createElement('div');
@@ -282,7 +283,6 @@
     }
 
     function addMessage(from, message, time ,profile) {
-      const messagesDiv = document.getElementById('chat-content');
       const messageElement = document.createElement('div');
       const profileDiv = document.createElement('img');
       const timeDiv = document.createElement('h5');
@@ -324,7 +324,6 @@
 
   function embedDriveFiles(time, to, file_id, profile){
     const messageElement = document.createElement('div');
-    const messagesDiv = document.getElementById('chat-content');
     const profileDiv = document.createElement('img');
     const messageContainer = document.createElement('div');
     messageElement.innerHTML =
@@ -368,7 +367,6 @@
   }
 
   function embedDriveFilesTo(time, file_id) {
-    const messagesDiv = document.getElementById('chat-content');
     const messageElement = document.createElement('div');
 
     messageElement.style.display = 'flex';
@@ -436,8 +434,8 @@
       if(localStream){
         localStream.getTracks().forEach(track=>track.stop());
         localVideo.srcObject=null;
-        var instance = M.Modal.getInstance(videoModal);
-        instance.close();
+        // var instance = M.Modal.getInstance(videoModal);
+        //instance.close();
       }
     }
 

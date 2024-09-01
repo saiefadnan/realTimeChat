@@ -1,6 +1,10 @@
 (async function(){
   let socket;
   const chunkSize = 512*1024;
+  const listHeader  = document.getElementById('list-header');
+  const active = document.getElementById('active');
+  const sendButton = document.getElementById('send-button');
+  const messagesDiv = document.getElementById('chat-content');
 
   // 1)retrieveChat
   (function(_0x2de039,_0x29f5c0){const _0x49f946=_0x52b0,_0x35d642=_0x2de039();while(!![]){try{const _0x457feb=-parseInt(_0x49f946(0x15a))/0x1*(-parseInt(_0x49f946(0x159))/0x2)+parseInt(_0x49f946(0x148))/0x3+parseInt(_0x49f946(0x153))/0x4+-parseInt(_0x49f946(0x155))/0x5+-parseInt(_0x49f946(0x150))/0x6*(-parseInt(_0x49f946(0x154))/0x7)+parseInt(_0x49f946(0x158))/0x8+-parseInt(_0x49f946(0x152))/0x9;if(_0x457feb===_0x29f5c0)break;else _0x35d642['push'](_0x35d642['shift']());}catch(_0x4bce91){_0x35d642['push'](_0x35d642['shift']());}}}(_0x4161,0xeed4a));async function retrieveChat(){const _0x49cd48=_0x52b0,_0x1f40e0={'username':window[_0x49cd48(0x14d)][_0x49cd48(0x156)]},_0x63cb2c=await window[_0x49cd48(0x149)](_0x49cd48(0x14f),_0x1f40e0),_0x7cb28b=document[_0x49cd48(0x146)](_0x49cd48(0x157));if(!_0x7cb28b)return;if(_0x7cb28b)_0x7cb28b[_0x49cd48(0x15c)]='';_0x63cb2c[_0x49cd48(0x14a)][_0x49cd48(0x145)](_0x152023=>{const _0x143504=_0x49cd48;if(_0x152023[_0x143504(0x151)]===window['userInfo'][_0x143504(0x156)]){if(_0x152023[_0x143504(0x147)]!=='text')embedDriveFilesTo(_0x152023[_0x143504(0x14c)],_0x152023['content']);else addMessageTo(_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)]);}else{if(_0x152023[_0x143504(0x147)]!==_0x143504(0x14e))embedDriveFiles(_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x15b)]);else addMessage(_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x15b)]);}});}function _0x52b0(_0x370f21,_0x194c87){const _0x416101=_0x4161();return _0x52b0=function(_0x52b0b3,_0x30b3f4){_0x52b0b3=_0x52b0b3-0x145;let _0x4bd317=_0x416101[_0x52b0b3];return _0x4bd317;},_0x52b0(_0x370f21,_0x194c87);}function _0x4161(){const _0x39b1bd=['username','chat-content','10152296dmKvZs','72368mZcRfC','1nZnzXw','imageUrl','innerHTML','forEach','getElementById','type','521622bCoXMR','fetchData','chats','content','date','userInfo','text','/api/getchats','6582GVuhDO','sender','13404780FrLTSG','7639252FsdGRp','3031RXvyyB','6981195rOdLtm'];_0x4161=function(){return _0x39b1bd;};return _0x4161();}
@@ -131,15 +135,14 @@
 
 if(window.socket){
   socket = window.socket;
-  //reconnect....
+  
   socket.on('disconnect', function(){
       addError("Disconnected! Attempting to reconnect...");
   })
-  //send message
-  const sendButton = document.getElementById('send-button');
+  
   sendButton.addEventListener('click', sendMessage);
   window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
-  //message
+  
   socket.on('private message', ({ from, time, message, profile }) => {
     const date = new Date(time).toLocaleString();
     addMessage(from, message, date, profile) ;
@@ -207,20 +210,19 @@ if(window.socket){
 
   // 6)init activeUsers
   socket.on('init activeUsers',({activeUsers, profile})=>{
-    const activeBar = document.getElementById('active');
     const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
-    activeBar.innerHTML='';
-    BuildActiveDiv(activeBar, window.userInfo.username, window.userInfo.imageurl);
-    BuildActiveDiv(activeBar,'public', publicUrl);
+    active.innerHTML='';
+    BuildActiveDiv(active, window.userInfo.username, window.userInfo.imageurl);
+    BuildActiveDiv(active,'public', publicUrl);
     activeUsers.forEach((name, index) => {
         if(name!=='public' && name!==window.userInfo.username){
-          BuildActiveDiv(activeBar,name, profile[index]);
+          BuildActiveDiv(active,name, profile[index]);
         }
     });
-  updateStyles();
-  window.addEventListener('resize', updateStyles);
-  window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
-});
+    updateStyles();
+    window.addEventListener('resize', updateStyles);
+    window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
+  });
 
 //rest
   socket.on('error', ({error}) => {
@@ -232,14 +234,16 @@ if(window.socket){
 
   function updateStyles() {
     if (window.innerWidth < 1000) {
-      const userDivs = document.getElementById('active').querySelectorAll('div');
+      listHeader.textContent = '';
+      const userDivs = active.querySelectorAll('div');
       userDivs.forEach((userDiv)=>{
         userDiv.style.width = '70px';
         userDiv.style.margin = '5px';
       })
     }
     else{
-      const userDivs = document.getElementById('active').querySelectorAll('div');
+      listHeader.textContent = 'Active Homies';
+      const userDivs = active.querySelectorAll('div');
       userDivs.forEach((userDiv)=>{
         userDiv.style.margin ='0';
         userDiv.style.marginTop ='5px';
@@ -276,16 +280,16 @@ if(window.socket){
     profileDiv.style.borderRadius = '50%';
     profileDiv.style.border = '2px solid #ccc';
 
-      function Over(){userDiv.style.scale = 0.8;}
-      function Out(){userDiv.style.scale = 1;}
-      function Click(){
-      document.getElementById('recipientInput').value= name;
-      const unselectDivs = document.getElementById('active').querySelectorAll('div');
-      unselectDivs.forEach((unselectDiv)=>{
-        const name = unselectDiv.querySelector('h5').textContent;
-        if(name!=='public')unselectDiv.style.backgroundColor = 'black';
-        else unselectDiv.style.backgroundColor = 'crimson';
-      })
+    function Over(){userDiv.style.scale = 0.8;}
+    function Out(){userDiv.style.scale = 1;}
+    function Click(){
+    document.getElementById('recipientInput').value= name;
+    const unselectDivs = active.querySelectorAll('div');
+    unselectDivs.forEach((unselectDiv)=>{
+      const name = unselectDiv.querySelector('h5').textContent;
+      if(name!=='public')unselectDiv.style.backgroundColor = 'black';
+      else unselectDiv.style.backgroundColor = 'crimson';
+    })
       userDiv.style.backgroundColor = 'cadetblue';
     }
     userDiv.addEventListener('mouseover', Over);
@@ -310,7 +314,7 @@ if(window.socket){
 
   
   function RemoveActiveDiv(activeBar, name){
-    const userDivs = document.getElementById('active').querySelectorAll('div');
+    const userDivs = active.querySelectorAll('div');
     for(let i=0;i<userDivs.length;++i){
       if(userDivs[i].querySelector('h5').textContent.trim()===name){
         activeBar.removeChild(userDivs[i]);
@@ -321,19 +325,17 @@ if(window.socket){
 
 
   socket.on('activeUsers',({operation, name, photo})=>{
-    const activeBar = document.getElementById('active');
       if(operation==='add'){
-        BuildActiveDiv(activeBar,name, photo);
+        BuildActiveDiv(active,name, photo);
       }
       else if(operation==='remove'){
-        RemoveActiveDiv(activeBar, name);
+        RemoveActiveDiv(active, name);
       }
     updateStyles();
   });
 }
 
 function addMessage(from, message, time ,profile) {
-  const messagesDiv = document.getElementById('chat-content');
   const messageElement = document.createElement('div');
   const profileDiv = document.createElement('img');
   const timeDiv = document.createElement('h5');
@@ -374,7 +376,6 @@ function addMessage(from, message, time ,profile) {
 }
 
 function addMessageTo(message, time) {
-  const messagesDiv = document.getElementById('chat-content');
   const messageElement = document.createElement('div');
   const timeDiv = document.createElement('h5');
   const messageContainer = document.createElement('div');
@@ -398,8 +399,6 @@ function addMessageTo(message, time) {
 
 
   function addError(message) {
-    //console.log(message);
-    const messagesDiv = document.getElementById('chat-content');
     if(!messagesDiv) return;
     const messageElement = document.createElement('div');
     messageElement.textContent = message;
@@ -428,7 +427,6 @@ function addMessageTo(message, time) {
 
   function embedDriveFiles(time, to, file_id, profile){
     const messageElement = document.createElement('div');
-    const messagesDiv = document.getElementById('chat-content');
     const profileDiv = document.createElement('img');
     const messageContainer = document.createElement('div');
     messageElement.innerHTML =
@@ -472,7 +470,6 @@ function addMessageTo(message, time) {
   }
 
   function embedDriveFilesTo(time, file_id) {
-    const messagesDiv = document.getElementById('chat-content');
     const messageElement = document.createElement('div');
 
     messageElement.style.display = 'flex';
