@@ -518,8 +518,8 @@
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
         localVideo.srcObject = localStream;
         peerConnection = new RTCPeerConnection(configuration);
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-        
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
         peerConnection.ontrack = event =>{
           event.streams[0].getTracks().forEach(track=>{
             remoteStream.addTrack(track,remoteStream);
