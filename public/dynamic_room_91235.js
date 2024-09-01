@@ -420,6 +420,7 @@
     async function videoCall(){
       try{
           console.log('yooo');
+          if(localStream) return;
           const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
           localStream = stream;
           localVideo.srcObject = stream;
@@ -434,6 +435,7 @@
         localStream.getTracks().forEach(track=>track.stop());
         localVideo.srcObject=null;
         remoteVideo.srcObject=null;
+        localStream=null;
       }
       if(peerConnection){
         peerConnection.close();
@@ -481,6 +483,7 @@
         localStream = stream;
         localVideo.srcObject = stream;
         peerConnection = new RTCPeerConnection(configuration);
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
         peerConnection.ontrack = event =>{
           console.log('coming...');
           remoteVideo.srcObject = event.streams[0];
@@ -514,6 +517,9 @@
             from: window.userInfo,
             signal: {sdp: answer}
           })
+        }
+        else if (desp.type === 'answer') {
+          await peerConnection.setRemoteDescription(description);
         }
       }
       else if(data.signal.candidate){
