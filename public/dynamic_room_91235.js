@@ -519,7 +519,7 @@
           })
         }
         else if (desp.type === 'answer') {
-          await peerConnection.setRemoteDescription(description);
+          await peerConnection.setRemoteDescription(desp);
         }
       }
       else if(data.signal.candidate){
