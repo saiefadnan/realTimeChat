@@ -79,7 +79,6 @@
         })
       }
       else{
-        console.log(room.textContent);
         listHeader.textContent='Rooms';
         const userDivs = activeRoom.querySelectorAll('div');
         userDivs.forEach((userDiv)=>{
@@ -434,8 +433,14 @@
       if(localStream){
         localStream.getTracks().forEach(track=>track.stop());
         localVideo.srcObject=null;
-        // var instance = M.Modal.getInstance(videoModal);
-        //instance.close();
+        remoteVideo.srcObject=null;
+      }
+      if(peerConnection){
+        peerConnection.close();
+        peerConnection = null;
+      }
+      else{
+        console.log('Already off...');
       }
     }
 
@@ -477,6 +482,7 @@
         localVideo.srcObject = stream;
         peerConnection = new RTCPeerConnection(configuration);
         peerConnection.ontrack = event =>{
+          console.log('coming...');
           remoteVideo.srcObject = event.streams[0];
         }
         peerConnection.onicecandidate = event =>{
