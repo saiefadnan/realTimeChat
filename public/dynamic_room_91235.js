@@ -517,14 +517,6 @@
           }
         }
 
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        socket.emit('signal',{
-          room: currentRoom,
-          from: window.userInfo,
-          signal: offer
-        })
       }catch(err){
           console.error('Error accessing media devices.', err);
       }
@@ -532,7 +524,7 @@
 
     socket.on('signal',async(data)=>{
       if(!peerConnection){
-        await videoCall();
+        await receiveVideoCall();
       }
       if(data.signal.sdp){
         const desp = new RTCSessionDescription(data.signal);
