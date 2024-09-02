@@ -392,31 +392,6 @@
     messagesDiv.appendChild(messageElement);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }   
-    async function createPeerConnection(){
-      console.log('yo');
-      peerConnection.ontrack = event =>{
-        remoteVideo.srcObject = event.streams[0];
-      }
-
-      peerConnection.onicecandidate = event =>{
-        if(event.candidate){
-          socket.emit('signal',{
-            room: currentRoom,
-            from: window.userInfo,
-            signal: {candidate: event.candidate}
-          })
-        }
-      }
-
-      peerConnection.createOffer().then(offer=>{
-        peerConnection.setLocalDescription(offer);
-        socket.emit('signal',{
-          room: currentRoom,
-          from: window.userInfo,
-          signal: {sdp: offer}
-        })
-      })
-    }
 
     async function videoCall(){
       try{
@@ -425,9 +400,11 @@
           localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
           remoteStream = new MediaStream();
           peerConnection = new RTCPeerConnection(configuration);
+
           localStream.getTracks().forEach(track=>{
             peerConnection.addTrack(track, localStream);
           })
+
           peerConnection.ontrack = event =>{
             event.streams[0].getTracks().forEach(track=>{
               remoteStream.addTrack(track,remoteStream);
@@ -435,7 +412,6 @@
           }
           localVideo.srcObject = localStream;
           remoteVideo.srcObject = remoteStream;
-          //await createPeerConnection();
 
           peerConnection.onicecandidate = event =>{
             if(event.candidate){
@@ -547,10 +523,7 @@
         socket.emit('signal',{
           room: currentRoom,
           from: window.userInfo,
-          signal: {
-            sdp: offer.sdp,
-            type: offer.type
-          }
+          signal: offer
         })
       }catch(err){
           console.error('Error accessing media devices.', err);
@@ -559,16 +532,12 @@
 
     socket.on('signal',async(data)=>{
       if(!peerConnection){
-        await receiveVideoCall();
+        await videoCall();
       }
       if(data.signal.sdp){
-        const desp = new RTCSessionDescription(data.signal.sdp);
-        if (!peerConnection.currentRemoteDescription() && desp.type === 'answer') {
+        const desp = new RTCSessionDescription(data.signal);
+        if (!peerConnection.remoteDescription() && desp.type === 'answer') {
           await peerConnection.setRemoteDescription(desp);
-        }
-        else if(desp.type === 'added'){
-          const candidate = new RTCIceCandidate(data.signal.candidate);
-          await peerConnection.addIceCandidate(candidate);
         }
         else if(desp.type === 'offer'){
           await peerConnection.setRemoteDescription(desp);
@@ -577,14 +546,12 @@
           socket.emit('signal',{
             room: currentRoom,
             from: window.userInfo,
-            signal: {
-              sdp: answer.sdp,
-              type: answer.type
-            }
+            signal: answer
           })
         }
       }
-      else if(desp.type === 'added'){
+      const desp = new RTCSessionDescription(data.signal);
+      if(desp.type === 'added'){
         const candidate = new RTCIceCandidate(data.signal.candidate);
         await peerConnection.addIceCandidate(candidate);
       }
