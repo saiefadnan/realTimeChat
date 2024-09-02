@@ -536,7 +536,7 @@
       }
       if(data.signal.sdp){
         const desp = new RTCSessionDescription(data.signal);
-        if (!peerConnection.remoteDescription() && desp.type === 'answer') {
+        if (!peerConnection.remoteDescription && desp.type === 'answer') {
           await peerConnection.setRemoteDescription(desp);
         }
         else if(desp.type === 'offer'){
