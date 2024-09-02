@@ -431,10 +431,7 @@
           socket.emit('signal',{
             room: currentRoom,
             from: window.userInfo,
-            signal: {
-              sdp: offer.sdp,
-              type: offer.type
-            }
+            signal: offer
           })
 
         }catch(err){
@@ -527,7 +524,11 @@
       if(!peerConnection){
         await receiveVideoCall();
       }
-      if(data.signal.sdp){
+      if(data.signal.candidate){
+        const candidate = new RTCIceCandidate(data.signal.candidate);
+        await peerConnection.addIceCandidate(candidate);
+      }
+      else if(data.signal){
         const desp = new RTCSessionDescription(data.signal);
         if (!peerConnection.remoteDescription && desp.type === 'answer') {
           await peerConnection.setRemoteDescription(desp);
@@ -542,10 +543,6 @@
             signal: answer
           })
         }
-      }
-      if(data.signal.candidate){
-        const candidate = new RTCIceCandidate(data.signal.candidate);
-        await peerConnection.addIceCandidate(candidate);
       }
     })
 
