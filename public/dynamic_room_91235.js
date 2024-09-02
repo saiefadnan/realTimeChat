@@ -492,6 +492,7 @@
         var instance = M.Modal.getInstance(videoModal);
         instance.open();
         localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
+        remoteStream = new MediaStream();
         localVideo.srcObject = localStream;
         peerConnection = new RTCPeerConnection(configuration);
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -542,8 +543,7 @@
           })
         }
       }
-      const desp = new RTCSessionDescription(data.signal);
-      if(desp.type === 'added'){
+      if(data.signal.candidate){
         const candidate = new RTCIceCandidate(data.signal.candidate);
         await peerConnection.addIceCandidate(candidate);
       }
