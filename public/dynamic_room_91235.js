@@ -1,5 +1,6 @@
 (async function(){
     const socket = window.socket;
+    let iceCandidatesQueue = [];
     const chunkSize = 512*1024;
     const invited = [];
     const roomModal = document.getElementById('room-creation-modal');
@@ -524,11 +525,15 @@
       if(!peerConnection){
         await receiveVideoCall();
       }
-      if(data.signal.candidate){
+      if (data.signal.candidate) {
         const candidate = new RTCIceCandidate(data.signal.candidate);
-        await peerConnection.addIceCandidate(candidate);
-      }
-      else if(data.signal){
+
+        if (peerConnection.remoteDescription) {
+            await peerConnection.addIceCandidate(candidate);
+        } else {
+           iceCandidatesQueue.push(candidate);
+        }
+    }else if(data.signal){
         const desp = new RTCSessionDescription(data.signal);
         if (!peerConnection.remoteDescription && desp.type === 'answer') {
           await peerConnection.setRemoteDescription(desp);
@@ -543,6 +548,9 @@
             signal: answer
           })
         }
+      }
+      while(iceCandidatesQueue.length){
+        await peerConnection.addIceCandidate(iceCandidatesQueue.shift());
       }
     })
 
