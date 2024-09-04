@@ -414,6 +414,15 @@
           localVideo.srcObject = localStream;
           remoteVideo.srcObject = remoteStream;
 
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+
+          socket.emit('signal',{
+            room: currentRoom,
+            from: window.userInfo,
+            signal: offer
+          })
+
           peerConnection.onicecandidate = event =>{
             if(event.candidate){
               socket.emit('signal',{
@@ -425,15 +434,6 @@
               })
             }
           }
-
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-
-          socket.emit('signal',{
-            room: currentRoom,
-            from: window.userInfo,
-            signal: offer
-          })
 
         }catch(err){
             console.error('Error accessing media devices.', err);
