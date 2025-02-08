@@ -1,6 +1,5 @@
 (async function(){
     const socket = window.socket;
-    let iceCandidatesQueue = [];
     const chunkSize = 512*1024;
     const invited = [];
     const roomModal = document.getElementById('room-creation-modal');
@@ -22,19 +21,15 @@
     const videoModal = document.getElementById('video-modal');
     const listHeader  = document.getElementById('list-header');
     const messagesDiv = document.getElementById('chat-content');
-    let debounceTimer;
-    let localStream = null;
-    let remoteStream = null;
-    let currentRoom;
-    let peerConnection;
-    const configuration = {
+    const iceConfiguration = {
       iceServers: [
-          {
-              urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
-          }
-      ],
-      iceCandidatePoolSize: 8
-  };
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'turn:relay.backups.cz', credential: 'webrtc', username: 'webrtc' }
+      ]
+    };
+    let debounceTimer;
+    let currentRoom;
+    
     function load() {
         var elems = document.querySelectorAll('.modal');
         var instances = M.Modal.init(elems);
@@ -99,7 +94,8 @@
             debounceTimer = setTimeout(() => func.apply(this, args), delay);
         };
     }
-    async function Invite(){
+    async function Invite(e){
+      e.preventDefault();
       if(currentRoom===undefined){
         M.toast({html: 'Select a room from list!', classes: 'rounded'});
       }else{
@@ -394,66 +390,27 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }   
 
-    async function videoCall(){
-      try{
-          console.log('yooo');
-          if(localStream) return;
-          localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
-          remoteStream = new MediaStream();
-          peerConnection = new RTCPeerConnection(configuration);
-
-          localStream.getTracks().forEach(track=>{
-            peerConnection.addTrack(track, localStream);
-          })
-
-          peerConnection.ontrack = event =>{
-            event.streams[0].getTracks().forEach(track=>{
-              remoteStream.addTrack(track,remoteStream);
-            })
-          }
-          localVideo.srcObject = localStream;
-          remoteVideo.srcObject = remoteStream;
-
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-
-          socket.emit('signal',{
-            room: currentRoom,
-            from: window.userInfo,
-            signal: offer
-          })
-
-          peerConnection.onicecandidate = event =>{
-            if(event.candidate){
-              socket.emit('signal',{
-                room: currentRoom,
-                from: window.userInfo,
-                signal: {
-                  candidate: event.candidate.toJSON()
-                }
-              })
-            }
-          }
-
-        }catch(err){
-            console.error('Error accessing media devices.', err);
-        }
+    function videoCall(){
+      const localConnection = new RTCPeerConnection(iceConfiguration);
+      localConnection.onicecandidate = e =>{
+        console.log("new ice candidate found");
+        //console.log(JSON.stringify(localConnection.localDescription));
       }
+
+      const channel = localConnection.createDataChannel('channel');
+      channel.onmessage = e => console.log('message received!',e.data);
+      channel.onopen = e => console.log('connection opened!');
+      channel.onclose = e => console.log('connection closed');
+
+      localConnection.createOffer().then(o=>{
+        localConnection.setLocalDescription(o);
+        socket.emit('signal',{room: currentRoom,signal: o});
+      });
+
+    }
 
     function exitVideoCall(){
-      if(localStream){
-        localStream.getTracks().forEach(track=>track.stop());
-        localVideo.srcObject=null;
-        remoteVideo.srcObject=null;
-        localStream=null;
-      }
-      if(peerConnection){
-        peerConnection.close();
-        peerConnection = null;
-      }
-      else{
-        console.log('Already off...');
-      }
+      
     }
 
     load();
@@ -484,73 +441,37 @@
       }
     })
 
-    async function receiveVideoCall(){
-      try{
-        console.log('receive');
-        var instance = M.Modal.getInstance(videoModal);
-        instance.open();
-        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true})
-        remoteStream = new MediaStream();
-        localVideo.srcObject = localStream;
-        peerConnection = new RTCPeerConnection(configuration);
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        peerConnection.ontrack = event =>{
-          event.streams[0].getTracks().forEach(track=>{
-            remoteStream.addTrack(track,remoteStream);
-          })
-        }
-        localVideo.srcObject = localStream;
-        remoteVideo.srcObject = remoteStream;
-        //await createPeerConnection();
-
-        peerConnection.onicecandidate = event =>{
-          if(event.candidate){
-            socket.emit('signal',{
-              room: currentRoom,
-              from: window.userInfo,
-              signal: {
-                candidate: event.candidate.toJSON()
-              }
-            })
-          }
+    async function receiveVideoCall(signal){
+      const remoteConnection = new RTCPeerConnection();
+      remoteConnection.onicecandidate = e =>  {
+        console.log(" NEW ice candidnat!! on localconnection reprinting SDP " )
+         //console.log(JSON.stringify(remoteConnection.localDescription) )
         }
 
-      }catch(err){
-          console.error('Error accessing media devices.', err);
-      }
+        remoteConnection.ondatachannel= e => {
+          const receiveChannel = e.channel;
+          receiveChannel.onmessage =e =>  console.log("messsage received!!!"  + e.data )
+          receiveChannel.onopen = e => console.log("open!!!!");
+          receiveChannel.onclose =e => console.log("closed!!!!!!");
+          remoteConnection.channel = receiveChannel;
+        }
+        console.log(signal.type);
+        remoteConnection.setRemoteDescription(new RTCSessionDescription(signal)).then(a=> console.log('done'));
+        await remoteConnection.createAnswer().then(a => remoteConnection.setLocalDescription(a)).then(a=>{
+          socket.emit('signal',{room: currentRoom,signal: remoteConnection.localDescription})
+        });
+        console.log(JSON.stringify(remoteConnection.localDescription))
     }
 
-    socket.on('signal',async(data)=>{
-      if(!peerConnection){
-        await receiveVideoCall();
+    socket.on('signal',async({signal})=>{
+      console.log(signal);
+      if(signal.type==='offer'){
+        console.log(signal.type);
+        await receiveVideoCall(signal);
       }
-      if (data.signal.candidate) {
-        const candidate = new RTCIceCandidate(data.signal.candidate);
-
-        if (peerConnection.remoteDescription) {
-            await peerConnection.addIceCandidate(candidate);
-        } else {
-           iceCandidatesQueue.push(candidate);
-        }
-    }else if(data.signal){
-        const desp = new RTCSessionDescription(data.signal);
-        if (!peerConnection.remoteDescription && desp.type === 'answer') {
-          await peerConnection.setRemoteDescription(desp);
-        }
-        else if(desp.type === 'offer'){
-          await peerConnection.setRemoteDescription(desp);
-          const answer =  await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit('signal',{
-            room: currentRoom,
-            from: window.userInfo,
-            signal: answer
-          })
-        }
-      }
-      while(iceCandidatesQueue.length){
-        await peerConnection.addIceCandidate(iceCandidatesQueue.shift());
+      else{
+        console.log(signal.type);
+        localConnection.setRemoteDescription(signal).then(console.log('done'))
       }
     })
 

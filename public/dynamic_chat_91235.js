@@ -93,6 +93,9 @@
     document.getElementById('file-input').value = '';
   }
   //send message
+  async function _sendMessage(e){
+    if(e.key == "Enter") sendMessage();
+  }
   async function sendMessage(rec=null, msg=null){
     let recipient = document.getElementById('recipientInput').value;
     let message = document.getElementById('message-input').value;
@@ -142,6 +145,9 @@ if(window.socket){
   
   sendButton.addEventListener('click', sendMessage);
   window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
+
+  document.getElementById('message-input').addEventListener('keypress', _sendMessage);
+  window.eventListeners.push({element: sendButton, event: 'keypress', handler: _sendMessage});
   
   socket.on('private message', ({ from, time, message, profile }) => {
     const date = new Date(time).toLocaleString();
@@ -255,6 +261,8 @@ if(window.socket){
 
 // 7)BuildActiveDiv
   function BuildActiveDiv(activeBar, name, profile_src){
+    if(window.userInfo.username===name) return;
+
     const userDiv = document.createElement('div');
     const userNameDiv = document.createElement('h5');
     const profileDiv = document.createElement('img');

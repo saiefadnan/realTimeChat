@@ -280,10 +280,10 @@ function socketHandler(io){
             }
         })
 
-        socket.on('signal',data=>{
-            socket.broadcast.to(data.room).emit('signal',{
-                from: data.from,
-                signal: data.signal
+        socket.on('signal',({room,signal})=>{
+            console.log(signal.type);
+            socket.broadcast.to(room).emit('signal',{
+                signal: signal
             })
         })
 
