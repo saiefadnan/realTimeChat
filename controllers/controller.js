@@ -10,8 +10,9 @@ const { drive } = require('../Gdrive');
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
 const secretKey = process.env.JWT_SECRET;
-const init=true;
+const init=false;
 let io_;
+
 const refreshToken = async(profilePicture)=>{
     const blobName = decodeURIComponent(profilePicture.substring(profilePicture.lastIndexOf('/')+1));
     console.log(blobName);
