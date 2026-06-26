@@ -25,10 +25,10 @@
                     const timeStr = new Date(chat.timestamp).toLocaleString();
 
                     if (isSelf) {
-                        if (chat.type !== 'text') embedDriveFilesTo(timeStr, chat.content);
+                        if (chat.type !== 'text') embedDriveFilesTo(timeStr, chat.content, chat.type);
                         else addMessageTo(chat.content, timeStr);
                     } else {
-                        if (chat.type !== 'text') embedDriveFiles(timeStr, chat.sender, chat.content, chat.imageUrl);
+                        if (chat.type !== 'text') embedDriveFiles(timeStr, chat.sender, chat.content, chat.imageUrl, chat.type);
                         else addMessage(chat.sender, chat.content, timeStr, chat.imageUrl);
                     }
                 });
@@ -210,8 +210,9 @@
             socket.on(event, ({ from, time, fileData, profile, state }) => {
                 if (!state) return;
                 const date = new Date(time).toLocaleString();
-                if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
-                else embedDriveFiles(date, from, fileData, profile);
+                const type = event.includes('image') ? 'image' : event.includes('video') ? 'video' : 'document';
+                if (from === window.userInfo.username) embedDriveFilesTo(date, fileData, type);
+                else embedDriveFiles(date, from, fileData, profile, type);
             });
         });
 
@@ -501,7 +502,11 @@
         }, 3000);
     }
 
-    function embedDriveFiles(time, from, file_id, profile) {
+    function buildDrivePreview(fileId, type) {
+        return window.ChatMediaPreview.buildDrivePreview(fileId, type);
+    }
+
+    function embedDriveFiles(time, from, file_id, profile, type = 'document') {
         const container = document.createElement('div');
         container.className = 'message-receive-container';
         container.style.flexDirection = 'column';
@@ -528,25 +533,12 @@
         info.append(nameSpan, timeSpan);
 
         header.append(img, info);
-
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
-        Object.assign(iframe.style, {
-            width: '100%',
-            maxWidth: '300px',
-            height: '215px',
-            border: 'none',
-            marginTop: '5px',
-            borderRadius: '8px',
-            backgroundColor: '#000'
-        });
-
-        container.append(header, iframe);
+        container.append(header, buildDrivePreview(file_id, type));
         messagesDiv.appendChild(container);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    function embedDriveFilesTo(time, file_id) {
+    function embedDriveFilesTo(time, file_id, type = 'document') {
         const container = document.createElement('div');
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
@@ -556,20 +548,7 @@
         const timeLabel = document.createElement('small');
         timeLabel.textContent = time;
         timeLabel.style.color = '#777';
-
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
-        Object.assign(iframe.style, {
-            width: '100%',
-            maxWidth: '300px',
-            height: '215px',
-            border: 'none',
-            marginTop: '5px',
-            borderRadius: '8px',
-            backgroundColor: '#000'
-        });
-
-        container.append(timeLabel, iframe);
+        container.append(timeLabel, buildDrivePreview(file_id, type));
         messagesDiv.appendChild(container);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }

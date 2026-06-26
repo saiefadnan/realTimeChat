@@ -1,5 +1,6 @@
 (function () {
     const profileInput = document.getElementById('profile-pic');
+    const signupForm = document.getElementById('signup-form');
     const signupBtn = document.getElementById('signup-button');
     const errorBox = document.getElementById('error-box');
     const previewImg = document.getElementById('profile-container').querySelector('img');
@@ -75,8 +76,8 @@
             }
         }
 
-        signupBtn.addEventListener('click', handleSignup);
-        window.eventListeners.push({ element: signupBtn, event: 'click', handler: handleSignup });
+        signupForm.addEventListener('submit', handleSignup);
+        window.eventListeners.push({ element: signupForm, event: 'submit', handler: handleSignup });
 
         function showError(msg) {
             errorBox.style.display = 'block';

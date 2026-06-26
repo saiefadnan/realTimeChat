@@ -15,31 +15,25 @@
         </div>
 
         <div class="row">
-            <form class="col s12">
+            <form id="signup-form" class="col s12">
                 <div class="input-field col s12">
-                    <input id="email" type="email" class="validate">
+                    <input id="email" type="email" class="validate" autocomplete="email">
                     <label for="email">Email</label>
                 </div>
                 <div class="input-field col s12">
-                    <input id="username" type="text" class="validate">
+                    <input id="username" type="text" class="validate" autocomplete="username">
                     <label for="username">Username</label>
                 </div>            
                 <div class="input-field col s12">
-                        <input
-                            id="password"
-                            type="password"
-                            class="validate"
-                            minlength="6"
-                            required
-                        >
-                        <label f    or="password">Password</label>  
-                        <span
-                            class="helper-text"
-                            data-error="Password must be at least 6 characters."
-                            data-success=""
-                        >
-                        Password must be at least 6 characters.
-                    </span>
+                    <input
+                        id="password"
+                        type="password"
+                        class="validate"
+                        minlength="6"
+                        autocomplete="new-password"
+                        required
+                    >
+                    <label for="password">Password</label>
                 </div>
                 <div class="input-field col s12 center-align">
                     <button id="signup-button" class="btn waves-effect waves-light" type="submit">
