@@ -2,14 +2,11 @@ const cron = require('node-cron');
 const User = require('../mongodb/user');
 const jwt = require('jsonwebtoken');
 const { admin, db } = require('../firebase');
-const { StorageSharedKeyCredential } = require('@azure/storage-blob');
-const { uploadImageToAzure, generateSasToken } = require('../azureUpload');
+const { uploadImageToCloudinary } = require('../cloudinaryUpload');
 const { names, photos, users } = require('../socketHandler');
 const { drive } = require('../Gdrive');
 
 const DEACTIVE_AVATAR = 'https://ui-avatars.com/api/?name=?&background=333&color=fff';
-const accountName = process.env.AZURE_ACCOUNT_NAME;
-const accountKey = process.env.AZURE_ACCOUNT_KEY;
 const secretKey = process.env.JWT_SECRET;
 
 // io_ is set by assign() once the HTTP server is ready
@@ -36,18 +33,6 @@ async function deleteFile(file_id) {
         console.error('[GDrive] File deletion failed:', err.message);
     }
 }
-
-/**
- * Generates a fresh Azure SAS token for a profile picture blob.
- * @param {string} profilePicture - Full Azure blob URL (without existing SAS)
- * @returns {Promise<string>} New SAS token string
- */
-const refreshToken = async (profilePicture) => {
-    const blobName = decodeURIComponent(profilePicture.substring(profilePicture.lastIndexOf('/') + 1));
-    const credential = new StorageSharedKeyCredential(accountName, accountKey);
-    const sasToken = await generateSasToken(blobName, credential);
-    return sasToken;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth Controllers
@@ -82,11 +67,10 @@ const loginData = async (req, res) => {
             });
         }
 
-        const sasToken = await refreshToken(user.profilePicture);
         const jwtoken = jwt.sign(
             {
                 username: user.username,
-                imageurl: `${user.profilePicture}?${sasToken}`
+                imageurl: user.profilePicture
             },
             secretKey,
             { expiresIn: '30d' }
@@ -131,12 +115,14 @@ const signinData = async (req, res) => {
         }
 
         let blobPath = 'https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif';
-        let sasToken = '';
 
         if (profile) {
-            const { blobPath: uploadedPath, sasToken: uploadedToken } = await uploadImageToAzure(profile);
-            blobPath = uploadedPath;
-            sasToken = uploadedToken;
+            try {
+                const { imageUrl } = await uploadImageToCloudinary(profile);
+                blobPath = imageUrl;
+            } catch (uploadErr) {
+                console.warn('[Signup] Cloudinary upload failed, using default avatar:', uploadErr.message);
+            }
         }
 
         const user = new User({ username, password, email, profilePicture: blobPath });
@@ -145,7 +131,7 @@ const signinData = async (req, res) => {
         const jwtoken = jwt.sign(
             {
                 username: user.username,
-                imageurl: `${user.profilePicture}?${sasToken}`
+                imageurl: user.profilePicture
             },
             secretKey,
             { expiresIn: '30d' }
@@ -286,25 +272,8 @@ const cleanUpOldChats = async () => {
             console.log('[Cron] Database cleanup complete.');
         }
 
-        // Refresh Azure SAS tokens for all currently connected users
-        for (const socket_id in photos) {
-            const baseUrl = photos[socket_id].substring(0, photos[socket_id].lastIndexOf('?'));
-            if (!baseUrl) continue;
-            try {
-                const newToken = await refreshToken(baseUrl);
-                photos[socket_id] = `${baseUrl}?${newToken}`;
-            } catch (tokenErr) {
-                console.error(`[Cron] Failed to refresh token for socket ${socket_id}:`, tokenErr.message);
-            }
-        }
-
-        // Broadcast updated profile pictures to all connected clients
-        if (io_ && Object.keys(names).length > 0) {
-            const activeUsers = Object.values(names);
-            const profile = Object.values(photos);
-            io_.emit('init activeUsers', { activeUsers, profile });
-            console.log('[Cron] SAS tokens refreshed and broadcast.');
-        }
+        // Cloudinary URLs are permanent — no token refresh needed
+        console.log('[Cron] Cleanup complete. Profile picture URLs are permanent (Cloudinary).');
     } catch (err) {
         console.error('[Cron] Error during cleanup:', err);
     }
@@ -317,7 +286,6 @@ module.exports = {
     loginData,
     signinData,
     chatData,
-    refreshToken,
     assign,
     getUserInfo,
     queryUser
