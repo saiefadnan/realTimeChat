@@ -23,13 +23,20 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 const corsOptions = {
     origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. same-origin, Postman)
-        if (!origin || allowedOrigins.includes(origin)) {
+        // Allow requests with no origin (e.g. same-origin)
+        // In production, also allow any subdomain of onrender.com
+        if (
+            !origin || 
+            allowedOrigins.includes(origin) || 
+            origin.endsWith('.onrender.com') ||
+            process.env.NODE_ENV !== 'production'
+        ) {
             callback(null, true);
         } else {
             callback(new Error(`CORS policy violation: ${origin} is not allowed.`));
         }
     },
+
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -99,10 +106,15 @@ server.listen(PORT, '0.0.0.0', () => {
 // ─── Graceful Shutdown ────────────────────────────────────────────────────── 
 process.on('SIGTERM', () => {
     console.log('[Server] SIGTERM received, shutting down gracefully...');
-    server.close(() => {
-        mongoose.connection.close(false, () => {
+    server.close(async () => {
+        try {
+            await mongoose.connection.close();
             console.log('[Server] Shutdown complete.');
             process.exit(0);
-        });
+        } catch (err) {
+            console.error('[Server] Error during shutdown:', err);
+            process.exit(1);
+        }
     });
 });
+
