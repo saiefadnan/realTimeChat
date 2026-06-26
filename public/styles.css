@@ -144,7 +144,7 @@ nav {
 
 
 /* ─── Sidebars (Active Homies / Rooms) ───────────────────────────────────────── */
-.active-container, #room-container {
+.active-container, #room-container, #room-sidebar-container {
     width: 260px;
     background-color: var(--bg-main); /* Sidebar now matching main theme */
     border-right: 1px solid var(--border);
@@ -207,7 +207,7 @@ nav {
 
 
 /* ─── Chat Content Area ─────────────────────────────────────────────────────── */
-#chat-container {
+#chat-container, #room-chat-wrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -422,11 +422,11 @@ nav {
 
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
-    .chat-container {
+    .chat-container, .room-container {
         flex-direction: column;
     }
     
-    .active-container {
+    .active-container, #room-sidebar-container {
         width: 100%;
         height: 140px;
         background-color: var(--bg-surface); /* Distinct color for top-bar on mobile */
@@ -435,18 +435,92 @@ nav {
         padding: 5px 0;
     }
 
-    
-    #active {
+    #active, #room-list {
         display: flex;
         gap: 15px;
         padding: 0 15px;
         overflow-x: auto;
         overflow-y: hidden;
+        align-items: center;
     }
     
     #box {
         padding: 25px;
     }
+
+    /* Room controls header on mobile */
+    .room-controls-header {
+        padding: 8px 15px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+/* ─── Room Specific Layout ────────────────────────────────────────────────── */
+.room-controls-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 30px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    min-height: 60px;
+    flex-shrink: 0;
+}
+
+.room-title-label {
+    margin: 0;
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+}
+
+.room-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.room-action-buttons .btn {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    min-width: unset !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px !important;
+}
+
+/* Room List Cards */
+.room-item {
+    height: 50px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    background-color: var(--bg-item);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.room-item:hover {
+    border-color: var(--accent);
+    color: var(--text-main);
+}
+
+.active-room-card {
+    background-color: var(--accent) !important;
+    color: #000 !important;
+    border-color: var(--accent) !important;
+    font-weight: 700;
 }
 
 

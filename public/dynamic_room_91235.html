@@ -1,29 +1,33 @@
 <div class="room-container">
-  <div id="room-container" class="room-container">
-    <h5 id="list-header" style="font-weight:bold;font-size:small">Rooms</h5> 
-    <div id="room-list">
+    <div id="room-sidebar-container" class="active-container">
+        <h5 id="list-header" style="font-weight:bold;font-size:small;padding:0 20px;">Rooms</h5>
+        <div id="room-list"></div>
     </div>
-  </div>
 
-  <div id="chat-container">
-      <div class="input-field" style="display: flex;align-items:center;justify-content: center;border: 1px solid #ddd;gap:20px;padding: 5px;width: 100%;">
-        <legend id="current-room" style="width: 100px;"></legend>
-        <a class="waves-effect waves-light btn modal-trigger" href="#room-creation-modal"><i class="material-icons left">add</i></a>
-        <a class="waves-effect waves-light btn modal-trigger" href="#search-modal"><i class="material-icons left">group_add</i></a>
-        <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger" style="background-color: #2196F3;display: flex;justify-content:center;">
-          <i class="material-icons left">videocam</i>
-      </a>
-      </div>
-    <div id="chat-content" class="chat-content"></div>
-    <div class="chat-footer">
-        <textarea id="message-input" class="message-input" rows="4" cols="15" placeholder="Type your message...."></textarea>
-        <button id="send-button"><i class="fas fa-paper-plane send-icon"></i></button>
-        <label for="file-input" class="file-label">
-            <div class="custom-file-upload" id="custom-file-upload">
-                <i class="fas fa-file upload-icon"></i>
+    <div id="room-chat-wrapper" class="chat-main-area">
+        <div class="room-controls-header">
+            <legend id="current-room" class="room-title-label"></legend>
+            <div class="room-action-buttons">
+                <a class="waves-effect waves-light btn modal-trigger" href="#room-creation-modal" title="Create Room"><i class="material-icons">add</i></a>
+                <a class="waves-effect waves-light btn modal-trigger" href="#search-modal" title="Add Homies"><i class="material-icons">group_add</i></a>
+                <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger blue" title="Video Call">
+                    <i class="material-icons">videocam</i>
+                </a>
             </div>
-            <input type="file" id="file-input" class="file-input" placeholder="file" accept="*/*" style="display: none;">
-        </label>
+        </div>
+        
+        <div id="chat-content" class="chat-content"></div>
+        
+        <div class="chat-footer">
+            <textarea id="message-input" class="message-input" rows="1" placeholder="Type your message...."></textarea>
+            <button id="send-button"><i class="fas fa-paper-plane send-icon"></i></button>
+            <label for="file-input" class="file-label">
+                <div class="custom-file-upload" id="custom-file-upload">
+                    <i class="fas fa-file upload-icon"></i>
+                </div>
+                <input type="file" id="file-input" class="file-input" style="display: none;">
+            </label>
+        </div>
     </div>
 </div>
 
@@ -41,11 +45,10 @@
       <div class="modal-content">
         <h4>Search & add Homies</h4>
         <form>
-          <div class="input-field" style="display: flex;align-items:center;">
-              <i class="material-icons">search</i>
-            <input id="search" type="search" required>
-            <i class="material-icons" id="clear" onclick="">close</i>
-          </div>
+          <div class="input-field">
+        <input id="search" type="text" class="validate" required>
+        <label for="search">Search Users</label>
+      </div>
           <div id="item-list">
           </div>
           <div class="input-field" style="display: flex;justify-content: center;">

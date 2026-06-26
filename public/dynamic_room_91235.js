@@ -36,12 +36,6 @@
         const isMobile = window.innerWidth < 1000;
         const listHeader = document.getElementById('list-header');
         if (listHeader) listHeader.textContent = isMobile ? '' : 'Rooms';
-
-        const userDivs = activeRoom.querySelectorAll('div');
-        userDivs.forEach(div => {
-            div.style.width = isMobile ? '70px' : '85%';
-            div.style.margin = isMobile ? '5px' : '5px auto';
-        });
     }
 
     async function handleSearch() {
@@ -168,32 +162,17 @@
 
     function addRoomToList(name) {
         const div = document.createElement('div');
-        Object.assign(div.style, {
-            height: '50px',
-            color: '#ccc',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            cursor: 'pointer',
-            backgroundColor: 'var(--bg-item)',
-            marginBottom: '10px',
-
-            transition: 'transform 0.1s'
-        });
+        div.className = 'room-item'; 
         div.textContent = name;
 
         div.addEventListener('mouseover', () => div.style.transform = 'scale(0.95)');
         div.addEventListener('mouseout', () => div.style.transform = 'scale(1)');
         div.addEventListener('click', () => {
             currentRoom = name;
-            activeRoom.querySelectorAll('div').forEach(d => {
-                d.style.backgroundColor = 'var(--bg-item)';
-                d.style.color = '#ccc';
+            activeRoom.querySelectorAll('.room-item').forEach(d => {
+                d.classList.remove('active-room-card');
             });
-            div.style.backgroundColor = 'var(--accent)';
-            div.style.color = '#000';
+            div.classList.add('active-room-card');
             currentRoom = name;
             CurrentroomLabel.textContent = `Room: ${name}`;
         });
@@ -376,19 +355,19 @@
     const searchInput = document.getElementById('search');
     if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 400));
     
-    const createRoomBtn = document.getElementById('create-room-btn');
+    const createRoomBtn = document.getElementById('create-room');
     if (createRoomBtn) createRoomBtn.addEventListener('click', handleRoomCreate);
     
-    const inviteUserBtn = document.getElementById('invite-user-btn');
+    const inviteUserBtn = document.getElementById('invite-user');
     if (inviteUserBtn) {
         inviteUserBtn.addEventListener('click', () => {
             if (!currentRoom) return M.toast({ html: 'Select a room!', classes: 'rounded' });
-            socket.emit('invite', {
-                room: { name: currentRoom, admin: window.userInfo.username },
-                usernames: invitedUsers
-            });
+            // socket.emit('invite', {
+            //     room: { name: currentRoom, admin: window.userInfo.username },
+            //     usernames: invitedUsers
+            // });
             invitedUsers = [];
-            M.Modal.getInstance(document.getElementById('search-modal')).close();
+            // M.Modal.getInstance(document.getElementById('search-modal')).close();
         });
     }
     
