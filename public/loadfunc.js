@@ -13,6 +13,60 @@ function cleanUp(existingScript){
     }
     //('clean....');
 }
+
+/**
+ * Shows a global loading overlay.
+ */
+export function showLoading(text = "Loading...") {
+    if (document.querySelector('.loading-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = `
+        <div class="spinner"></div>
+        <div class="loading-text" style="color:white; font-weight:600;">${text}</div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+/**
+ * Hides the global loading overlay.
+ */
+export function hideLoading() {
+    const overlay = document.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 300);
+    }
+}
+
+/**
+ * Updates the file upload progress UI.
+ */
+export function updateUploadProgress(percent, filename = "File") {
+    let container = document.querySelector('.upload-progress-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'upload-progress-container';
+        container.innerHTML = `
+            <div class="loading-text" style="margin-bottom:8px; font-weight:600;">Uploading <span id="up-filename"></span>...</div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="loading-text" style="margin-top:6px; font-size:11px; text-align:right;"><span id="up-percent">0</span>%</div>
+        `;
+        document.body.appendChild(container);
+    }
+    
+    container.style.display = 'block';
+    container.querySelector('#up-filename').textContent = filename;
+    container.querySelector('#up-percent').textContent = Math.round(percent);
+    container.querySelector('.progress-bar-fill').style.width = `${percent}%`;
+
+    if (percent >= 100) {
+        setTimeout(() => {
+            container.style.display = 'none';
+        }, 1000);
+    }
+}
+
 function closeAllSockets(socket){
     console.log('all sockets closing...');
     socket.off('disconnect');
@@ -34,6 +88,7 @@ function closeAllSockets(socket){
     socket.off('room file');
 }
 export function loadPage(content,element=null){
+    showLoading(); // Show loader on start
     const page= `dynamic_${content.replace('.html','')}_91235.html`;
     fetch(page)
     .then(response=>{
@@ -63,6 +118,10 @@ export function loadPage(content,element=null){
             };
             script.onerror = (error) => {
                 console.error('Error loading script', error);
+                hideLoading();
+            };
+            script.onload = () => {
+                hideLoading(); // Hide when script is ready
             };
             if(element){
                 const links = document.querySelectorAll('.tab');
@@ -84,33 +143,37 @@ export function toggleColor(element){
     element.classList.toggle('clicked');
 }
 
-export function handleLogout(){
+/**
+ * Updates the navigation bar visibility based on login status.
+ * @param {boolean} isLoggedIn
+ */
+export function updateNavState(isLoggedIn) {
+    const navSelectors = {
+        logout: '.nav-logout',
+        signup: '.nav-signup',
+        login: '.nav-login',
+        chat: '.nav-chat',
+        room: '.nav-room'
+    };
+
+    const setDisplay = (selector, display) => {
+        document.querySelectorAll(selector).forEach(el => el.style.display = display);
+    };
+
+    setDisplay(navSelectors.logout, isLoggedIn ? 'block' : 'none');
+    setDisplay(navSelectors.chat, isLoggedIn ? 'block' : 'none');
+    setDisplay(navSelectors.room, isLoggedIn ? 'block' : 'none');
+    setDisplay(navSelectors.signup, isLoggedIn ? 'none' : 'block');
+    setDisplay(navSelectors.login, isLoggedIn ? 'none' : 'block');
+
+    if (!isLoggedIn) {
+        const defaultProfile = "https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif";
+        document.querySelectorAll('.circle.responsive-img').forEach(img => img.src = defaultProfile);
+    }
+}
+
+export function handleLogout() {
     Cookies.remove('token');
-        window.loadPage('login.html','login');
-        var logouts = document.getElementsByClassName('nav-logout');
-        for (let logout of logouts) {
-            logout.style.display = 'none';
-        }
-
-        var signups = document.getElementsByClassName('nav-signup');
-        for (let signup of signups) {
-            signup.style.display = 'block';
-        }
-
-        var logins = document.getElementsByClassName('nav-login');
-        for (let login of logins) {
-            login.style.display = 'block';
-        }
-        var chats = document.getElementsByClassName('nav-chat');
-        for (let chat of chats) {
-            chat.style.display = 'none';
-        }
-        var rooms = document.getElementsByClassName('nav-room');
-        for (let room of rooms) {
-            room.style.display = 'none';
-        }
-        var profileDivs = document.getElementsByClassName('circle responsive-img');
-        Array.from(profileDivs).forEach((profileDiv)=>{
-            profileDiv.src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif";
-        })
+    updateNavState(false);
+    window.loadPage('login.html', 'login');
 }

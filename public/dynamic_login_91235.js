@@ -1,74 +1,69 @@
-(function(){
-  const login = document.getElementById('login-button');
-  if(Cookies.get('token')){
-    showerror('Seems like u are already logged in!');
-  }
-  async function Login(e){
-    e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      if(!email.trim()){
-          showerror('Email is missing');
-      }
-      else if(!password.trim()){
-          showerror('Password is missing');
-      }else{
-        if (window.socket && window.socket.connected) {
-          window.socket.disconnect();
-        } 
-          const reqData ={
-              email: email,
-              password: password
+(function () {
+    const loginBtn = document.getElementById('login-button');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const errorBox = document.getElementById('error-box');
+
+    // Dynamically import helper to keep code clean and modular
+    import('./loadfunc.js').then(({ updateNavState }) => {
+
+        if (Cookies.get('token')) {
+            showError('You are already logged in!');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email) return showError('Email is missing');
+            if (!password) return showError('Password is missing');
+
+            // Feedback: Disable button and show loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Authenticating...';
+            errorBox.style.display = 'none';
+
+            if (window.socket && window.socket.connected) {
+                window.socket.disconnect();
             }
-            const {login,notify, token} = await window.fetchData('/api/login',reqData);
-            if(login){
-              Cookies.set('token', token, { expires: 30, sameSite: 'Strict' });
-              shownote(notify);
-              var logouts = document.getElementsByClassName('nav-logout');
-              for (let logout of logouts) {
-                  logout.style.display = 'block';
-              }
 
-              var signups = document.getElementsByClassName('nav-signup');
-              for (let signup of signups) {
-                  signup.style.display = 'none';
-              }
+            try {
+                const reqData = { email, password };
+                const { login: success, notify, token } = await window.fetchData('/api/login', reqData);
 
-              var logins = document.getElementsByClassName('nav-login');
-              for (let login of logins) {
-                  login.style.display = 'none';
-              }
-              var chats = document.getElementsByClassName('nav-chat');
-              for (let chat of chats) {
-                  chat.style.display = 'block';
-              }
-              var rooms = document.getElementsByClassName('nav-room');
-              for (let room of rooms) {
-                  room.style.display = 'block';
-              }
+                if (success) {
+                    Cookies.set('token', token, { expires: 30, sameSite: 'Strict', secure: true });
+                    showNote(notify);
+                    updateNavState(true);
+                    // Page transition handled in showNote
+                } else {
+                    showError(notify);
+                }
+            } catch (err) {
+                showError('Network error. Please ensure the server is running.');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
             }
-            else{
-              showerror(notify);
-            }
-      }
-  }
+        }
 
+        loginBtn.addEventListener('click', handleLogin);
+        window.eventListeners.push({ element: loginBtn, event: 'click', handler: handleLogin });
 
-  login.addEventListener('click', Login);
-  window.eventListeners.push({element: login, event: 'click', handler: Login});
+        function showError(msg) {
+            errorBox.style.display = 'block';
+            errorBox.style.color = 'crimson';
+            errorBox.textContent = msg;
+        }
 
-  function showerror(field){
-      const errorbox = document.getElementById('error-box');
-      errorbox.style.display = 'block';
-      errorbox.textContent = field;
-  }
+        function showNote(msg) {
+            errorBox.style.display = 'block';
+            errorBox.style.color = '#2ecc71'; // Industry green
+            errorBox.textContent = msg;
+            setTimeout(() => window.loadPage('chat.html', 'chat'), 800);
+        }
+    });
 
-  function shownote(msg){
-      const errorbox = document.getElementById('error-box');
-      errorbox.style.display = 'block';
-      errorbox.style.color = 'green'
-      errorbox.textContent = msg;
-      window.loadPage('chat.html', 'chat');
-  }
-
-})()
+})();

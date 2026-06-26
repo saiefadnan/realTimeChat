@@ -1,161 +1,130 @@
 const {google} = require('googleapis'); 
 const crypto = require('crypto');
-const path = require('path');
 const { Readable } = require('stream');
-const {v4: uuidv4} = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+
 const auth = new google.auth.GoogleAuth({
     keyFile: 'private/realtimechat59-4f88949d8c8b.json',
-    //keyFile: '/etc/secrets/realtimechat59-4f88949d8c8b.json',
     scopes: ['https://www.googleapis.com/auth/drive'],
-  });
-const drive = google.drive({version: 'v3', auth});
-console.log('gdrive connected...');
-const gatherChunks = [];
+});
+const drive = google.drive({ version: 'v3', auth });
+console.log('[GDrive] Connected.');
+
+// Per-socket chunk buffer — Map<socketId, Buffer[]>
+// Fixes race condition where concurrent uploads from different users
+// would share a single global array and corrupt each other's data.
+const gatherChunksMap = new Map();
+
 const documentsId = process.env.DOCUMENTS_ID;
 const imageId = process.env.IMAGE_ID;
 const videoId = process.env.VIDEO_ID;
-async function calculateFileHash(file){
-    return new Promise((resolve,reject)=>{
-        const hash = crypto.createHash('sha256');
-        hash.update(file);
-        resolve(hash.digest('hex'));
-    })
+
+/**
+ * Returns a SHA-256 hash of the file buffer for deduplication.
+ * @param {Buffer} file
+ * @returns {string}
+ */
+function calculateFileHash(file) {
+    return crypto.createHash('sha256').update(file).digest('hex');
 }
 
+/**
+ * Sets the file's Google Drive permissions to public/read.
+ * @param {string} fileId
+ */
 async function sharePublic(fileId) {
-    const permissions = {
-        type: 'anyone',
-        role: 'reader'
-    };
-
     try {
-        const response = await drive.permissions.create({
-            resource: permissions,
-            fileId: fileId,
+        await drive.permissions.create({
+            resource: { type: 'anyone', role: 'reader' },
+            fileId,
             fields: 'id'
         });
-        console.log(`Permission ID: ${response.data.id}`);
     } catch (error) {
-        console.error('Error sharing folder:', error.message);
+        console.error('[GDrive] Error sharing file:', error.message);
     }
 }
 
-async function fileExists(fileType, file){
-    let id='';
-    if(fileType==='document') id=documentsId;
-    else if(fileType==='image') id=imageId;
-    else id=videoId;
-    console.log(id);
-    const fileHash = await calculateFileHash(file);
-    const response =await drive.files.list({
+/**
+ * Checks if an identical file (by hash) already exists in the target Drive folder.
+ * @param {string} fileType - 'image' | 'video' | 'document'
+ * @param {Buffer} file
+ * @returns {Promise<{ status: boolean, webUrl: string|null }>}
+ */
+async function fileExists(fileType, file) {
+    const id = fileType === 'document' ? documentsId : fileType === 'image' ? imageId : videoId;
+    const fileHash = calculateFileHash(file);
+
+    const response = await drive.files.list({
         q: `'${id}' in parents and properties has {key='file_hash' and value='${fileHash}'} and trashed = false`,
         fields: 'files(id, name)',
-    })
-    //console.log(response.data);
-    if(response.data.files.length>0) return {status: true, webUrl: response.data.files[0].id}
-    return { status: false, webUrl: null};
+    });
 
+    if (response.data.files.length > 0) {
+        return { status: true, webUrl: response.data.files[0].id };
+    }
+    return { status: false, webUrl: null };
 }
 
-async function uploadOperation(fileType,fileName,fileBuffer){
-    let id='';
-    if(fileType==='video') id=videoId;
-    else if(fileType==='image') id=imageId;
-    else id=documentsId;
+/**
+ * Uploads a file buffer to the appropriate Google Drive folder.
+ * @param {string} fileType - 'image' | 'video' | 'document'
+ * @param {string} fileName
+ * @param {Buffer} fileBuffer
+ * @returns {Promise<string>} Google Drive file ID
+ */
+async function uploadOperation(fileType, fileName, fileBuffer) {
+    const id = fileType === 'video' ? videoId : fileType === 'image' ? imageId : documentsId;
+
     const fileMetadata = {
         name: fileName,
         parents: [id],
-        properties: {
-            file_hash: await calculateFileHash(fileBuffer)
-        }
-    }
+        properties: { file_hash: calculateFileHash(fileBuffer) }
+    };
+
     const readableStream = new Readable();
     readableStream.push(fileBuffer);
     readableStream.push(null);
-    const media = {
-        mimeType: 'application/octet-stream',
-        body: readableStream
-    }
+
     const response = await drive.files.create({
         requestBody: fileMetadata,
-        media: media,
+        media: { mimeType: 'application/octet-stream', body: readableStream },
         fields: 'id'
     });
-    console.log('uploading......');
-    //console.log(response.data);
+
     return response.data.id;
 }
-async function uploadFile(fileType,fileName){
-    try{
-        console.log(gatherChunks.length);
-        const file = Buffer.concat(gatherChunks);
-        const exists = await fileExists(fileType, file);
-        if(exists.status){
-            console.log('file already exists!!!',exists.webUrl);
-            return exists.webUrl;
-        }
-        const file_id = await uploadOperation(fileType,`${uuidv4()}-${fileName}`, file);
-        await sharePublic(file_id);
-        return file_id;
-    }catch(err){
-        console.log(err);
-    }
-    finally{
-        gatherChunks.length = 0;
-    }
 
+/**
+ * Uploads a file to Google Drive, with deduplication by hash.
+ * Reads from the per-socket chunk buffer identified by socketId.
+ * Clears the buffer when done (even on error).
+ *
+ * @param {string} socketId - The uploading socket's ID (used to look up chunk buffer)
+ * @param {string} fileType - 'image' | 'video' | 'document'
+ * @param {string} fileName
+ * @returns {Promise<string>} Google Drive file ID
+ */
+async function uploadFile(socketId, fileType, fileName) {
+    const chunks = gatherChunksMap.get(socketId) || [];
+    try {
+        if (chunks.length === 0) throw new Error('No file chunks received.');
+
+        const file = Buffer.concat(chunks);
+        const existing = await fileExists(fileType, file);
+
+        if (existing.status) {
+            console.log(`[GDrive] Duplicate file detected: ${existing.webUrl}`);
+            return existing.webUrl;
+        }
+
+        const file_id = await uploadOperation(fileType, `${uuidv4()}-${fileName}`, file);
+        await sharePublic(file_id);
+        console.log(`[GDrive] Uploaded file: ${file_id}`);
+        return file_id;
+    } finally {
+        // Always clear the buffer for this socket, even on error
+        gatherChunksMap.delete(socketId);
+    }
 }
 
-module.exports = {drive, uploadFile, gatherChunks};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// async function getStorageQuota() {
-//     try {
-//       const response = await drive.about.get({
-//         fields: 'storageQuota'
-//       });
-//       const quota = response.data.storageQuota;
-//       console.log(`Total Storage: ${quota.limit}`);
-//       console.log(`Used Storage: ${quota.usage}`);
-//       console.log(`Remaining Storage: ${quota.limit - quota.usage}`);
-//     } catch (error) {
-//       console.error('Error retrieving storage quota:', error);
-//     }
-//   }
-
-// async function createDir(fileName){
-//     const folderName = 'Video';
-//     const fileMetadata = {
-//         'name': folderName,
-//         'mimeType': 'application/vnd.google-apps.folder'
-//     };
-
-//     const folder = await drive.files.create({
-//         resource: fileMetadata,
-//         fields: 'id'
-//     });
-
-//     return folder.data.id;
-// }
-
+module.exports = { drive, uploadFile, gatherChunksMap };

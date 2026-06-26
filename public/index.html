@@ -58,13 +58,14 @@
 <script src="https://cdn.jsdelivr.net/npm/simplewebrtc@latest/simplewebrtc.bundle.js"></script>
 
 <script type="module">
-    import { loadPage, toggleColor, handleLogout } from './loadfunc.js'; 
+    import { loadPage, toggleColor, handleLogout, updateUploadProgress } from './loadfunc.js'; 
     import fetchData from './fetchData.js';
     import { Pending, clearPending }from './pending.js';
     import  setUserInfo from './userInfo.obf.js';
     window.handleLogout = handleLogout;
     window.loadPage = loadPage;
     window.toggleColor = toggleColor;
+    window.updateUploadProgress = updateUploadProgress;
     window.fetchData = fetchData;
     window.Pending = Pending;
     window.clearPending = clearPending;

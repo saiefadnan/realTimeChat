@@ -1,550 +1,392 @@
-(async function(){
+(async function () {
     const socket = window.socket;
-    const chunkSize = 512*1024;
-    const invited = [];
-    const roomModal = document.getElementById('room-creation-modal');
-    const searchModal = document.getElementById('search-modal');
-    const search = document.getElementById('search');
-    const clear = document.getElementById('clear');
-    const roomCreate = document.getElementById('create-room');
-    const roomName =  document.getElementById('room-name');
-    const activeRoom = document.getElementById('room-list');
-    const inviteBtn = document.getElementById('invite-user');
+    const chunkSize = 512 * 1024;
     const items = document.getElementById('item-list');
-    const Currentroom = document.getElementById('current-room');
-    const sendButton = document.getElementById('send-button');
-    const fileInput = document.getElementById('file-input');
-    const videoBtn = document.getElementById('video-call-btn');
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
-    const exitVideo = document.getElementById('exit-video');
-    const videoModal = document.getElementById('video-modal');
-    const listHeader  = document.getElementById('list-header');
+    const activeRoom = document.getElementById('room-list');
+    const roomNameInput = document.getElementById('room-name');
+    const CurrentroomLabel = document.getElementById('current-room');
     const messagesDiv = document.getElementById('chat-content');
+    const videoModal = document.getElementById('video-modal');
+
     const iceConfiguration = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'turn:relay.backups.cz', credential: 'webrtc', username: 'webrtc' }
-      ]
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'turn:relay.backups.cz', credential: 'webrtc', username: 'webrtc' }
+        ]
     };
-    let debounceTimer;
+
+    let localConnection; // Defined in outer scope for signal handler access
     let currentRoom;
-    
-    function load() {
-        var elems = document.querySelectorAll('.modal');
-        var instances = M.Modal.init(elems);
-        for(let room of  window.rooms){
-            addList(room.name);
+    let invitedUsers = [];
+    let debounceTimer;
+
+    function init() {
+        const modalElems = document.querySelectorAll('.modal');
+        M.Modal.init(modalElems);
+        
+        if (window.rooms) {
+            window.rooms.forEach(room => addRoomToList(room.name));
         }
-        updateStyles();
-        window.addEventListener('resize',updateStyles);
-    }
-    function Load(){ 
-      document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'; 
-    }
-    function sendChunks(room, file, offset){
-      if(!socket.connected){
-        window.Pending(room, file, offset);
-        return;
-      }
-      if(offset>=file.size){
-        socket.emit('room file complete',{
-        room: {
-          name: room,
-          admin: window.userInfo.username,
-        },
-          fileType: file.type, fileName: file.name});
-        window.clearPending();
-        return;
-      }
-      const fileSlice = file.slice(offset,offset+chunkSize);
-      const reader = new FileReader();
-      reader.onload = async()=>{
-          socket.emit('room file', {fileData: reader.result});
-          sendChunks(room,file,offset+chunkSize);
-      }
-      reader.readAsArrayBuffer(fileSlice);
-      document.getElementById('file-input').value = '';
+        updateLayout();
+        window.addEventListener('resize', updateLayout);
     }
 
-    function updateStyles() {
-      if (window.innerWidth < 1000) {
-        listHeader.textContent='';
+    function updateLayout() {
+        const isMobile = window.innerWidth < 1000;
+        const listHeader = document.getElementById('list-header');
+        if (listHeader) listHeader.textContent = isMobile ? '' : 'Rooms';
+
         const userDivs = activeRoom.querySelectorAll('div');
-        userDivs.forEach((userDiv)=>{
-          userDiv.style.width = '70px';
-          userDiv.style.margin = '5px';
-        })
-      }
-      else{
-        listHeader.textContent='Rooms';
-        const userDivs = activeRoom.querySelectorAll('div');
-        userDivs.forEach((userDiv)=>{
-          userDiv.style.margin ='0';
-          userDiv.style.marginTop ='5px';
-          userDiv.style.width = '80%';
-        })
-      }
+        userDivs.forEach(div => {
+            div.style.width = isMobile ? '70px' : '85%';
+            div.style.margin = isMobile ? '5px' : '5px auto';
+        });
     }
 
-    function clearSearch(){search.value = '';}
+    async function handleSearch() {
+        items.innerHTML = '';
+        const query = document.getElementById('search').value.trim();
+        if (query.length < 2) return;
+
+        try {
+            const data = await window.fetchData('/api/search', { query });
+            if (data && data.querynames) {
+                data.querynames.forEach(user => {
+                    const list = document.createElement('div');
+                    list.textContent = user.name;
+                    list.className = 'list-box';
+                    if (invitedUsers.includes(user.name)) {
+                        list.style.backgroundColor = '#2980b9';
+                    }
+                    list.addEventListener('click', () => {
+                        const idx = invitedUsers.indexOf(user.name);
+                        if (idx > -1) {
+                            invitedUsers.splice(idx, 1);
+                            list.style.backgroundColor = '#333';
+                        } else {
+                            invitedUsers.push(user.name);
+                            list.style.backgroundColor = '#2980b9';
+                        }
+                    });
+                    items.appendChild(list);
+                });
+            }
+        } catch (err) {
+            console.error('[RoomSearch] Error:', err);
+        }
+    }
+
     function debounce(func, delay) {
-        return function (...args) {
+        return (...args) => {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => func.apply(this, args), delay);
+            debounceTimer = setTimeout(() => func(...args), delay);
         };
     }
-    async function Invite(e){
-      e.preventDefault();
-      if(currentRoom===undefined){
-        M.toast({html: 'Select a room from list!', classes: 'rounded'});
-      }else{
-        socket.emit('invite',{
-          room:{
-            name: currentRoom,
-            admin: window.userInfo.username,
-          },
-          usernames: invited
+
+    async function handleRoomCreate() {
+        const name = roomNameInput.value.trim();
+        if (!name) return M.toast({ html: 'Room name is required!', classes: 'rounded red' });
+
+        if (window.rooms.some(r => r.name === name)) {
+            return M.toast({ html: 'Room already exists!', classes: 'rounded red' });
+        }
+
+        window.rooms.push({ name });
+        const inst = M.Modal.getInstance(document.getElementById('room-creation-modal'));
+        inst.close();
+
+        socket.emit('create-room', {
+            room: { name, admin: window.userInfo.username }
         });
-      }
-      invited.length = 0 ;
-      var instance = M.Modal.getInstance(searchModal);
-      instance.close();
-    }
-    async function handleInvite(list, username){
-      if(list.style.backgroundColor ==='blue'){
-        list.style.backgroundColor ='#333';
-        invited.splice(invited.indexOf(username),1);
-      }
-      else {
-        list.style.backgroundColor ='blue'
-        invited.push(username);
-      }
-    }
-    async function handleSearch(){
-        items.innerHTML='';
-        const query=search.value;
-        if(query.length<2) return;
-        const data = await fetchData('/api/search',{query: query});
-        Array.from(data.querynames).forEach((user)=>{
-            const list = document.createElement('div');
-            list.textContent = user.name;
-            list.className = 'list-box';
-            if(invited.includes(user.name)){
-              list.style.backgroundColor ='blue';
-            }
-            items.appendChild(list);
-            list.addEventListener('click',()=>handleInvite(list,user.name));
-            window.eventListeners.push({element: list, event: 'click', handler: handleInvite});
-        })
+        addRoomToList(name);
     }
 
-    async function handleSubmit(){
-        const input = roomName.value;
-        if(window.rooms.some(room => room.name===input)){
-          M.toast({html: 'Room name already exists!', classes: 'rounded'});
+    function sendChunks(room, file, offset) {
+        if (!socket || !socket.connected) {
+            if (window.Pending) window.Pending(room, file, offset);
+            return;
         }
-        else if(input.trim()){
-          window.rooms.push({name:input});
-          var instance = M.Modal.getInstance(roomModal);
-          instance.close();
-          socket.emit('create-room',{
-          room: {
-              name: input,
-              admin: window.userInfo.username,
-            }
-          })
-            addList(input);
+
+        if (offset >= file.size) {
+            window.updateUploadProgress(100, file.name);
+            socket.emit('room file complete', {
+                room: { name: room, admin: window.userInfo.username },
+                fileType: file.type,
+                fileName: file.name
+            });
+            return;
         }
-        else{
-            M.toast({html: 'Room name is required!', classes: 'rounded'});
-        }
-    }
-    async function sendMessage(rec=null, msg=null){
-      let message = document.getElementById('message-input').value;
-      if(rec && msg){
-        currentRoom = rec;
-        message = msg;
-      }
-      if(message.trim() && currentRoom.trim()){
-        const date = new Date(Date.now()).toLocaleString();
-        addMessageTo(message, date) ;
-        if(!socket.connected){
-          window.Pending(currentRoom, message, -1);
-          document.getElementById('message-input').value = '';
-          return;
-        }
-        socket.emit('room message', {
-        room: {
-          name: currentRoom,
-          admin: window.userInfo.username,
-        },
-        message, 
-        date});
-        document.getElementById('message-input').value = '';
-      }
-      const fileinput = document.getElementById('file-input');
-      let file = fileinput.files[0];
-      if(file && currentRoom.trim()) {
-        document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
-        offset=0;
-        sendChunks(currentRoom, file,0);
-      }
-    }
-    function addError(message) {
-        console.log(message);
-        if(!messagesDiv) return;
-        const messageElement = document.createElement('div');
-        messageElement.textContent = message;
-        if(message!=='Connected')messageElement.style.color = 'crimson';
-        else messageElement.style.color = 'green';
-        messageElement.style.backgroundColor = 'lightblue';
-        messageElement.style.borderRadius = '10px';
-        messageElement.style.padding = '5px';
-        messageElement.style.margin = '10px';
-        messageElement.style.textAlign = 'center';
-        messagesDiv.appendChild(messageElement);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    
-        setTimeout(()=>{
-          messageElement.style.opacity=0;
-          messageElement.style.transition = 'opacity 2s ease-out'
-          setTimeout(()=>{
-            messageElement.remove();
-          },5000)
-        },5000)
+
+        const percent = (offset / file.size) * 100;
+        window.updateUploadProgress(percent, file.name);
+
+        const slice = file.slice(offset, offset + chunkSize);
+        const reader = new FileReader();
+        reader.onload = () => {
+            socket.emit('room file', { fileData: reader.result });
+            sendChunks(room, file, offset + chunkSize);
+        };
+        reader.readAsArrayBuffer(slice);
     }
 
-    function addList(name){
-        const userDiv = document.createElement('div');
-        const userNameDiv = document.createElement('h5');
-        
-        userDiv.style.height = '50px';
-        userDiv.style.width = '100px';
-        userDiv.style.color = '#ccc';
-        userDiv.style.display = 'flex';
-        userDiv.style.flexDirection = 'column';
-        userDiv.style.alignItems = 'center';
-        userDiv.style.justifyContent = 'space-between';
-        userDiv.style.border = '1px solid black'
-        userDiv.style.borderRadius = '10px';
-        userDiv.style.padding = '2.5px 0';
-        userDiv.style.cursor = 'pointer';
-        userDiv.style.overflowX = 'auto'; 
-        userDiv.style.overflowY = 'hidden';
-        userDiv.textContent = name;
-        userDiv.style.backgroundColor = 'black';
-        
-        function Over(){userDiv.style.scale = 0.8;}
-        function Out(){userDiv.style.scale = 1;}
-        function Click(){
+    async function sendMessage(rec = null, msg = null) {
+        const messageInput = document.getElementById('message-input');
+        let message = messageInput.value.trim();
+        let targetRoom = currentRoom;
+
+        if (rec && msg) {
+            targetRoom = rec;
+            message = msg;
+        }
+
+        if (message && targetRoom) {
+            const date = new Date().toLocaleString();
+            addMessageTo(message, date);
+
+            if (!socket || !socket.connected) {
+                if (window.Pending) window.Pending(targetRoom, message, -1);
+                messageInput.value = '';
+                return;
+            }
+
+            socket.emit('room message', {
+                room: { name: targetRoom, admin: window.userInfo.username },
+                message,
+                date
+            });
+            messageInput.value = '';
+        }
+
+        const fileInputEl = document.getElementById('file-input');
+        const file = fileInputEl.files[0];
+        if (file && targetRoom) {
+            document.getElementById('custom-file-upload').style.backgroundColor = '#2ecc71';
+            sendChunks(targetRoom, file, 0);
+        }
+    }
+
+    function addRoomToList(name) {
+        const div = document.createElement('div');
+        Object.assign(div.style, {
+            height: '50px',
+            color: '#ccc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid #222',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            backgroundColor: '#111',
+            marginBottom: '5px',
+            transition: 'transform 0.1s'
+        });
+        div.textContent = name;
+
+        div.addEventListener('mouseover', () => div.style.transform = 'scale(0.95)');
+        div.addEventListener('mouseout', () => div.style.transform = 'scale(1)');
+        div.addEventListener('click', () => {
             currentRoom = name;
-            const unselectDivs = document.getElementById('room-list').querySelectorAll('div');
-            unselectDivs.forEach((unselectDiv)=>{ unselectDiv.style.backgroundColor = 'black';})
-            userDiv.style.backgroundColor = 'cadetblue';
-            Currentroom.textContent = `Room: ${name}`;
-        }
-        userDiv.addEventListener('mouseover', Over);
-        userDiv.addEventListener('mouseout', Out);
-        userDiv.addEventListener('click', Click);
-        window.eventListeners.push({element: userDiv, event: 'mouseover', handler: Over});
-        window.eventListeners.push({element: userDiv, event: 'mouseout', handler: Out});
-        window.eventListeners.push({element: userDiv, event: 'click', handler: Click});
-
-        userNameDiv.style.padding = 0;
-        userNameDiv.style.margin = 'auto';
-        userNameDiv.style.fontSize = 'small';
-        userNameDiv.style.fontWeight = 'bold';
-        userDiv.appendChild(userNameDiv);
-        activeRoom.appendChild(userDiv);
-    }
-    function addMessageTo(message, time) {
-      const messageElement = document.createElement('div');
-      const timeDiv = document.createElement('h5');
-      const messageContainer = document.createElement('div');
-      const finalContainer = document.createElement('div');
-    
-      timeDiv.textContent=time;
-      timeDiv.className = 'time-container';
-      messageElement.textContent = message;
-      messageElement.className="message-send";
-    
-      messageContainer.className = 'message-send-container';
-      messageContainer.appendChild(messageElement);
-    
-      finalContainer.className ='send-final-container';
-      finalContainer.appendChild(timeDiv);
-      finalContainer.appendChild(messageContainer);
-    
-      messagesDiv.appendChild(finalContainer);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    function addMessage(from, message, time ,profile) {
-      const messageElement = document.createElement('div');
-      const profileDiv = document.createElement('img');
-      const timeDiv = document.createElement('h5');
-      const nameDiv = document.createElement('h5');
-      const time_nameDiv = document.createElement('div');
-      const messageContainer = document.createElement('div');
-      const finalContainer = document.createElement('div');
-    
-      messageElement.textContent = message;
-      messageElement.className="message-receive";
-    
-      timeDiv.textContent=time;
-      timeDiv.className = 'time-container';
-      nameDiv.textContent=from;
-      nameDiv.style.marginLeft = '30px';
-      nameDiv.style.color = '#ccc';
-      nameDiv.style.fontSize = 'small';
-    
-      time_nameDiv.appendChild(nameDiv);
-      time_nameDiv.appendChild(timeDiv);
-      time_nameDiv.className = 'time-name-container';
-    
-      
-      profileDiv.src=profile;
-      profileDiv.className = 'receiver-profile-container';
-    
-      messageContainer.appendChild(profileDiv);
-      messageContainer.appendChild(messageElement);
-      messageContainer.className = 'message-receive-container';
-    
-      finalContainer.className ='final-container';
-      finalContainer.appendChild(time_nameDiv);
-      finalContainer.appendChild(messageContainer);
-    
-      messagesDiv.appendChild(finalContainer);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    
-    }
-
-  function embedDriveFiles(time, to, file_id, profile){
-    const messageElement = document.createElement('div');
-    const profileDiv = document.createElement('img');
-    const messageContainer = document.createElement('div');
-    messageElement.innerHTML =
-     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc;font-size:small;">${time}</h5>
-    <h5 style="color: #ccc;margin: 0 10px;padding: 0;font-size:small;">${to}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview 
-    style="max-width: 300px; 
-    height: 215px; 
-    border: none;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;"
-    />`;
-    messageElement.style.width= '100%';
-    messageElement.style.height= 'auto';
-    messageElement.style.display = 'flex';
-    messageElement.style.flexDirection = 'column';
-    messageContainer.style.alignItems = 'flex-start';
-    messageContainer.style.justifyContent = 'center';
-
-    profileDiv.src=profile;
-    profileDiv.style.width = '70px';
-    profileDiv.style.height = '70px';
-    profileDiv.style.borderRadius = '50%';
-    profileDiv.style.border = '1px soild #ccc';
-    profileDiv.style.padding = '10px';
-
-    messageContainer.style.width = '98%';
-    messageContainer.style.height = 'auto';
-    messageContainer.style.padding = '8px';
-    messageContainer.style.display = 'flex';
-    messageContainer.style.justifyContent = 'flex-start';
-    messageContainer.style.alignItems = 'flex-end';
-    messageContainer.appendChild(profileDiv);
-    messageContainer.appendChild(messageElement);
-                      
-    messagesDiv.appendChild(messageContainer);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-  }
-
-  function embedDriveFilesTo(time, file_id) {
-    const messageElement = document.createElement('div');
-
-    messageElement.style.display = 'flex';
-    messageElement.style.flexDirection = 'column';
-    messageElement.style.alignItems = 'flex-end';
-    messageElement.style.justifyContent = 'center';
-    messageElement.style.padding = '8px';
-    messageElement.style.width = '98%';
-    messageElement.style.height = 'auto';
-
-    messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;color: #ccc;font-size:small;">${time}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview 
-    style="max-width: 300px; 
-    height: 215px; 
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden"
-    />`;
-    messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}   
-
-    function videoCall(){
-      const localConnection = new RTCPeerConnection(iceConfiguration);
-      localConnection.onicecandidate = e =>{
-        console.log("new ice candidate found");
-        //console.log(JSON.stringify(localConnection.localDescription));
-      }
-
-      const channel = localConnection.createDataChannel('channel');
-      channel.onmessage = e => console.log('message received!',e.data);
-      channel.onopen = e => console.log('connection opened!');
-      channel.onclose = e => console.log('connection closed');
-
-      localConnection.createOffer().then(o=>{
-        localConnection.setLocalDescription(o);
-        socket.emit('signal',{room: currentRoom,signal: o});
-      });
-
-    }
-
-    function exitVideoCall(){
-      
-    }
-
-    load();
-
-    
-
-    socket.on('room-created',({notify})=>{
-      addError(notify);
-    })
-
-    socket.on('invited',({notify})=>{
-      addError(notify);
-    })
-    socket.on('room message',({from, time, message, profile})=>{
-      const date = new Date(time).toLocaleString();
-      addMessage(from, message, date, profile)
-    })
-
-    socket.on('invitation',({name,notify})=>{
-      addError(notify);
-      if(!window.rooms.includes(name)){
-        window.rooms.push({name: name});
-        addList(name);
-      }
-      else{
-        //already added
-        addError('You are already added');
-      }
-    })
-
-    async function receiveVideoCall(signal){
-      const remoteConnection = new RTCPeerConnection();
-      remoteConnection.onicecandidate = e =>  {
-        console.log(" NEW ice candidnat!! on localconnection reprinting SDP " )
-         //console.log(JSON.stringify(remoteConnection.localDescription) )
-        }
-
-        remoteConnection.ondatachannel= e => {
-          const receiveChannel = e.channel;
-          receiveChannel.onmessage =e =>  console.log("messsage received!!!"  + e.data )
-          receiveChannel.onopen = e => console.log("open!!!!");
-          receiveChannel.onclose =e => console.log("closed!!!!!!");
-          remoteConnection.channel = receiveChannel;
-        }
-        console.log(signal.type);
-        remoteConnection.setRemoteDescription(new RTCSessionDescription(signal)).then(a=> console.log('done'));
-        await remoteConnection.createAnswer().then(a => remoteConnection.setLocalDescription(a)).then(a=>{
-          socket.emit('signal',{room: currentRoom,signal: remoteConnection.localDescription})
+            activeRoom.querySelectorAll('div').forEach(d => d.style.backgroundColor = '#111');
+            div.style.backgroundColor = '#2980b9';
+            CurrentroomLabel.textContent = `Room: ${name}`;
         });
-        console.log(JSON.stringify(remoteConnection.localDescription))
+
+        activeRoom.appendChild(div);
     }
 
-    socket.on('signal',async({signal})=>{
-      console.log(signal);
-      if(signal.type==='offer'){
-        console.log(signal.type);
-        await receiveVideoCall(signal);
-      }
-      else{
-        console.log(signal.type);
-        localConnection.setRemoteDescription(signal).then(console.log('done'))
-      }
-    })
+    // WebRTC Logic
+    async function startVideoCall() {
+        if (!currentRoom) return M.toast({ html: 'Select a room first!', classes: 'rounded' });
+        
+        localConnection = new RTCPeerConnection(iceConfiguration);
+        
+        // Setup local stream (placeholder for UI improvement)
+        localConnection.onicecandidate = e => {
+            if (e.candidate) console.log('[WebRTC] New ICE candidate');
+        };
 
-    socket.on('room file',({from, time, fileData, fileName, profile})=>{
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
-    })
+        const offer = await localConnection.createOffer();
+        await localConnection.setLocalDescription(offer);
+        socket.emit('signal', { room: currentRoom, signal: offer });
+        
+        M.toast({ html: 'Calling room members...', classes: 'rounded blue' });
+    }
 
-    fileInput.addEventListener('change', Load);
-    search.addEventListener('input', debounce(handleSearch,500));
-    clear.addEventListener('click', clearSearch);
-    roomCreate.addEventListener('click',handleSubmit);
-    inviteBtn.addEventListener('click',Invite);
-    sendButton.addEventListener('click', sendMessage);
-    videoBtn.addEventListener('click',videoCall);
-    exitVideo.addEventListener('click', exitVideoCall)
+    async function receiveVideoCall(signal) {
+        const remoteConnection = new RTCPeerConnection(iceConfiguration);
+        await remoteConnection.setRemoteDescription(new RTCSessionDescription(signal));
+        const answer = await remoteConnection.createAnswer();
+        await remoteConnection.setLocalDescription(answer);
+        socket.emit('signal', { room: currentRoom, signal: answer });
+    }
 
-    window.eventListeners.push({element: search, event: 'input',handler: debounce});
-    window.eventListeners.push({element: clear, event: 'click',handler: clearSearch});
-    window.eventListeners.push({element: roomCreate, event: 'click',handler: handleSubmit});
-    window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
-    window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
-    window.eventListeners.push({element: fileInput, event: 'change', handler: Load});
-    window.eventListeners.push({element: inviteBtn, event: 'click', handler: Invite});
-    window.eventListeners.push({element: videoBtn, event: 'click', handler: videoCall});
-    window.eventListeners.push({element: exitVideo, event: 'click', handler: exitVideoCall});
+    // Socket Events
+    socket.on('room-created', ({ notify }) => addFeedback(notify, 'green'));
+    socket.on('invited', ({ notify }) => addFeedback(notify, 'blue'));
+    socket.on('room message', ({ from, time, message, profile }) => {
+        addMessage(from, message, new Date(time).toLocaleString(), profile);
+    });
+
+    socket.on('invitation', ({ name, notify }) => {
+        addFeedback(notify, 'orange');
+        if (!window.rooms.some(r => r.name === name)) {
+            window.rooms.push({ name });
+            addRoomToList(name);
+        }
+    });
+
+    socket.on('signal', async ({ signal }) => {
+        if (signal.type === 'offer') {
+            await receiveVideoCall(signal);
+        } else if (signal.type === 'answer' && localConnection) {
+            await localConnection.setRemoteDescription(new RTCSessionDescription(signal));
+        }
+    });
+
+    socket.on('room file', ({ from, time, fileData, profile }) => {
+        const date = new Date(time).toLocaleString();
+        if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
+        else embedDriveFiles(date, from, fileData, profile);
+    });
+
+    // UI Feedback
+    function addFeedback(msg, color) {
+        const err = document.createElement('div');
+        err.textContent = msg;
+        Object.assign(err.style, {
+            color: color === 'green' ? '#2ecc71' : color === 'blue' ? '#3498db' : '#f39c12',
+            backgroundColor: '#222',
+            borderRadius: '5px',
+            padding: '8px',
+            margin: '10px auto',
+            width: 'fit-content',
+            textAlign: 'center',
+            fontSize: '13px'
+        });
+        messagesDiv.appendChild(err);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        setTimeout(() => err.remove(), 4000);
+    }
+
+    // Re-use identical message building functions for consistency with chat
+    function addMessage(from, message, time, profile) {
+        const finalContainer = document.createElement('div');
+        finalContainer.className = 'final-container';
+        const head = document.createElement('div');
+        head.className = 'time-name-container';
+        const nameLabel = document.createElement('span');
+        nameLabel.textContent = from;
+        nameLabel.style.color = '#3498db';
+        const timeLabel = document.createElement('span');
+        timeLabel.textContent = ` • ${time}`;
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
+        head.append(nameLabel, timeLabel);
+        const body = document.createElement('div');
+        body.className = 'message-receive-container';
+        const img = document.createElement('img');
+        img.src = profile;
+        img.className = 'receiver-profile-container';
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-receive';
+        msgBox.textContent = message;
+        body.append(img, msgBox);
+        finalContainer.append(head, body);
+        messagesDiv.appendChild(finalContainer);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function addMessageTo(message, time) {
+        const finalContainer = document.createElement('div');
+        finalContainer.className = 'send-final-container';
+        const timeLabel = document.createElement('div');
+        timeLabel.textContent = time;
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
+        const body = document.createElement('div');
+        body.className = 'message-send-container';
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-send';
+        msgBox.textContent = message;
+        body.appendChild(msgBox);
+        finalContainer.append(timeLabel, body);
+        messagesDiv.appendChild(finalContainer);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function embedDriveFiles(time, from, file_id, profile) {
+        const container = document.createElement('div');
+        container.className = 'message-receive-container';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-start';
+        container.style.padding = '10px';
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.gap = '10px';
+        const img = document.createElement('img');
+        img.src = profile;
+        img.style.width = '40px'; img.style.height = '40px'; img.style.borderRadius = '50%';
+        const info = document.createElement('div');
+        const nameSpan = document.createElement('b'); nameSpan.textContent = from;
+        const timeSpan = document.createElement('small'); timeSpan.textContent = ` ${time}`;
+        info.append(nameSpan, timeSpan);
+        header.append(img, info);
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
+        Object.assign(iframe.style, { width: '100%', maxWidth: '300px', height: '215px', border: 'none', borderRadius: '8px', backgroundColor: '#000' });
+        container.append(header, iframe);
+        messagesDiv.appendChild(container);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function embedDriveFilesTo(time, file_id) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-end';
+        container.style.padding = '10px';
+        const timeLabel = document.createElement('small'); timeLabel.textContent = time;
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
+        Object.assign(iframe.style, { width: '100%', maxWidth: '300px', height: '215px', border: 'none', borderRadius: '8px', backgroundColor: '#000' });
+        container.append(timeLabel, iframe);
+        messagesDiv.appendChild(container);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Listeners
+    const searchInput = document.getElementById('search');
+    if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 400));
+    
+    const createRoomBtn = document.getElementById('create-room-btn');
+    if (createRoomBtn) createRoomBtn.addEventListener('click', handleRoomCreate);
+    
+    const inviteUserBtn = document.getElementById('invite-user-btn');
+    if (inviteUserBtn) {
+        inviteUserBtn.addEventListener('click', () => {
+            if (!currentRoom) return M.toast({ html: 'Select a room!', classes: 'rounded' });
+            socket.emit('invite', {
+                room: { name: currentRoom, admin: window.userInfo.username },
+                usernames: invitedUsers
+            });
+            invitedUsers = [];
+            M.Modal.getInstance(document.getElementById('search-modal')).close();
+        });
+    }
+    
+    const sendBtn = document.getElementById('send-button');
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    
+    const videoBtn = document.getElementById('video-call-btn');
+    if (videoBtn) videoBtn.addEventListener('click', startVideoCall);
+    
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', () => {
+            const uploadBtn = document.getElementById('custom-file-upload');
+            if (uploadBtn) uploadBtn.style.backgroundColor = '#e67e22';
+        });
+    }
+
+    init();
 })();
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  

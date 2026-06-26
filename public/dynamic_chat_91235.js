@@ -1,506 +1,478 @@
-(async function(){
-  let socket;
-  const chunkSize = 512*1024;
-  const listHeader  = document.getElementById('list-header');
-  const active = document.getElementById('active');
-  const sendButton = document.getElementById('send-button');
-  const messagesDiv = document.getElementById('chat-content');
+(async function () {
+    let socket;
+    const chunkSize = 512 * 1024;
+    const listHeader = document.getElementById('list-header');
+    const active = document.getElementById('active');
+    const sendButton = document.getElementById('send-button');
+    const messagesDiv = document.getElementById('chat-content');
 
-  // 1)retrieveChat
-  (function(_0x2de039,_0x29f5c0){const _0x49f946=_0x52b0,_0x35d642=_0x2de039();while(!![]){try{const _0x457feb=-parseInt(_0x49f946(0x15a))/0x1*(-parseInt(_0x49f946(0x159))/0x2)+parseInt(_0x49f946(0x148))/0x3+parseInt(_0x49f946(0x153))/0x4+-parseInt(_0x49f946(0x155))/0x5+-parseInt(_0x49f946(0x150))/0x6*(-parseInt(_0x49f946(0x154))/0x7)+parseInt(_0x49f946(0x158))/0x8+-parseInt(_0x49f946(0x152))/0x9;if(_0x457feb===_0x29f5c0)break;else _0x35d642['push'](_0x35d642['shift']());}catch(_0x4bce91){_0x35d642['push'](_0x35d642['shift']());}}}(_0x4161,0xeed4a));async function retrieveChat(){const _0x49cd48=_0x52b0,_0x1f40e0={'username':window[_0x49cd48(0x14d)][_0x49cd48(0x156)]},_0x63cb2c=await window[_0x49cd48(0x149)](_0x49cd48(0x14f),_0x1f40e0),_0x7cb28b=document[_0x49cd48(0x146)](_0x49cd48(0x157));if(!_0x7cb28b)return;if(_0x7cb28b)_0x7cb28b[_0x49cd48(0x15c)]='';_0x63cb2c[_0x49cd48(0x14a)][_0x49cd48(0x145)](_0x152023=>{const _0x143504=_0x49cd48;if(_0x152023[_0x143504(0x151)]===window['userInfo'][_0x143504(0x156)]){if(_0x152023[_0x143504(0x147)]!=='text')embedDriveFilesTo(_0x152023[_0x143504(0x14c)],_0x152023['content']);else addMessageTo(_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)]);}else{if(_0x152023[_0x143504(0x147)]!==_0x143504(0x14e))embedDriveFiles(_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x15b)]);else addMessage(_0x152023[_0x143504(0x151)],_0x152023[_0x143504(0x14b)],_0x152023[_0x143504(0x14c)],_0x152023[_0x143504(0x15b)]);}});}function _0x52b0(_0x370f21,_0x194c87){const _0x416101=_0x4161();return _0x52b0=function(_0x52b0b3,_0x30b3f4){_0x52b0b3=_0x52b0b3-0x145;let _0x4bd317=_0x416101[_0x52b0b3];return _0x4bd317;},_0x52b0(_0x370f21,_0x194c87);}function _0x4161(){const _0x39b1bd=['username','chat-content','10152296dmKvZs','72368mZcRfC','1nZnzXw','imageUrl','innerHTML','forEach','getElementById','type','521622bCoXMR','fetchData','chats','content','date','userInfo','text','/api/getchats','6582GVuhDO','sender','13404780FrLTSG','7639252FsdGRp','3031RXvyyB','6981195rOdLtm'];_0x4161=function(){return _0x39b1bd;};return _0x4161();}
+    /**
+     * Fetches chat history for the current user and populates the UI.
+     */
+    async function retrieveChat() {
+        try {
+            const reqData = { username: window.userInfo.username };
+            const data = await window.fetchData('/api/getchats', reqData);
 
-  // 2)connectWebSocket
-  (function(_0x4580ca,_0x58b734){const _0x9d8973=_0x3eca,_0x1a7264=_0x4580ca();while(!![]){try{const _0x355057=-parseInt(_0x9d8973(0x1e6))/0x1*(parseInt(_0x9d8973(0x1e8))/0x2)+parseInt(_0x9d8973(0x1f1))/0x3*(-parseInt(_0x9d8973(0x1ef))/0x4)+-parseInt(_0x9d8973(0x1ed))/0x5+-parseInt(_0x9d8973(0x1f4))/0x6*(-parseInt(_0x9d8973(0x1e4))/0x7)+parseInt(_0x9d8973(0x1ec))/0x8*(parseInt(_0x9d8973(0x1e7))/0x9)+parseInt(_0x9d8973(0x1ee))/0xa+-parseInt(_0x9d8973(0x1f6))/0xb*(parseInt(_0x9d8973(0x1f3))/0xc);if(_0x355057===_0x58b734)break;else _0x1a7264['push'](_0x1a7264['shift']());}catch(_0x379cc2){_0x1a7264['push'](_0x1a7264['shift']());}}}(_0x3466,0xc51fa));function _0x3466(){const _0x34cdf7=['recipient','3510600RLoFQL','644230KFlsAC','7646740yWLbzf','4lxVmTi','pending','394791eqRazg','content','757572yhlVMx','870VHrbFS','emit','110WKsMAH','offset','34461EOaFBz','get','19833jgyZLT','9iBBrkJ','22BvhPTz','token','socket'];_0x3466=function(){return _0x34cdf7;};return _0x3466();}function _0x3eca(_0x56aa9d,_0x332319){const _0x3466d9=_0x3466();return _0x3eca=function(_0x3eca77,_0x505ffb){_0x3eca77=_0x3eca77-0x1e4;let _0x18ec65=_0x3466d9[_0x3eca77];return _0x18ec65;},_0x3eca(_0x56aa9d,_0x332319);}async function connectWebSocket(){const _0x479b12=_0x3eca;window['socket']=io(),window[_0x479b12(0x1ea)]['on']('connect',function(){const _0x50c9af=_0x479b12;window['socket'][_0x50c9af(0x1f5)]('insert\x20name',{'jwtoken':Cookies[_0x50c9af(0x1e5)](_0x50c9af(0x1e9))}),addError('Connected'),setTimeout(()=>{const _0x49fdfb=_0x50c9af,_0x5eeb6b=window[_0x49fdfb(0x1f0)];if(_0x5eeb6b['status']&&_0x5eeb6b[_0x49fdfb(0x1f7)]>=0x0)sendChunks(_0x5eeb6b[_0x49fdfb(0x1eb)],_0x5eeb6b[_0x49fdfb(0x1f2)],_0x5eeb6b[_0x49fdfb(0x1f7)]);else _0x5eeb6b['status']&&sendMessage(_0x5eeb6b[_0x49fdfb(0x1eb)],_0x5eeb6b[_0x49fdfb(0x1f2)]);},0x1388);});}
-  //add photo
-  function addPicture(picture){
-    const profileDivs = document.getElementsByClassName('circle responsive-img');
-    if(picture){
-      Array.from(profileDivs).forEach((profileDiv)=>{
-        profileDiv.src=picture;
-      })
+            const chatContent = document.getElementById('chat-content');
+            if (chatContent) {
+                chatContent.innerHTML = '';
+            }
+
+            if (data && data.chats) {
+                data.chats.forEach(chat => {
+                    const isSelf = (chat.sender === window.userInfo.username);
+                    const timeStr = new Date(chat.timestamp).toLocaleString();
+
+                    if (isSelf) {
+                        if (chat.type !== 'text') embedDriveFilesTo(timeStr, chat.content);
+                        else addMessageTo(chat.content, timeStr);
+                    } else {
+                        if (chat.type !== 'text') embedDriveFiles(timeStr, chat.sender, chat.content, chat.imageUrl);
+                        else addMessage(chat.sender, chat.content, timeStr, chat.imageUrl);
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('[Chat] Failed to retrieve history:', err);
+            addError('Failed to load chat history.');
+        }
     }
-  }
-  async function getUserInfo(){
-    const reqData = {
-      token: Cookies.get('token')
-    }
-    const data = await window.fetchData('/api/userData',reqData);
-    setUserInfo(data.userinfo.username, data.userinfo.imageurl);
-    addPicture(data.userinfo.imageurl);
-  }
 
-  if(Cookies.get('token')){
-    if (window.socket && window.socket.connected){
-      new Promise(async(resolve)=>{
+    /**
+     * Initializes Socket.IO connection and sets up identity registration.
+     */
+    async function connectWebSocket() {
+        socket = io(); // Assign to outer scope 'socket' variable
+        window.socket = socket;
+
+        socket.on('connect', () => {
+            console.log('[Socket] Connected');
+            socket.emit('insert name', { jwtoken: Cookies.get('token') });
+            addError('Connected');
+
+            // Handle pending messages/files if any
+            setTimeout(() => {
+                const pending = window.PendingStore; // Assuming global store or logic
+                if (pending && pending.status) {
+                    if (pending.offset >= 0) sendChunks(pending.recipient, pending.file, pending.offset);
+                    else sendMessage(pending.recipient, pending.content);
+                }
+            }, 5000);
+        });
+
+        // Initialize listeners once socket is connected
+        setupSocketListeners();
+    }
+
+    function addPicture(picture) {
+        const profileDivs = document.querySelectorAll('.circle.responsive-img');
+        if (picture) {
+            profileDivs.forEach((img) => { img.src = picture; });
+        }
+    }
+
+    async function getUserInfo() {
+        try {
+            const reqData = { token: Cookies.get('token') };
+            const data = await window.fetchData('/api/userData', reqData);
+            if (data && data.userinfo) {
+                // setUserInfo is globally available from userInfo.obf.js (which we unobfuscated)
+                window.setUserInfo(data.userinfo.username, data.userinfo.imageurl);
+                addPicture(data.userinfo.imageurl);
+            }
+        } catch (err) {
+            console.error('[Chat] Failed to fetch user info:', err);
+        }
+    }
+
+    // Startup Logic
+    if (Cookies.get('token')) {
+        const recipientInput = document.getElementById('recipientInput');
+        if (recipientInput) recipientInput.value = 'public'; // Default to public
+
         await getUserInfo();
-        await retrieveChat();
-        window.socket.emit('show active-users');
-        resolve();
-      })
-    } 
-    else {
-      new Promise(async(resolve)=>{
         await connectWebSocket();
-        await getUserInfo();
         await retrieveChat();
-        resolve();
-      })
+        socket.emit('show active-users');
     }
-  }
-  //send chunks....
-  function sendChunks(recipient, file, offset){
-    if(!socket.connected){
-      //console.log('not connected.....');
-      window.Pending(recipient, file, offset);
-      return;
-    }
-    if(offset>=file.size){
-      socket.emit('complete',{to: recipient,fileType: file.type, fileName: file.name});
-      window.clearPending();
-      return;
-    }
-    const fileSlice = file.slice(offset,offset+chunkSize);
-    if(recipient==='public'){
-      const reader = new FileReader();
-      reader.onload = async()=>{
-        if (file.type.startsWith('image/')){
-            socket.emit('public image', {fileData: reader.result, fileType: file.type});
-        } else if (file.type.startsWith('video/')) {
-          socket.emit('public video', {fileData: reader.result});
-        } else {
-            socket.emit('public file', {fileData: reader.result,fileName: file.name});
-            //socket.emit('public file', {fileData, fileName: file.name, fileType: file.type });
+
+
+    /**
+     * Handles segmented file uploads for large images/videos.
+     */
+    function sendChunks(recipient, file, offset) {
+        if (!socket || !socket.connected) {
+            if (window.Pending) window.Pending(recipient, file, offset);
+            return;
         }
-        sendChunks(recipient,file,offset+chunkSize);
-      }
-      reader.readAsArrayBuffer(fileSlice);
-    }else{
-      const reader = new FileReader();
+
+        if (offset >= file.size) {
+            window.updateUploadProgress(100, file.name);
+            socket.emit('complete', { to: recipient, fileType: file.type, fileName: file.name });
+            if (window.clearPending) window.clearPending();
+            return;
+        }
+
+        const percent = (offset / file.size) * 100;
+        window.updateUploadProgress(percent, file.name);
+
+        const fileSlice = file.slice(offset, offset + chunkSize);
+        const reader = new FileReader();
+
         reader.onload = () => {
-            if(file.type.startsWith('image/')) {
-              socket.emit('private image', { to: recipient, fileData: reader.result, fileType: file.type});
-            } 
-            else if (file.type.startsWith('video/')) {
-            socket.emit('private video', { to: recipient, fileData: reader.result});
-          }
-          else{
-            socket.emit('private file', { to: recipient, fileData: reader.result, fileName: file.name});
-          }
-          sendChunks(recipient,file,offset+chunkSize);
+            const payload = { fileData: reader.result, fileType: file.type, fileName: file.name };
+            if (recipient !== 'public') payload.to = recipient;
+
+            let eventName;
+            if (file.type.startsWith('image/')) eventName = recipient === 'public' ? 'public image' : 'private image';
+            else if (file.type.startsWith('video/')) eventName = recipient === 'public' ? 'public video' : 'private video';
+            else eventName = recipient === 'public' ? 'public file' : 'private file';
+
+            socket.emit(eventName, payload);
+            sendChunks(recipient, file, offset + chunkSize);
         };
-      reader.readAsArrayBuffer(fileSlice);
-    }
-    document.getElementById('file-input').value = '';
-  }
-  //send message
-  async function _sendMessage(e){
-    if(e.key == "Enter") sendMessage();
-  }
-  async function sendMessage(rec=null, msg=null){
-    let recipient = document.getElementById('recipientInput').value;
-    let message = document.getElementById('message-input').value;
-    if(rec && msg){
-      recipient = rec;
-      message = msg;
-    }
-    if(recipient.trim() && message.trim() && recipient==='public'){
-      const date = new Date(Date.now()).toLocaleString();
-      addMessageTo(message, date) ;
-      if(!socket.connected){
-        //console.log('not connected.....');
-        window.Pending(recipient, message, -1);
-        document.getElementById('message-input').value = '';
-        return;
-      }
-      socket.emit('public message', message, date);
-      document.getElementById('message-input').value = '';
-    }
-    else if (recipient.trim() && message.trim()) {
-      const date = new Date(Date.now()).toLocaleString();
-      addMessageTo(message, date) ;
-      if(!socket.connected){
-        //console.log('not connected.....');
-        window.Pending(recipient, message, -1);
-        document.getElementById('message-input').value = '';
-        return;
-      }
-      socket.emit('private message', { to: recipient, message , date});
-      document.getElementById('message-input').value = '';
-    }
-    const fileinput = document.getElementById('file-input');
-    let file = fileinput.files[0];
-    if(file && recipient.trim()) {
-      document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
-      offset=0;
-      sendChunks(recipient, file,0);
-    }
-  }
 
-if(window.socket){
-  socket = window.socket;
-  
-  socket.on('disconnect', function(){
-      addError("Disconnected! Attempting to reconnect...");
-  })
-  
-  sendButton.addEventListener('click', sendMessage);
-  window.eventListeners.push({element: sendButton, event: 'click', handler: sendMessage});
-
-  document.getElementById('message-input').addEventListener('keypress', _sendMessage);
-  window.eventListeners.push({element: sendButton, event: 'keypress', handler: _sendMessage});
-  
-  socket.on('private message', ({ from, time, message, profile }) => {
-    const date = new Date(time).toLocaleString();
-    addMessage(from, message, date, profile) ;
-  });
-
-  socket.on('public message', ({ from, time, message, profile  }) => {
-    const date = new Date(time).toLocaleString();
-    addMessage(from, message, date, profile) ;
-  });
-
-  //image
-  socket.on('private image',({from,time,fileData, profile, state })=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
+        reader.readAsArrayBuffer(fileSlice);
+        document.getElementById('file-input').value = '';
     }
-  })
 
-  //video
-  socket.on('private video',({from,time,fileData, profile, state})=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else  embedDriveFiles(date,from,fileData,profile)
+    async function _handleKeyPress(e) {
+        if (e.key === "Enter") sendMessage();
     }
-  })
 
+    async function sendMessage(rec = null, msg = null) {
+        const recipientInput = document.getElementById('recipientInput');
+        const messageInput = document.getElementById('message-input');
+        const fileInput = document.getElementById('file-input');
 
-  //file
-  socket.on('private file',({from,time,fileData,fileName, profile, state })=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
-    }
-  })
+        let recipient = recipientInput.value.trim();
+        let message = messageInput.value.trim();
 
-  // 3)public image
-  socket.on('public image',({from,time,fileData, profile, state })=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
-    }
-  })
-
-  // 4)public video
-  socket.on('public video',({from,time,fileData, profile, state })=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
-    }
-  })
-
-  // 5)public file
-  socket.on('public file',({from,time,fileData,fileName, profile, state })=>{
-    if(state){
-      const date = new Date(time).toLocaleString();
-      if(from===window.userInfo.username)embedDriveFilesTo(date,fileData)
-      else embedDriveFiles(date,from,fileData,profile)
-    }
-  })
-
-  // 6)init activeUsers
-  socket.on('init activeUsers',({activeUsers, profile})=>{
-    const publicUrl='https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
-    active.innerHTML='';
-    BuildActiveDiv(active, window.userInfo.username, window.userInfo.imageurl);
-    BuildActiveDiv(active,'public', publicUrl);
-    activeUsers.forEach((name, index) => {
-        if(name!=='public' && name!==window.userInfo.username){
-          BuildActiveDiv(active,name, profile[index]);
+        if (rec && msg) {
+            recipient = rec;
+            message = msg;
         }
-    });
-    updateStyles();
+
+        if (recipient && message) {
+            const date = new Date().toLocaleString();
+            addMessageTo(message, date);
+
+            if (!socket || !socket.connected) {
+                if (window.Pending) window.Pending(recipient, message, -1);
+                messageInput.value = '';
+                return;
+            }
+
+            const event = (recipient === 'public') ? 'public message' : 'private message';
+            const payload = (recipient === 'public') ? [message, date] : [{ to: recipient, message, date }];
+            socket.emit(event, ...payload);
+            messageInput.value = '';
+        }
+
+        const file = fileInput.files[0];
+        if (file && recipient) {
+            document.getElementById('custom-file-upload').style.backgroundColor = '#007bff';
+            sendChunks(recipient, file, 0); // Reset offset to 0
+        }
+    }
+
+    function setupSocketListeners() {
+        socket.on('disconnect', () => {
+            addError("Connection lost. Reconnecting...");
+        });
+
+        socket.on('private message', ({ from, time, message, profile }) => {
+            addMessage(from, message, new Date(time).toLocaleString(), profile);
+        });
+
+        socket.on('public message', ({ from, time, message, profile }) => {
+            addMessage(from, message, new Date(time).toLocaleString(), profile);
+        });
+
+        // Image/Video/File Handlers
+        const mediaEvents = ['private image', 'private video', 'private file', 'public image', 'public video', 'public file'];
+        mediaEvents.forEach(event => {
+            socket.on(event, ({ from, time, fileData, profile, state }) => {
+                if (!state) return;
+                const date = new Date(time).toLocaleString();
+                if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
+                else embedDriveFiles(date, from, fileData, profile);
+            });
+        });
+
+        socket.on('init activeUsers', ({ activeUsers, profile }) => {
+            const publicUrl = 'https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
+            active.innerHTML = '';
+            const publicDiv = BuildActiveDiv(active, 'public', publicUrl); // Public room always first
+            if (publicDiv) publicDiv.style.backgroundColor = '#2980b9'; // Default selection
+
+            activeUsers.forEach((name, index) => {
+                if (name !== 'public' && name !== window.userInfo.username) {
+                    BuildActiveDiv(active, name, profile[index]);
+                }
+            });
+            updateStyles();
+        });
+
+
+        socket.on('activeUsers', ({ operation, name, photo }) => {
+            if (operation === 'add') BuildActiveDiv(active, name, photo);
+            else if (operation === 'remove') RemoveActiveDiv(active, name);
+            updateStyles();
+        });
+
+        socket.on('error', ({ error }) => {
+            if (error === '999') window.loadPage('login.html', 'login');
+            else addError(error);
+        });
+    }
+
+    // UI Helpers
+    sendButton.addEventListener('click', sendMessage);
+    document.getElementById('message-input').addEventListener('keypress', _handleKeyPress);
     window.addEventListener('resize', updateStyles);
-    window.eventListeners.push({element: window, event: 'resize', handler: updateStyles});
-  });
 
-//rest
-  socket.on('error', ({error}) => {
-    if(error==='999') {
-      loadPage('login.html','login');
+    function updateStyles() {
+        const isMobile = window.innerWidth < 1000;
+        const listHeader = document.getElementById('list-header');
+        if (listHeader) listHeader.textContent = isMobile ? '' : 'Active Homies';
+        const userDivs = active.querySelectorAll('div');
+        userDivs.forEach(div => {
+            div.style.width = isMobile ? '70px' : '85%';
+            div.style.margin = isMobile ? '5px' : '5px auto';
+        });
     }
-    else addError(`${error}`) ;
-  });
 
-  function updateStyles() {
-    if (window.innerWidth < 1000) {
-      listHeader.textContent = '';
-      const userDivs = active.querySelectorAll('div');
-      userDivs.forEach((userDiv)=>{
-        userDiv.style.width = '70px';
-        userDiv.style.margin = '5px';
-      })
+    function BuildActiveDiv(activeBar, name, profile_src) {
+        if (window.userInfo.username === name) return;
+
+        const userDiv = document.createElement('div');
+        const userNameDiv = document.createElement('h5');
+        const profileImg = document.createElement('img');
+
+        Object.assign(userDiv.style, {
+            height: '78px',
+            color: '#ccc',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            border: '1px solid #222',
+            borderRadius: '10px',
+            padding: '4px 0',
+            cursor: 'pointer',
+            backgroundColor: name === 'public' ? '#e74c3c' : '#111',
+            transition: 'transform 0.2s ease'
+        });
+
+        profileImg.src = profile_src || 'https://via.placeholder.com/60';
+        Object.assign(profileImg.style, {
+            width: '55px',
+            height: '55px',
+            borderRadius: '50%',
+            border: '2px solid #555'
+        });
+
+        userDiv.addEventListener('mouseover', () => { userDiv.style.transform = 'scale(0.95)'; });
+        userDiv.addEventListener('mouseout', () => { userDiv.style.transform = 'scale(1)'; });
+        userDiv.addEventListener('click', () => {
+            document.getElementById('recipientInput').value = name;
+            active.querySelectorAll('div').forEach(d => {
+                const head = d.querySelector('h5');
+                if (head) {
+                  const dName = head.textContent;
+                  d.style.backgroundColor = dName === 'public' ? '#e74c3c' : '#111';
+                }
+            });
+            userDiv.style.backgroundColor = '#2980b9'; // Active BLUE
+        });
+
+        userNameDiv.textContent = name;
+        Object.assign(userNameDiv.style, {
+            margin: '0',
+            fontSize: '11px',
+            fontWeight: 'bold'
+        });
+
+        userDiv.appendChild(profileImg);
+        userDiv.appendChild(userNameDiv);
+        activeBar.appendChild(userDiv);
+        return userDiv;
     }
-    else{
-      listHeader.textContent = 'Active Homies';
-      const userDivs = active.querySelectorAll('div');
-      userDivs.forEach((userDiv)=>{
-        userDiv.style.margin ='0';
-        userDiv.style.marginTop ='5px';
-        userDiv.style.width = '80%';
-      })
+
+
+    function RemoveActiveDiv(activeBar, name) {
+        const divs = activeBar.querySelectorAll('div');
+        for (const div of divs) {
+            const h5 = div.querySelector('h5');
+            if (h5 && h5.textContent === name) {
+                div.remove();
+                break;
+            }
+        }
     }
-  }
 
+    function addMessage(from, message, time, profile) {
+        const finalContainer = document.createElement('div');
+        finalContainer.className = 'final-container';
 
-// 7)BuildActiveDiv
-  function BuildActiveDiv(activeBar, name, profile_src){
-    if(window.userInfo.username===name) return;
+        const head = document.createElement('div');
+        head.className = 'time-name-container';
+        head.style.marginBottom = '2px';
 
-    const userDiv = document.createElement('div');
-    const userNameDiv = document.createElement('h5');
-    const profileDiv = document.createElement('img');
+        const nameLabel = document.createElement('span');
+        nameLabel.textContent = from;
+        nameLabel.style.fontWeight = 'bold';
+        nameLabel.style.color = '#3498db';
 
-    userDiv.style.height = '78px';
-    userDiv.style.color = '#ccc';
-    userDiv.style.display = 'flex';
-    userDiv.style.flexDirection = 'column';
-    userDiv.style.alignItems = 'center';
-    userDiv.style.justifyContent = 'space-between';
-    userDiv.style.border = '1px solid black'
-    userDiv.style.borderRadius = '10px';
-    userDiv.style.padding = '2.5px 0';
-    userDiv.style.cursor = 'pointer';
-    userDiv.style.overflowX = 'auto'; 
-    userDiv.style.overflowY = 'hidden';
-    if(name!=='public') userDiv.style.backgroundColor = 'black';
-    else userDiv.style.backgroundColor = 'crimson';
+        const timeLabel = document.createElement('span');
+        timeLabel.textContent = ` • ${time}`;
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
 
-    profileDiv.src=profile_src;
-    profileDiv.style.width = '60px';
-    profileDiv.style.height = '60px';
-    profileDiv.style.borderRadius = '50%';
-    profileDiv.style.border = '2px solid #ccc';
+        head.append(nameLabel, timeLabel);
 
-    function Over(){userDiv.style.scale = 0.8;}
-    function Out(){userDiv.style.scale = 1;}
-    function Click(){
-    document.getElementById('recipientInput').value= name;
-    const unselectDivs = active.querySelectorAll('div');
-    unselectDivs.forEach((unselectDiv)=>{
-      const name = unselectDiv.querySelector('h5').textContent;
-      if(name!=='public')unselectDiv.style.backgroundColor = 'black';
-      else unselectDiv.style.backgroundColor = 'crimson';
-    })
-      userDiv.style.backgroundColor = 'cadetblue';
+        const body = document.createElement('div');
+        body.className = 'message-receive-container';
+
+        const img = document.createElement('img');
+        img.src = profile;
+        img.className = 'receiver-profile-container';
+
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-receive';
+        msgBox.textContent = message;
+
+        body.append(img, msgBox);
+        finalContainer.append(head, body);
+        messagesDiv.appendChild(finalContainer);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
-    userDiv.addEventListener('mouseover', Over);
-    userDiv.addEventListener('mouseout', Out);
-    userDiv.addEventListener('click', Click);
-    window.eventListeners.push({element: userDiv, event: 'mouseover', handler: Over});
-    window.eventListeners.push({element: userDiv, event: 'mouseout', handler: Out});
-    window.eventListeners.push({element: userDiv, event: 'click', handler: Click});
 
-    userDiv.appendChild(profileDiv);
+    function addMessageTo(message, time) {
+        const finalContainer = document.createElement('div');
+        finalContainer.className = 'send-final-container';
 
-    userNameDiv.style.padding = 0;
-    userNameDiv.style.margin = 'auto';
-    userNameDiv.style.fontSize = 'small';
-    userNameDiv.style.fontWeight = 'bold';
-    if(window.userInfo.username===name)userNameDiv.textContent = `${name}(me)`;
-    else userNameDiv.textContent = name;
-    userDiv.appendChild(userNameDiv);
-    activeBar.appendChild(userDiv);
-  }
+        const timeLabel = document.createElement('div');
+        timeLabel.textContent = time;
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
+        timeLabel.style.marginBottom = '2px';
 
+        const body = document.createElement('div');
+        body.className = 'message-send-container';
 
-  
-  function RemoveActiveDiv(activeBar, name){
-    const userDivs = active.querySelectorAll('div');
-    for(let i=0;i<userDivs.length;++i){
-      if(userDivs[i].querySelector('h5').textContent.trim()===name){
-        activeBar.removeChild(userDivs[i]);
-        break;
-      }
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-send';
+        msgBox.textContent = message;
+
+        body.appendChild(msgBox);
+        finalContainer.append(timeLabel, body);
+        messagesDiv.appendChild(finalContainer);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
-  }
 
+    function addError(message) {
+        const err = document.createElement('div');
+        err.textContent = message;
+        Object.assign(err.style, {
+            color: message === 'Connected' ? '#2ecc71' : '#e74c3c',
+            backgroundColor: '#222',
+            borderRadius: '5px',
+            padding: '8px',
+            margin: '10px auto',
+            width: 'fit-content',
+            textAlign: 'center',
+            fontSize: '13px'
+        });
+        messagesDiv.appendChild(err);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        setTimeout(() => {
+            err.style.opacity = '0';
+            err.style.transition = 'opacity 1s';
+            setTimeout(() => err.remove(), 1000);
+        }, 3000);
+    }
 
-  socket.on('activeUsers',({operation, name, photo})=>{
-      if(operation==='add'){
-        BuildActiveDiv(active,name, photo);
-      }
-      else if(operation==='remove'){
-        RemoveActiveDiv(active, name);
-      }
-    updateStyles();
-  });
-}
+    function embedDriveFiles(time, from, file_id, profile) {
+        const container = document.createElement('div');
+        container.className = 'message-receive-container';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-start';
+        container.style.padding = '10px';
 
-function addMessage(from, message, time ,profile) {
-  const messageElement = document.createElement('div');
-  const profileDiv = document.createElement('img');
-  const timeDiv = document.createElement('h5');
-  const nameDiv = document.createElement('h5');
-  const time_nameDiv = document.createElement('div');
-  const messageContainer = document.createElement('div');
-  const finalContainer = document.createElement('div');
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.gap = '10px';
 
-  messageElement.textContent = message;
-  messageElement.className="message-receive";
+        const img = document.createElement('img');
+        img.src = profile;
+        img.style.width = '40px';
+        img.style.height = '40px';
+        img.style.borderRadius = '50%';
 
-  timeDiv.textContent=time;
-  timeDiv.className = 'time-container';
-  nameDiv.textContent=from;
-  nameDiv.style.marginLeft = '30px';
-  nameDiv.style.color = '#ccc';
-  nameDiv.style.fontSize = 'small';
+        const info = document.createElement('div');
+        const nameSpan = document.createElement('b');
+        nameSpan.textContent = from;
+        const timeSpan = document.createElement('small');
+        timeSpan.textContent = ` ${time}`;
+        timeSpan.style.color = '#777';
+        info.append(nameSpan, timeSpan);
 
-  time_nameDiv.appendChild(nameDiv);
-  time_nameDiv.appendChild(timeDiv);
-  time_nameDiv.className = 'time-name-container';
+        header.append(img, info);
 
-  
-  profileDiv.src=profile;
-  profileDiv.className = 'receiver-profile-container';
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
+        Object.assign(iframe.style, {
+            width: '100%',
+            maxWidth: '300px',
+            height: '215px',
+            border: 'none',
+            marginTop: '5px',
+            borderRadius: '8px',
+            backgroundColor: '#000'
+        });
 
-  messageContainer.appendChild(profileDiv);
-  messageContainer.appendChild(messageElement);
-  messageContainer.className = 'message-receive-container';
+        container.append(header, iframe);
+        messagesDiv.appendChild(container);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-  finalContainer.className ='final-container';
-  finalContainer.appendChild(time_nameDiv);
-  finalContainer.appendChild(messageContainer);
+    function embedDriveFilesTo(time, file_id) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'flex-end';
+        container.style.padding = '10px';
 
-  messagesDiv.appendChild(finalContainer);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        const timeLabel = document.createElement('small');
+        timeLabel.textContent = time;
+        timeLabel.style.color = '#777';
 
-}
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
+        Object.assign(iframe.style, {
+            width: '100%',
+            maxWidth: '300px',
+            height: '215px',
+            border: 'none',
+            marginTop: '5px',
+            borderRadius: '8px',
+            backgroundColor: '#000'
+        });
 
-function addMessageTo(message, time) {
-  const messageElement = document.createElement('div');
-  const timeDiv = document.createElement('h5');
-  const messageContainer = document.createElement('div');
-  const finalContainer = document.createElement('div');
+        container.append(timeLabel, iframe);
+        messagesDiv.appendChild(container);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-  timeDiv.textContent=time;
-  timeDiv.className = 'time-container';
-  messageElement.textContent = message;
-  messageElement.className="message-send";
-
-  messageContainer.className = 'message-send-container';
-  messageContainer.appendChild(messageElement);
-
-  finalContainer.className ='send-final-container';
-  finalContainer.appendChild(timeDiv);
-  finalContainer.appendChild(messageContainer);
-
-  messagesDiv.appendChild(finalContainer);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-
-  function addError(message) {
-    if(!messagesDiv) return;
-    const messageElement = document.createElement('div');
-    messageElement.textContent = message;
-    if(message!=='Connected')messageElement.style.color = 'crimson';
-    else messageElement.style.color = 'green';
-    messageElement.style.backgroundColor = 'lightblue';
-    messageElement.style.borderRadius = '10px';
-    messageElement.style.padding = '5px';
-    messageElement.style.margin = '10px';
-    messageElement.style.textAlign = 'center';
-    messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-    setTimeout(()=>{
-      messageElement.style.opacity=0;
-      messageElement.style.transition = 'opacity 2s ease-out'
-      setTimeout(()=>{
-        messageElement.remove();
-      },5000)
-    },5000)
-  }
-  function Load(){ document.getElementById('custom-file-upload').style.backgroundColor = 'crimson'; }
-  const fileInput = document.getElementById('file-input');
-  fileInput.addEventListener('change', Load);
-  window.eventListeners.push({element: fileInput, event: 'change', handler: Load});
-
-  function embedDriveFiles(time, to, file_id, profile){
-    const messageElement = document.createElement('div');
-    const profileDiv = document.createElement('img');
-    const messageContainer = document.createElement('div');
-    messageElement.innerHTML =
-     `<h5 style="width:100%;text-align: center;margin: 0;padding: 0;color: #ccc;font-size:small;">${time}</h5>
-    <h5 style="color: #ccc;margin: 0 10px;padding: 0;font-size:small;">${to}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview 
-    style="max-width: 300px; 
-    height: 215px; 
-    border: none;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;"
-    />`;
-    messageElement.style.width= '100%';
-    messageElement.style.height= 'auto';
-    messageElement.style.display = 'flex';
-    messageElement.style.flexDirection = 'column';
-    messageContainer.style.alignItems = 'flex-start';
-    messageContainer.style.justifyContent = 'center';
-
-    profileDiv.src=profile;
-    profileDiv.style.width = '70px';
-    profileDiv.style.height = '70px';
-    profileDiv.style.borderRadius = '50%';
-    profileDiv.style.border = '1px soild #ccc';
-    profileDiv.style.padding = '10px';
-
-    messageContainer.style.width = '98%';
-    messageContainer.style.height = 'auto';
-    messageContainer.style.padding = '8px';
-    messageContainer.style.display = 'flex';
-    messageContainer.style.justifyContent = 'flex-start';
-    messageContainer.style.alignItems = 'flex-end';
-    messageContainer.appendChild(profileDiv);
-    messageContainer.appendChild(messageElement);
-                      
-    messagesDiv.appendChild(messageContainer);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-  }
-
-  function embedDriveFilesTo(time, file_id) {
-    const messageElement = document.createElement('div');
-
-    messageElement.style.display = 'flex';
-    messageElement.style.flexDirection = 'column';
-    messageElement.style.alignItems = 'flex-end';
-    messageElement.style.justifyContent = 'center';
-    messageElement.style.padding = '8px';
-    messageElement.style.width = '98%';
-    messageElement.style.height = 'auto';
-
-    messageElement.innerHTML = 
-    `<h5 style="width:90%;text-align: center;color: #ccc;font-size:small;">${time}</h5>
-    <iframe src = https://drive.google.com/file/d/${file_id}/preview 
-    style="max-width: 300px; 
-    height: 215px; 
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden"
-    />`;
-    messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
+    const fileInputEl = document.getElementById('file-input');
+    if (fileInputEl) {
+        fileInputEl.addEventListener('change', () => {
+            const uploadBtn = document.getElementById('custom-file-upload');
+            if (uploadBtn) uploadBtn.style.backgroundColor = '#e67e22';
+        });
+    }
 })();

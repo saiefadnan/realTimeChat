@@ -1,314 +1,281 @@
-const { Socket } = require('socket.io');
-const {uploadFile, gatherChunks} = require('./Gdrive');
-const { storeChats } = require('./storeChats');
 const jwt = require('jsonwebtoken');
+const { uploadFile, gatherChunksMap } = require('./Gdrive');
+const { storeChats } = require('./storeChats');
+
 const secretKey = process.env.JWT_SECRET;
 
-const users = {};
-const names = {};
-const photos ={};
-const socIns ={};
+// In-memory user maps — exported so cron job / chatData can access them
+const users = {};   // username   → socket.id
+const names = {};   // socket.id  → username
+const photos = {};  // socket.id  → profile picture URL
+const socIns = {};  // username   → socket instance
 
-function socketHandler(io){
-    emitActiveUsers = function(operation, name, photo, socket){
-        activeUsers = Object.values(names);
-        profile = Object.values(photos);
-        if(operation==='init' || operation==='refresh'){
-            io.to(socket.id).emit('init activeUsers',{activeUsers, profile});
-        }
-        else if(operation==='add'){
-            socket.broadcast.emit('activeUsers',{operation, name, photo});
-        }
-        else io.emit('activeUsers',{operation, name});
+/**
+ * Verifies a JWT and extracts { username, imageurl }.
+ * Returns null on failure instead of throwing — keeps socket handlers clean.
+ * @param {string} token
+ * @returns {{ username: string, imageurl: string } | null}
+ */
+function verifyToken(token) {
+    try {
+        return jwt.verify(token, secretKey);
+    } catch {
+        return null;
     }
-    io.on('connection', (socket) =>{
-        console.log('A user connected: ',socket.id);
-        socket.on('show active-users',async()=>{
-            if(Object.keys(names).length>0)emitActiveUsers('init',null,null,socket);
-        })
-        socket.on('insert name',async( {jwtoken})=>{
-            let username, imageurl;
-            try{
-                const decoded= jwt.verify(jwtoken, secretKey);
-                username = decoded.username;
-                imageurl = decoded.imageurl;
-            }catch(err){
-                console.error(err);
-            }
-            if(!users[username]){
-                users[username] = socket.id;
-                names[socket.id] = username;
-                photos[socket.id] = imageurl;
-                socIns[username]= socket;
-                console.log('username saved');
-                if(Object.keys(names).length>0){
-                    emitActiveUsers('init',null,null,socket);
-                    emitActiveUsers('add',username,imageurl,socket);
-                }
-            }
-            else{
-                io.to(socket.id).emit('error',{
-                    error: '999'
-                });
-            }
-        })
+}
 
-        socket.on('private image',async({to,fileData,fileType})=>{
-            gatherChunks.push(fileData);
-        })
-        socket.on('public image',async({fileData, fileType})=>{
-            gatherChunks.push(fileData);
-        })
-        socket.on('private video',async({to,fileData})=>{
-            gatherChunks.push(fileData);
-        })
-        socket.on('public video',async({fileData})=>{
-            gatherChunks.push(fileData);
-        })
-        socket.on('public file',async({fileData, fileName})=>{
-            gatherChunks.push(fileData);
-        })
-        socket.on('private file',async({to, fileData, fileName})=>{
-            gatherChunks.push(fileData);
-        })
+/**
+ * Broadcasts the active user list to the appropriate target(s).
+ * @param {import('socket.io').Server} io
+ * @param {'init'|'refresh'|'add'|'remove'} operation
+ * @param {string|null} name
+ * @param {string|null} photo
+ * @param {import('socket.io').Socket} socket
+ */
+function emitActiveUsers(io, operation, name, photo, socket) {
+    const activeUsers = Object.values(names);
+    const profile = Object.values(photos);
 
-        socket.on('complete', async({to, fileType, fileName})=>{
-            const date = new Date(Date.now()).toLocaleString();
-            if(to==='public'){
-                if(fileType.startsWith('image/')){
-                    const docUrl=await uploadFile('image',fileName);
-                    await storeChats(names[socket.id], 'public', docUrl, 'image', date);
-                    io.emit('public image',{
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: docUrl,
-                        profile: photos[socket.id],
-                        state: true
-                    })
-                }
-                else if(fileType.startsWith('video/')){
-                    const docUrl=await uploadFile('video',fileName);
-                    await storeChats(names[socket.id], 'public', docUrl, 'video', date);
-                    io.emit('public video',{
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: docUrl,
-                        profile: photos[socket.id],
-                        state: true
-                    })
-                }
-                else{
-                    const docUrl=await uploadFile('document',fileName);
-                    await storeChats(names[socket.id], 'public', docUrl, 'document', date);
-                    io.emit('public file',{
-                        from: names[socket.id],
-                        time: Date.now(),
-                        fileData: docUrl,
-                        fileName: fileName,
-                        profile: photos[socket.id],
-                        state: true 
-                    })
-                }
-            }
-            else{
-                const recipientSocketId = users[to];
-                if(fileType.startsWith('image/')){
-                    const docUrl=await uploadFile('image',fileName);
-                    console.log('url.........',docUrl);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'image', date);
-                    if(recipientSocketId){
-                        const sockets = [recipientSocketId, socket.id];
-                        sockets.forEach((id)=>{
-                            io.to(id).emit('private image', {
-                                from: names[socket.id],
-                                time: Date.now(),
-                                fileData: docUrl,
-                                profile: photos[socket.id],
-                                state: true 
-                            });
-                        })
-                    }
-                    else{
-                        io.to(socket.id).emit('error',{
-                            error: `${to} is not available`
-                        });
-                    }
-                }
-                else if(fileType.startsWith('video/')){
-                    const docUrl=await uploadFile('video',fileName);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'video', date);
-                    if(recipientSocketId){
-                        const sockets = [recipientSocketId, socket.id];
-                        sockets.forEach((id)=>{
-                        io.to(id).emit('private video', {
-                            from: names[socket.id],
-                            time: Date.now(),
-                            fileData: docUrl,
-                            profile: photos[socket.id],
-                            state: true 
-                        });
-                    })
-                    }
-                    else{
-                        io.to(socket.id).emit('error',{
-                            error: `${to} is not available`
-                        });
-                    }
-                }
-                else{
-                    const docUrl=await uploadFile('document',fileName);
-                    await storeChats(names[socket.id], names[recipientSocketId], docUrl, 'document', date);
-                    if(recipientSocketId){
-                        const sockets = [recipientSocketId, socket.id];
-                        sockets.forEach((id)=>{
-                        io.to(id).emit('private file', {
-                            from: names[socket.id],
-                            time: Date.now(),
-                            fileData: docUrl,
-                            fileName: fileName,
-                            profile: photos[socket.id],
-                            state: true 
-                        });
-                    })
-                    }
-                    else{
-                        io.to(socket.id).emit('error',{
-                            error: `${to} is not available`
-                        });
-                    }
-                }
-            }
-        })
-        
-        socket.on('private message',async({to,message,date})=>{
-            const recipientSocketId = users[to];
-            if(recipientSocketId){
-                await storeChats(names[socket.id], names[recipientSocketId], message, 'text', date);
-                io.to(recipientSocketId).emit('private message',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    message,
-                    profile: photos[socket.id] 
-                });
-            }
-            else{
-                io.to(socket.id).emit('error',{
-                    error: `${to} is not available`
-                });
+    if (operation === 'init' || operation === 'refresh') {
+        io.to(socket.id).emit('init activeUsers', { activeUsers, profile });
+    } else if (operation === 'add') {
+        socket.broadcast.emit('activeUsers', { operation, name, photo });
+    } else {
+        io.emit('activeUsers', { operation, name });
+    }
+}
+
+/**
+ * Registers all Socket.IO event handlers.
+ * @param {import('socket.io').Server} io
+ */
+function socketHandler(io) {
+
+    io.on('connection', (socket) => {
+        console.log(`[Socket] Connected: ${socket.id}`);
+
+        // ── Show currently active users to this socket ──────────────────────
+        socket.on('show active-users', () => {
+            if (Object.keys(names).length > 0) {
+                emitActiveUsers(io, 'init', null, null, socket);
             }
         });
-    
-        socket.on('public message', async(message, date)=>{
-            await storeChats(names[socket.id], 'public', message, 'text', date);
-            socket.broadcast.emit('public message',{
-                from: names[socket.id],
-                time: Date.now(),
-                message,
-                profile: photos[socket.id] 
-            })
-        })
-        //room
-        socket.on('create-room',({room})=>{
-            socket.join(room.name);
-            console.log(room.name);
-            io.to(room.name).emit('room-created',{notify: `Room ${room.name} created by ${room.admin}`});
-        })
 
-        socket.on('invite',({room, usernames})=>{
-            for(let i=0;i< usernames.length;++i){
-                if(socIns[usernames[i]])socIns[usernames[i]].join(room.name);
-                else{
-                    //store in database
+        // ── Register user identity (requires valid JWT) ───────────────────── 
+        socket.on('insert name', ({ jwtoken }) => {
+            const decoded = verifyToken(jwtoken);
+            if (!decoded) {
+                io.to(socket.id).emit('error', { error: 'Invalid or expired session. Please log in again.' });
+                return;
+            }
+
+            const { username, imageurl } = decoded;
+
+            if (users[username]) {
+                // Username already connected on another socket
+                io.to(socket.id).emit('error', { error: '999' });
+                return;
+            }
+
+            users[username] = socket.id;
+            names[socket.id] = username;
+            photos[socket.id] = imageurl;
+            socIns[username] = socket;
+
+            console.log(`[Socket] Registered user: ${username}`);
+
+            if (Object.keys(names).length > 0) {
+                emitActiveUsers(io, 'init', null, null, socket);
+                emitActiveUsers(io, 'add', username, imageurl, socket);
+            }
+        });
+
+        // ── File chunk collection (per-socket buffer) ─────────────────────── 
+        // Each socket gets its own chunk buffer to prevent race conditions
+        // when multiple users upload files simultaneously.
+        const chunkHandlers = ['private image', 'public image', 'private video', 'public video', 'public file', 'private file', 'room file'];
+        chunkHandlers.forEach((event) => {
+            socket.on(event, ({ fileData }) => {
+                if (!gatherChunksMap.has(socket.id)) {
+                    gatherChunksMap.set(socket.id, []);
+                }
+                gatherChunksMap.get(socket.id).push(fileData);
+            });
+        });
+
+        // ── Complete file upload (flush buffer) ───────────────────────────── 
+        socket.on('complete', async ({ to, fileType, fileName }) => {
+            const date = new Date().toLocaleString();
+            const fromUsername = names[socket.id];
+
+            try {
+                // uploadFile now reads from per-socket buffer
+                if (to === 'public') {
+                    let docUrl;
+                    if (fileType.startsWith('image/')) {
+                        docUrl = await uploadFile(socket.id, 'image', fileName);
+                        await storeChats(fromUsername, 'public', docUrl, 'image', date);
+                        io.emit('public image', { from: fromUsername, time: Date.now(), fileData: docUrl, profile: photos[socket.id], state: true });
+                    } else if (fileType.startsWith('video/')) {
+                        docUrl = await uploadFile(socket.id, 'video', fileName);
+                        await storeChats(fromUsername, 'public', docUrl, 'video', date);
+                        io.emit('public video', { from: fromUsername, time: Date.now(), fileData: docUrl, profile: photos[socket.id], state: true });
+                    } else {
+                        docUrl = await uploadFile(socket.id, 'document', fileName);
+                        await storeChats(fromUsername, 'public', docUrl, 'document', date);
+                        io.emit('public file', { from: fromUsername, time: Date.now(), fileData: docUrl, fileName, profile: photos[socket.id], state: true });
+                    }
+                } else {
+                    const recipientSocketId = users[to];  // `to` is a username
+                    let docUrl;
+
+                    if (fileType.startsWith('image/')) {
+                        docUrl = await uploadFile(socket.id, 'image', fileName);
+                        await storeChats(fromUsername, to, docUrl, 'image', date);  // FIX: was names[recipientSocketId]
+                    } else if (fileType.startsWith('video/')) {
+                        docUrl = await uploadFile(socket.id, 'video', fileName);
+                        await storeChats(fromUsername, to, docUrl, 'video', date);
+                    } else {
+                        docUrl = await uploadFile(socket.id, 'document', fileName);
+                        await storeChats(fromUsername, to, docUrl, 'document', date);
+                    }
+
+                    if (recipientSocketId) {
+                        const eventName = fileType.startsWith('image/') ? 'private image' : fileType.startsWith('video/') ? 'private video' : 'private file';
+                        const payload = { from: fromUsername, time: Date.now(), fileData: docUrl, profile: photos[socket.id], state: true };
+                        if (!fileType.startsWith('image/') && !fileType.startsWith('video/')) payload.fileName = fileName;
+                        [recipientSocketId, socket.id].forEach(id => io.to(id).emit(eventName, payload));
+                    } else {
+                        io.to(socket.id).emit('error', { error: `${to} is not currently online.` });
+                    }
+                }
+            } catch (err) {
+                console.error('[Socket] File upload error:', err);
+                io.to(socket.id).emit('error', { error: 'File upload failed. Please try again.' });
+            }
+        });
+
+        // ── Room file upload ──────────────────────────────────────────────── 
+        socket.on('room file complete', async ({ room, fileType, fileName }) => {
+            const fromUsername = names[socket.id];
+            try {
+                let docUrl;
+                let event = 'room file';
+                const payload = { from: fromUsername, time: Date.now(), profile: photos[socket.id] };
+
+                if (fileType.startsWith('image/')) {
+                    docUrl = await uploadFile(socket.id, 'image', fileName);
+                } else if (fileType.startsWith('video/')) {
+                    docUrl = await uploadFile(socket.id, 'video', fileName);
+                } else {
+                    docUrl = await uploadFile(socket.id, 'document', fileName);
+                    payload.fileName = fileName;
+                }
+
+                payload.fileData = docUrl;
+                io.to(room.name).emit(event, payload);
+            } catch (err) {
+                console.error('[Socket] Room file upload error:', err);
+                io.to(socket.id).emit('error', { error: 'Room file upload failed.' });
+            }
+        });
+
+        // ── Text messaging ────────────────────────────────────────────────── 
+        socket.on('private message', async ({ to, message, date }) => {
+            if (!message || !message.trim()) return;
+            const fromUsername = names[socket.id];
+            const recipientSocketId = users[to];
+
+            if (recipientSocketId) {
+                try {
+                    await storeChats(fromUsername, to, message, 'text', date);
+                    io.to(recipientSocketId).emit('private message', {
+                        from: fromUsername,
+                        time: Date.now(),
+                        message,
+                        profile: photos[socket.id]
+                    });
+                } catch (err) {
+                    console.error('[Socket] storeChats error:', err);
+                }
+            } else {
+                io.to(socket.id).emit('error', { error: `${to} is not currently online.` });
+            }
+        });
+
+        socket.on('public message', async (message, date) => {
+            if (!message || !message.trim()) return;
+            const fromUsername = names[socket.id];
+            try {
+                await storeChats(fromUsername, 'public', message, 'text', date);
+                socket.broadcast.emit('public message', {
+                    from: fromUsername,
+                    time: Date.now(),
+                    message,
+                    profile: photos[socket.id]
+                });
+            } catch (err) {
+                console.error('[Socket] storeChats error:', err);
+            }
+        });
+
+        // ── Room management ───────────────────────────────────────────────── 
+        socket.on('create-room', ({ room }) => {
+            socket.join(room.name);
+            io.to(room.name).emit('room-created', {
+                notify: `Room "${room.name}" created by ${room.admin}`
+            });
+        });
+
+        socket.on('invite', ({ room, usernames }) => {
+            for (const username of usernames) {
+                if (socIns[username]) {
+                    socIns[username].join(room.name);
                 }
             }
-            console.log(room.name);
             socket.broadcast.to(room.name).emit('invitation', {
-                name: room.name, 
-                notify: `${names[socket.id]} has added u in ${room.name}`
-            })
-            io.to(socket.id).emit('invited',{
-                notify: `${usernames} are invited`
+                name: room.name,
+                notify: `${names[socket.id]} added you to room "${room.name}"`
             });
-        })
+            io.to(socket.id).emit('invited', {
+                notify: `Invited: ${usernames.join(', ')}`
+            });
+        });
 
-        socket.on('room message', ({room, message, date})=>{
-            socket.broadcast.to(room.name).emit('room message',{
+        socket.on('room message', ({ room, message, date }) => {
+            if (!message || !message.trim()) return;
+            socket.broadcast.to(room.name).emit('room message', {
                 from: names[socket.id],
                 time: Date.now(),
                 message,
-                profile: photos[socket.id] 
-            })
-        })
+                profile: photos[socket.id]
+            });
+        });
 
-        socket.on('room file',async({fileData})=>{
-            gatherChunks.push(fileData);
-        })
+        // ── WebRTC signaling ──────────────────────────────────────────────── 
+        socket.on('signal', ({ room, signal }) => {
+            socket.broadcast.to(room).emit('signal', { signal });
+        });
 
-        socket.on('room file complete', async({room, fileType, fileName})=>{
-            //const date = new Date(Date.now()).toLocaleString();
-            if(fileType.startsWith('image/')){
-                const docUrl=await uploadFile('image',fileName);
-                //await storeChats(names[socket.id], 'public', docUrl, 'image', date);
-                io.to(room.name).emit('room file',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: docUrl,
-                    profile: photos[socket.id]
-                })
+        // ── Disconnect ────────────────────────────────────────────────────── 
+        socket.on('disconnect', () => {
+            const username = names[socket.id];
+            console.log(`[Socket] Disconnected: ${socket.id} (${username || 'unregistered'})`);
+
+            if (username) {
+                emitActiveUsers(io, 'remove', username, null, socket);
+                delete users[username];
+                delete socIns[username];
             }
-            else if(fileType.startsWith('video/')){
-                const docUrl=await uploadFile('video',fileName);
-                // await storeChats(names[socket.id], 'public', docUrl, 'video', date);
-                console.log(room.name,'video...',docUrl);
-                io.to(room.name).emit('room file',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: docUrl,
-                    profile: photos[socket.id]
-                })
-            }
-            else{
-                const docUrl=await uploadFile('document',fileName);
-                // await storeChats(names[socket.id], 'public', docUrl, 'document', date);
-                io.to(room.name).emit('room file',{
-                    from: names[socket.id],
-                    time: Date.now(),
-                    fileData: docUrl,
-                    fileName: fileName,
-                    profile: photos[socket.id]
-                })
-            }
-        })
-
-        socket.on('signal',({room,signal})=>{
-            console.log(signal.type);
-            socket.broadcast.to(room).emit('signal',{
-                signal: signal
-            })
-        })
-
-        //disconnect
-        socket.on('disconnect',()=>{
-            console.log('A user disconnected: ',socket.id);
-            if(Object.keys(names).length>0)emitActiveUsers('remove',names[socket.id], photos[socket.id]);
-            delete users[names[socket.id]];
             delete names[socket.id];
             delete photos[socket.id];
-            console.log('total concurrent active users ',Object.keys(users).length);
+
+            // Clean up per-socket chunk buffer
+            gatherChunksMap.delete(socket.id);
+
+            console.log(`[Socket] Active connections: ${Object.keys(users).length}`);
         });
     });
 }
 
-module.exports = { socketHandler, names, photos, users};
-
-
-
-
-
-
-
-
-
-
-
-
+module.exports = { socketHandler, names, photos, users };

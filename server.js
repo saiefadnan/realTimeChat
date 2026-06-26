@@ -4,57 +4,105 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
-const bodyParser = require('body-parser');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const cors = require('cors');
 const { socketHandler } = require('./socketHandler');
 const { assign } = require('./controllers/controller');
 const routes = require('./routes/route');
-const cors = require('cors');
+const { generalLimiter } = require('./middleware/rateLimiter');
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server,{
-    cors: {
-        origin: "*",
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
-        exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
-        credentials: true
+
+// ─── CORS ─────────────────────────────────────────────────────────────────── 
+// Allow all origins in development; restrict to env-specified origins in prod.
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:4000'];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. same-origin, Postman)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS policy violation: ${origin} is not allowed.`));
+        }
     },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 600,
+    optionsSuccessStatus: 204
+};
+
+const io = new Server(server, {
+    cors: corsOptions,
     allowEIO3: true,
     pingTimeout: 60000
 });
-  
-const corsOptions = {
-    origin: "*",
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
-    exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
-    credentials: true,
-    maxAge: 600,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-};
-app.use(cors(corsOptions));
-app.use(bodyParser.json({ limit: '50mb' }));
-app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-mongoose.connect(process.env.MONGODB_URL)
-.then(()=>{
-    console.log('MongoDB connected');
-})
-.catch(err => {
-    console.error(err);
+// ─── Security Middleware ──────────────────────────────────────────────────── 
+app.use(helmet({
+    // Content-Security-Policy disabled because the SPA loads scripts from CDN
+    // and embeds Google Drive iframes — adjust to your deployment as needed
+    contentSecurityPolicy: false
+}));
+
+// ─── Body Parsing ─────────────────────────────────────────────────────────── 
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// ─── CORS ─────────────────────────────────────────────────────────────────── 
+app.use(cors(corsOptions));
+
+// ─── Request Logging ─────────────────────────────────────────────────────── 
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(morganFormat));
+
+// ─── Rate Limiting ────────────────────────────────────────────────────────── 
+app.use('/api', generalLimiter);
+
+// ─── Static Files ─────────────────────────────────────────────────────────── 
+app.use(express.static(path.join(__dirname, './public')));
+
+// ─── Routes ───────────────────────────────────────────────────────────────── 
+app.use('/api', routes);
+
+// ─── Global Error Handler ─────────────────────────────────────────────────── 
+app.use((err, req, res, next) => {
+    console.error('[Server] Unhandled error:', err.message);
+    res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
+// ─── Database ─────────────────────────────────────────────────────────────── 
+mongoose.connect(process.env.MONGODB_URL)
+    .then(() => {
+        console.log('[MongoDB] Connected');
+    })
+    .catch(err => {
+        console.error('[MongoDB] Connection error:', err.message);
+        process.exit(1);
+    });
 
-
-app.use(express.static(path.join(__dirname,'./public')));
-
-
-app.use('/api',routes);
+// ─── Socket.IO ────────────────────────────────────────────────────────────── 
 assign(io);
 socketHandler(io);
 
-const PORT =4000;
-server.listen(PORT,'0.0.0.0',()=>{
-    console.log(`Server is running on port ${PORT}`);
+// ─── Server Start ─────────────────────────────────────────────────────────── 
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server] Running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+});
+
+// ─── Graceful Shutdown ────────────────────────────────────────────────────── 
+process.on('SIGTERM', () => {
+    console.log('[Server] SIGTERM received, shutting down gracefully...');
+    server.close(() => {
+        mongoose.connection.close(false, () => {
+            console.log('[Server] Shutdown complete.');
+            process.exit(0);
+        });
+    });
 });

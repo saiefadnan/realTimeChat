@@ -1,236 +1,319 @@
-const deactive_avtr = 'https://cdn.create.vista.com/api/media/small/456352818/stock-vector-users-profile-account-avatar-remove-user-icon-users';
 const cron = require('node-cron');
 const User = require('../mongodb/user');
 const jwt = require('jsonwebtoken');
-const { admin, db} = require('../firebase');
-const { StorageSharedKeyCredential} = require('@azure/storage-blob');
-const {uploadImageToAzure, generateSasToken} = require('../azureUpload');
-const {names, photos, users} = require('../socketHandler');
+const { admin, db } = require('../firebase');
+const { StorageSharedKeyCredential } = require('@azure/storage-blob');
+const { uploadImageToAzure, generateSasToken } = require('../azureUpload');
+const { names, photos, users } = require('../socketHandler');
 const { drive } = require('../Gdrive');
+
+const DEACTIVE_AVATAR = 'https://ui-avatars.com/api/?name=?&background=333&color=fff';
 const accountName = process.env.AZURE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_ACCOUNT_KEY;
 const secretKey = process.env.JWT_SECRET;
-const init=false;
-let io_;
 
-const refreshToken = async(profilePicture)=>{
-    const blobName = decodeURIComponent(profilePicture.substring(profilePicture.lastIndexOf('/')+1));
-    console.log(blobName);
+// io_ is set by assign() once the HTTP server is ready
+let io_ = null;
+
+/**
+ * Called from server.js to inject the Socket.IO instance so the cron job
+ * can broadcast SAS token refresh events to all connected clients.
+ * @param {import('socket.io').Server} io
+ */
+function assign(io) {
+    io_ = io;
+}
+
+/**
+ * Deletes a file from Google Drive by its file ID.
+ * @param {string} file_id
+ */
+async function deleteFile(file_id) {
+    try {
+        await drive.files.delete({ fileId: file_id });
+        console.log(`[GDrive] Deleted file: ${file_id}`);
+    } catch (err) {
+        console.error('[GDrive] File deletion failed:', err.message);
+    }
+}
+
+/**
+ * Generates a fresh Azure SAS token for a profile picture blob.
+ * @param {string} profilePicture - Full Azure blob URL (without existing SAS)
+ * @returns {Promise<string>} New SAS token string
+ */
+const refreshToken = async (profilePicture) => {
+    const blobName = decodeURIComponent(profilePicture.substring(profilePicture.lastIndexOf('/') + 1));
     const credential = new StorageSharedKeyCredential(accountName, accountKey);
-    const sasToken = await generateSasToken(blobName,credential);
+    const sasToken = await generateSasToken(blobName, credential);
     return sasToken;
-}
+};
 
-function assign(io){
-    if(init){
-        io_ = io;
-    }
-    else init= false;
-    
-}
-async function deleteFile(file_id){
-    console.log(file_id);
-    try{
-        await drive.files.delete({fileId : file_id});
-        console.log(`File with ID: ${file_id} has been deleted.`);
-    }catch(err){
-        console.error('File deletion failed', err);
-    }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth Controllers
+// ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * POST /api/login
+ * Authenticates a user with email + password, returns a signed JWT.
+ */
+const loginData = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-const loginData = async(req,res)=>{
-    try{
-        const {email,password} = req.body;
-        console.log(email);
-        const user = await User.findOne({email}); 
-        if(!user){
+        if (!email || !password) {
+            return res.status(400).json({ login: false, notify: 'Email and password are required.' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(200).json({ login: false, notify: 'Invalid login attempt.' });
+        }
+
+        const passMatch = await user.comparePassword(password);
+        if (!passMatch) {
+            return res.status(200).json({ login: false, notify: 'Invalid login attempt.' });
+        }
+
+        if (users[user.username]) {
             return res.status(200).json({
                 login: false,
-                notify: `Invalid login attempt`
+                notify: 'You are currently logged in elsewhere!'
             });
         }
-        const pass = await user.comparePassword(password);
-        if(!pass){
-            return res.status(200).json({
-                login: false,
-                notify: `Invalid login attempt`
-            });
-        }
-        if(users[user.username]){
-            return res.status(200).json({
-                login: false,
-                notify: `You are currently logged in else where!`
-            });
-        }else if(user && pass){
-            const sasToken = await refreshToken(user.profilePicture);
-            console.log(user.username);
-            const jwtoken = jwt.sign(
-                {
-                    username: user.username, 
-                    imageurl: `${user.profilePicture}?${sasToken}`
-                }, 
-                secretKey, {expiresIn: '30d'} );
-            //console.log('jwt', jwtoken);
-            return res.status(200).json({
-                    login:true,
-                    notify: `Welcome ${user.username}!`,
-                    token: jwtoken
-            });
-        }
-    }
-    catch(err){
-        console.error(err);
-        res.status(500).send('Error occured');
-    }
-}
 
-const signinData = async(req,res)=>{
-    try{
-        const {email, username ,password, profile} = req.body;
-        console.log(email);
-        let users = await User.findOne({username});
-        const emails = await User.findOne({email});
-        if(!users && !emails){
-            let blobPath_ = "https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif";
-            let sasToken_='';
-            if(profile){
-                const { blobPath, sasToken } = await uploadImageToAzure(profile);
-                blobPath_ = blobPath;
-                sasToken_ = sasToken;
-            }
-            const user = new User({username,password,email,profilePicture: blobPath_});
-            await user.save();
-            const jwtoken = jwt.sign({
-                    username: user.username, 
-                    imageurl: `${user.profilePicture}?${sasToken_}`
-                }, 
-                secretKey, {expiresIn: '30d'} );
-            // console.log('jwt', jwtoken);
-            res.status(200).json({
-                signin:true,
-                notify: `Sucessfully registered!! Welcome ${user.username}!`,
-                token: jwtoken
-            });
-        }
-        else{
-            res.status(200).json({
-                signin:false,
-                notify: `Email or Username already exists! plz log in!`,
-            });
-        }
-                
-    }
-    catch(err){
-        console.error(err);
-        res.status(500).send('Error occured');
-    }
-}
-
-const getUserInfo = async(req,res)=>{
-    try{
-        const {token} = req.body;
-        const decoded= jwt.verify(token, secretKey);
-        res.status(200).json({
-            userinfo:{
-                username: decoded.username,
-                imageurl: decoded.imageurl
-    }})
-    }catch(err){
-        console.error(err);
-    }
-}
-
-const chatData = async(req, res)=>{
-    try{
-        const { username } = req.body;
-        const chatRef = db.collection('chat');
-        const [sender,public,receiver]= await Promise.all([
-            chatRef.where('sender','==',username).get(),
-            chatRef.where('receiver','==','public').where('sender', '!=',username).get(),
-            chatRef.where('receiver','==',username).get()
-        ])
-
-        const combineData = [...sender.docs,...public.docs,...receiver.docs];
-
-        combineData.sort((a,b)=>{
-           return  a.data().timestamp.toMillis()-b.data().timestamp.toMillis()}
+        const sasToken = await refreshToken(user.profilePicture);
+        const jwtoken = jwt.sign(
+            {
+                username: user.username,
+                imageurl: `${user.profilePicture}?${sasToken}`
+            },
+            secretKey,
+            { expiresIn: '30d' }
         );
 
-        res.status(200).json({
-            chats: combineData.map((doc)=>({
-                id: doc.id,
-                ...doc.data(),
-                imageUrl: photos[users[doc.data().sender]]?photos[users[doc.data().sender]]:deactive_avtr
-            }))
-        })
-    }catch(err){
-        console.error(err);
-    }
-}
-const queryUser = async(req, res)=>{
-    try{
-        const {query} =  req.body;
-        const queryUsers = await User.find({username: {$regex: query, $options: 'i'}});
-        if(!queryUsers) return res.status(200).json({
-            messsage: 'No homies found!'
+        // Update last login timestamp
+        await User.updateOne({ _id: user._id }, { lastLogin: new Date() });
+
+        return res.status(200).json({
+            login: true,
+            notify: `Welcome back, ${user.username}!`,
+            token: jwtoken
         });
-        res.status(200).json({
-            messsage: `${queryUsers.length} homies found!`,
-            querynames: queryUsers.map((query)=>({
-                name: query.username
-            }))
-        })
-    }catch(err){
-        console.error(err);
+    } catch (err) {
+        console.error('[Login] Error:', err);
+        return res.status(500).json({ error: 'An internal error occurred.' });
     }
+};
 
-}
+/**
+ * POST /api/signin
+ * Registers a new user (username + email must be unique), returns a signed JWT.
+ */
+const signinData = async (req, res) => {
+    try {
+        const { email, username, password, profile } = req.body;
 
-const cleanUpOldChats = async()=>{
-    try{
-        const fiveHourAgoMillis = admin.firestore.Timestamp.now().toMillis() - (5*3600*1000);
-        const fiveHourAgo = new admin.firestore.Timestamp( Math.floor(fiveHourAgoMillis/1000), (fiveHourAgoMillis%1000)*1000000);
-        const chatRef = db.collection('chat');
-        console.log(fiveHourAgo);
-        const snapShot = await chatRef.where('timestamp', '<', fiveHourAgo).get();
-        if(snapShot.empty){
-            console.log('Database is already clean');
+        if (!email || !username || !password) {
+            return res.status(400).json({ signin: false, notify: 'All fields are required.' });
         }
-        else{
-            console.log(`Database is cleaning......(total: ${snapShot.docs.length})`);
-            const batch = db.batch();
-            for(const doc of snapShot.docs){
+
+        const [existingUser, existingEmail] = await Promise.all([
+            User.findOne({ username }),
+            User.findOne({ email })
+        ]);
+
+        if (existingUser || existingEmail) {
+            return res.status(200).json({
+                signin: false,
+                notify: 'Email or username already exists. Please log in.'
+            });
+        }
+
+        let blobPath = 'https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif';
+        let sasToken = '';
+
+        if (profile) {
+            const { blobPath: uploadedPath, sasToken: uploadedToken } = await uploadImageToAzure(profile);
+            blobPath = uploadedPath;
+            sasToken = uploadedToken;
+        }
+
+        const user = new User({ username, password, email, profilePicture: blobPath });
+        await user.save();
+
+        const jwtoken = jwt.sign(
+            {
+                username: user.username,
+                imageurl: `${user.profilePicture}?${sasToken}`
+            },
+            secretKey,
+            { expiresIn: '30d' }
+        );
+
+        return res.status(201).json({
+            signin: true,
+            notify: `Successfully registered! Welcome, ${user.username}!`,
+            token: jwtoken
+        });
+    } catch (err) {
+        console.error('[Signup] Error:', err);
+        return res.status(500).json({ error: 'An internal error occurred.' });
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Protected Controllers (require authMiddleware)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/userData  (protected)
+ * Returns the decoded user info from the JWT already verified by authMiddleware.
+ */
+const getUserInfo = async (req, res) => {
+    try {
+        // req.user is populated by authMiddleware
+        return res.status(200).json({
+            userinfo: {
+                username: req.user.username,
+                imageurl: req.user.imageurl
+            }
+        });
+    } catch (err) {
+        console.error('[getUserInfo] Error:', err);
+        return res.status(500).json({ error: 'An internal error occurred.' });
+    }
+};
+
+/**
+ * POST /api/getchats  (protected)
+ * Fetches all chat messages (sent, received, public) sorted by timestamp.
+ */
+const chatData = async (req, res) => {
+    try {
+        const username = req.user.username;  // comes from authMiddleware
+        const chatRef = db.collection('chat');
+
+        const [senderSnap, publicSnap, receiverSnap] = await Promise.all([
+            chatRef.where('sender', '==', username).get(),
+            chatRef.where('receiver', '==', 'public').where('sender', '!=', username).get(),
+            chatRef.where('receiver', '==', username).get()
+        ]);
+
+        const combined = [...senderSnap.docs, ...publicSnap.docs, ...receiverSnap.docs];
+
+        combined.sort((a, b) =>
+            a.data().timestamp.toMillis() - b.data().timestamp.toMillis()
+        );
+
+        return res.status(200).json({
+            chats: combined.map((doc) => {
                 const data = doc.data();
-                if(data.type!=='text') await deleteFile(data.content);  //delete file from gdrive
+                return {
+                    id: doc.id,
+                    ...data,
+                    // If timestamp is a Firestore Timestamp, convert to ISO string
+                    // This fixed the "Invalid Date" issue in the frontend
+                    timestamp: data.timestamp && data.timestamp.toDate ? data.timestamp.toDate().toISOString() : data.timestamp,
+                    imageUrl: photos[users[data.sender]] || DEACTIVE_AVATAR
+                };
+            })
+        });
+
+    } catch (err) {
+        console.error('[chatData] Error:', err);
+        return res.status(500).json({ error: 'Failed to retrieve chat history.' });
+    }
+};
+
+/**
+ * POST /api/search  (protected)
+ * Searches users by username (case-insensitive regex).
+ */
+const queryUser = async (req, res) => {
+    try {
+        const { query } = req.body;
+
+        if (!query || query.trim().length < 1) {
+            return res.status(400).json({ message: 'Search query is too short.' });
+        }
+
+        const queryUsers = await User.find(
+            { username: { $regex: query.trim(), $options: 'i' } },
+            { username: 1, _id: 0 }   // only return username, exclude _id
+        ).limit(20);
+
+        return res.status(200).json({
+            message: `${queryUsers.length} user(s) found.`,
+            querynames: queryUsers.map((u) => ({ name: u.username }))
+        });
+    } catch (err) {
+        console.error('[queryUser] Error:', err);
+        return res.status(500).json({ error: 'Search failed.' });
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cron Jobs
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Deletes Firestore chat documents older than 5 hours,
+ * removes their Google Drive files, and refreshes Azure SAS tokens.
+ * Scheduled every hour.
+ */
+const cleanUpOldChats = async () => {
+    try {
+        const fiveHourAgoMillis = admin.firestore.Timestamp.now().toMillis() - 5 * 3600 * 1000;
+        const fiveHourAgo = new admin.firestore.Timestamp(
+            Math.floor(fiveHourAgoMillis / 1000),
+            (fiveHourAgoMillis % 1000) * 1_000_000
+        );
+        const chatRef = db.collection('chat');
+        const snapshot = await chatRef.where('timestamp', '<', fiveHourAgo).get();
+
+        if (snapshot.empty) {
+            console.log('[Cron] Database is already clean.');
+        } else {
+            console.log(`[Cron] Cleaning ${snapshot.docs.length} old chat record(s)...`);
+            const batch = db.batch();
+            for (const doc of snapshot.docs) {
+                const data = doc.data();
+                if (data.type !== 'text') await deleteFile(data.content);
                 batch.delete(doc.ref);
             }
             await batch.commit();
-            console.log('Database is clean');
+            console.log('[Cron] Database cleanup complete.');
         }
-        //refresh token after 1 hr
-            for(let socket_id in photos){
-                const profilePic = photos[socket_id].substring(0,photos[socket_id].lastIndexOf('?'))
-                const sasToken = await refreshToken(profilePic);
-                photos[socket_id]=`${profilePic}?${sasToken}`;
-            }
-            let activeUsers,profile;
-            if(names && photos){
-                activeUsers = Object.values(names);
-                profile = Object.values(photos);
-            }
-            io_.emit('init activeUsers',{activeUsers, profile});
-            console.log('sas tokens refreshed...');
 
-    }catch(err){
-        console.error('Error cleaning database', err);
+        // Refresh Azure SAS tokens for all currently connected users
+        for (const socket_id in photos) {
+            const baseUrl = photos[socket_id].substring(0, photos[socket_id].lastIndexOf('?'));
+            if (!baseUrl) continue;
+            try {
+                const newToken = await refreshToken(baseUrl);
+                photos[socket_id] = `${baseUrl}?${newToken}`;
+            } catch (tokenErr) {
+                console.error(`[Cron] Failed to refresh token for socket ${socket_id}:`, tokenErr.message);
+            }
+        }
+
+        // Broadcast updated profile pictures to all connected clients
+        if (io_ && Object.keys(names).length > 0) {
+            const activeUsers = Object.values(names);
+            const profile = Object.values(photos);
+            io_.emit('init activeUsers', { activeUsers, profile });
+            console.log('[Cron] SAS tokens refreshed and broadcast.');
+        }
+    } catch (err) {
+        console.error('[Cron] Error during cleanup:', err);
     }
-}
+};
 
-cleanUpOldChats();
+// Schedule cleanup every hour on the hour
 cron.schedule('0 */1 * * *', cleanUpOldChats);
 
-module.exports ={
+module.exports = {
     loginData,
     signinData,
     chatData,
@@ -238,4 +321,4 @@ module.exports ={
     assign,
     getUserInfo,
     queryUser
-}
+};
