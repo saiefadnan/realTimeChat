@@ -9,6 +9,7 @@ const users = {};   // username   → socket.id
 const names = {};   // socket.id  → username
 const photos = {};  // socket.id  → profile picture URL
 const socIns = {};  // username   → socket instance
+const moods = {};   // username   → emoji mood
 
 /**
  * Verifies a JWT and extracts { username, imageurl }.
@@ -35,15 +36,18 @@ function verifyToken(token) {
 function emitActiveUsers(io, operation, name, photo, socket) {
     const activeUsers = Object.values(names);
     const profile = Object.values(photos);
+    const mds = activeUsers.map(u => moods[u] || '');
 
     if (operation === 'init' || operation === 'refresh') {
-        io.to(socket.id).emit('init activeUsers', { activeUsers, profile });
-    } else if (operation === 'add') {
-        socket.broadcast.emit('activeUsers', { operation, name, photo });
+        io.to(socket.id).emit('init activeUsers', { activeUsers, profile, moods: mds });
+    } else if (operation === 'add' || operation === 'update') {
+        const mood = moods[name] || '';
+        io.emit('activeUsers', { operation, name, photo, mood });
     } else {
         io.emit('activeUsers', { operation, name });
     }
 }
+
 
 /**
  * Registers all Socket.IO event handlers.
@@ -250,6 +254,31 @@ function socketHandler(io) {
                 message,
                 profile: photos[socket.id]
             });
+        });
+
+        // ── Gen Z Features: Typing & Moods ──────────────────────────────────
+        socket.on('typing', ({ to }) => {
+            if (to === 'public') {
+                socket.broadcast.emit('user-typing', { from: names[socket.id], to: 'public' });
+            } else if (users[to]) {
+                io.to(users[to]).emit('user-typing', { from: names[socket.id], to: 'private' });
+            }
+        });
+
+        socket.on('stop-typing', ({ to }) => {
+            if (to === 'public') {
+                socket.broadcast.emit('user-stop-typing', { from: names[socket.id], to: 'public' });
+            } else if (users[to]) {
+                io.to(users[to]).emit('user-stop-typing', { from: names[socket.id], to: 'private' });
+            }
+        });
+
+        socket.on('update-mood', ({ mood }) => {
+            const username = names[socket.id];
+            if (username) {
+                moods[username] = mood;
+                emitActiveUsers(io, 'update', username, photos[socket.id], socket);
+            }
         });
 
         // ── WebRTC signaling ──────────────────────────────────────────────── 

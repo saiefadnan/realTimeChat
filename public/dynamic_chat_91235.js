@@ -98,6 +98,20 @@
     }
 
 
+    // Typing storage
+    let typingTimer;
+    let isTyping = false;
+    const typingUsers = new Set();
+
+    // UI Setup: Typing Indicator Box
+    const chatContainer = document.getElementById('chat-container');
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'typing-indicator-box';
+    typingIndicator.innerHTML = '<span id="typing-text"></span><div class="typing-dots"><span></span><span></span><span></span></div>';
+    if (chatContainer) {
+        chatContainer.insertBefore(typingIndicator, document.querySelector('.chat-footer'));
+    }
+
     /**
      * Handles segmented file uploads for large images/videos.
      */
@@ -201,7 +215,7 @@
             });
         });
 
-        socket.on('init activeUsers', ({ activeUsers, profile }) => {
+        socket.on('init activeUsers', ({ activeUsers, profile, moods }) => {
             const publicUrl = 'https://static.vecteezy.com/system/resources/thumbnails/001/760/457/small_2x/megaphone-loudspeaker-making-announcement-vector.jpg';
             active.innerHTML = '';
             const publicDiv = BuildActiveDiv(active, 'public', publicUrl); // Public room always first
@@ -209,18 +223,38 @@
 
             activeUsers.forEach((name, index) => {
                 if (name !== 'public' && name !== window.userInfo.username) {
-                    BuildActiveDiv(active, name, profile[index]);
+                    const mood = moods ? moods[index] : '';
+                    BuildActiveDiv(active, name, profile[index], mood);
                 }
             });
             updateStyles();
         });
 
-
-        socket.on('activeUsers', ({ operation, name, photo }) => {
-            if (operation === 'add') BuildActiveDiv(active, name, photo);
-            else if (operation === 'remove') RemoveActiveDiv(active, name);
+        socket.on('activeUsers', ({ operation, name, photo, mood }) => {
+            if (operation === 'add' || operation === 'update') {
+                BuildActiveDiv(active, name, photo, mood);
+            } else if (operation === 'remove') {
+                RemoveActiveDiv(active, name);
+            }
             updateStyles();
         });
+
+        socket.on('user-typing', ({ from, to }) => {
+            const currentRecipient = document.getElementById('recipientInput').value;
+            if (to === 'public' && currentRecipient === 'public') {
+                typingUsers.add(from);
+                updateTypingUI();
+            } else if (to === 'private' && currentRecipient === from) {
+                typingUsers.add(from);
+                updateTypingUI();
+            }
+        });
+
+        socket.on('user-stop-typing', ({ from }) => {
+            typingUsers.delete(from);
+            updateTypingUI();
+        });
+
 
         socket.on('error', ({ error }) => {
             if (error === '999') window.loadPage('login.html', 'login');
@@ -230,8 +264,55 @@
 
     // UI Helpers
     sendButton.addEventListener('click', sendMessage);
-    document.getElementById('message-input').addEventListener('keypress', _handleKeyPress);
+    const messageInput = document.getElementById('message-input');
+    messageInput.addEventListener('keypress', _handleKeyPress);
+    messageInput.addEventListener('input', () => {
+        if (!isTyping) {
+            isTyping = true;
+            socket.emit('typing', { to: document.getElementById('recipientInput').value });
+        }
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            isTyping = false;
+            socket.emit('stop-typing', { to: document.getElementById('recipientInput').value });
+        }, 3000);
+    });
+
     window.addEventListener('resize', updateStyles);
+
+    // Mood Picker Logic
+    const moodModal = document.getElementById('mood-modal');
+    if (moodModal) {
+        M.Modal.init(moodModal);
+        const moodBtn = document.getElementById('mood-btn');
+        if (moodBtn) {
+            moodBtn.addEventListener('click', () => {
+                M.Modal.getInstance(moodModal).open();
+            });
+        }
+
+        document.querySelectorAll('.mood-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                const mood = opt.getAttribute('data-mood');
+                socket.emit('update-mood', { mood });
+                M.Modal.getInstance(moodModal).close();
+                M.toast({ html: `Vibe set to ${mood}!`, classes: 'rounded' });
+            });
+        });
+    }
+
+    function updateTypingUI() {
+
+        const textEl = document.getElementById('typing-text');
+        if (typingUsers.size > 0) {
+            const names = Array.from(typingUsers);
+            textEl.textContent = names.length > 1 ? `${names[0]} and others are typing` : `${names[0]} is typing`;
+            typingIndicator.style.display = 'flex';
+        } else {
+            typingIndicator.style.display = 'none';
+        }
+    }
+
 
     function updateStyles() {
         const isMobile = window.innerWidth < 1000;
@@ -244,26 +325,29 @@
         });
     }
 
-    function BuildActiveDiv(activeBar, name, profile_src) {
+    function BuildActiveDiv(activeBar, name, profile_src, mood = '') {
         if (window.userInfo.username === name) return;
 
+        // Prevent duplicates
+        RemoveActiveDiv(activeBar, name);
+
         const userDiv = document.createElement('div');
+        userDiv.className = 'active-pulse'; // Gen Z Glow
         const userNameDiv = document.createElement('h5');
         const profileImg = document.createElement('img');
-
+        
         Object.assign(userDiv.style, {
-            height: '78px',
+            height: '70px',
             color: '#ccc',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            border: '1px solid #222',
-            borderRadius: '10px',
-            padding: '4px 0',
+            justifyContent: 'center',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
             cursor: 'pointer',
             backgroundColor: name === 'public' ? '#e74c3c' : '#111',
-            transition: 'transform 0.2s ease'
+            transition: 'transform 0.2s ease',
+            position: 'relative'
         });
 
         profileImg.src = profile_src || 'https://via.placeholder.com/60';
@@ -271,35 +355,50 @@
             width: '55px',
             height: '55px',
             borderRadius: '50%',
-            border: '2px solid #555'
+            border: '2px solid #555',
+            objectFit: 'cover'
         });
+
+        // Wrap image and badge in a relative container to prevent stretching
+        const imgWrapper = document.createElement('div');
+        imgWrapper.style.position = 'relative';
+        imgWrapper.style.width = '55px';
+        imgWrapper.style.height = '55px';
+        imgWrapper.appendChild(profileImg);
+
+        if (mood) {
+            const moodBadge = document.createElement('div');
+            moodBadge.className = 'mood-badge';
+            moodBadge.textContent = mood;
+            imgWrapper.appendChild(moodBadge);
+        }
 
         userDiv.addEventListener('mouseover', () => { userDiv.style.transform = 'scale(0.95)'; });
         userDiv.addEventListener('mouseout', () => { userDiv.style.transform = 'scale(1)'; });
         userDiv.addEventListener('click', () => {
             document.getElementById('recipientInput').value = name;
+            typingUsers.clear(); // Clear typing on switch
+            updateTypingUI();
             active.querySelectorAll('div').forEach(d => {
                 const head = d.querySelector('h5');
                 if (head) {
-                  const dName = head.textContent;
-                  d.style.backgroundColor = dName === 'public' ? '#e74c3c' : '#111';
+                  const headName = head.textContent;
+                  d.style.backgroundColor = headName === 'public' ? '#e74c3c' : '#111';
                 }
             });
-            userDiv.style.backgroundColor = '#2980b9'; // Active BLUE
+            userDiv.style.backgroundColor = '#2980b9';
         });
 
         userNameDiv.textContent = name;
-        Object.assign(userNameDiv.style, {
-            margin: '0',
-            fontSize: '11px',
-            fontWeight: 'bold'
-        });
+        userNameDiv.style.display = 'none';
 
-        userDiv.appendChild(profileImg);
+        userDiv.appendChild(imgWrapper);
         userDiv.appendChild(userNameDiv);
         activeBar.appendChild(userDiv);
         return userDiv;
     }
+
+
 
 
     function RemoveActiveDiv(activeBar, name) {

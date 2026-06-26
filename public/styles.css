@@ -60,7 +60,9 @@ nav {
     display: flex;
     width: 100%;
     height: 100%;
+    min-height: 0; /* Allow inner flex children to shrink */
 }
+
 
 /* ─── Sidebars (Active Homies / Rooms) ───────────────────────────────────────── */
 .active-container, #room-container {
@@ -92,7 +94,37 @@ nav {
 #active > div, #room-list > div {
     margin-bottom: 12px;
     transition: all 0.2s ease !important;
+    position: relative;
 }
+
+.active-pulse {
+    animation: neon-pulse 2s infinite ease-in-out;
+}
+
+@keyframes neon-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(0, 210, 106, 0.2); }
+    50% { box-shadow: 0 0 15px rgba(0, 210, 106, 0.5); }
+}
+
+.mood-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 50% !important;
+    width: 22px !important;
+    height: 22px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px !important;
+    z-index: 10;
+    box-shadow: var(--shadow);
+    line-height: 1; /* Fix emoji height */
+}
+
+
 
 /* ─── Chat Content Area ─────────────────────────────────────────────────────── */
 #chat-container {
@@ -100,7 +132,10 @@ nav {
     display: flex;
     flex-direction: column;
     background-color: var(--bg-main);
+    min-width: 0;
+    min-height: 0;
 }
+
 
 #recipientInput {
     background: transparent !important;
@@ -144,6 +179,44 @@ nav {
     max-height: 150px !important;
     margin: 0 !important;
 }
+
+.typing-indicator-box {
+    position: absolute;
+    bottom: 85px;
+    left: 30px;
+    font-size: 12px;
+    color: var(--accent);
+    display: none;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 210, 106, 0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 210, 106, 0.2);
+    z-index: 100;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 2px;
+}
+
+.typing-dots span {
+    width: 4px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: typing-bounce 1s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
 
 #send-button {
     width: 50px;
@@ -252,11 +325,12 @@ nav {
     
     .active-container {
         width: 100%;
-        height: 110px;
+        height: 150px; /* Increased to fit pulses & moods */
         border-right: none;
         border-bottom: 1px solid var(--border);
-        padding: 10px 0;
+        padding: 5px 0;
     }
+
     
     #active {
         display: flex;
@@ -357,4 +431,20 @@ nav {
 }
 .btn-flat {
     color: var(--text-muted) !important;
+}
+
+/* Mood Picker */
+.mood-picker {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    flex-wrap: wrap;
+}
+.mood-option {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.mood-option:hover {
+    transform: scale(1.3);
 }
