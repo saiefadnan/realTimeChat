@@ -1,5 +1,6 @@
 (async function () {
-    const socket = window.socket;
+    let socket = window.socket;
+
     const chunkSize = 512 * 1024;
     const items = document.getElementById('item-list');
     const activeRoom = document.getElementById('room-list');
@@ -173,11 +174,12 @@
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            border: '1px solid #222',
-            borderRadius: '10px',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
             cursor: 'pointer',
-            backgroundColor: '#111',
-            marginBottom: '5px',
+            backgroundColor: 'var(--bg-item)',
+            marginBottom: '10px',
+
             transition: 'transform 0.1s'
         });
         div.textContent = name;
@@ -186,8 +188,13 @@
         div.addEventListener('mouseout', () => div.style.transform = 'scale(1)');
         div.addEventListener('click', () => {
             currentRoom = name;
-            activeRoom.querySelectorAll('div').forEach(d => d.style.backgroundColor = '#111');
-            div.style.backgroundColor = '#2980b9';
+            activeRoom.querySelectorAll('div').forEach(d => {
+                d.style.backgroundColor = 'var(--bg-item)';
+                d.style.color = '#ccc';
+            });
+            div.style.backgroundColor = 'var(--accent)';
+            div.style.color = '#000';
+            currentRoom = name;
             CurrentroomLabel.textContent = `Room: ${name}`;
         });
 
@@ -218,6 +225,17 @@
         const answer = await remoteConnection.createAnswer();
         await remoteConnection.setLocalDescription(answer);
         socket.emit('signal', { room: currentRoom, signal: answer });
+    }
+
+    // Initialize socket connection if missing
+    if (!socket || !socket.connected) {
+        socket = io();
+        window.socket = socket;
+        
+        socket.on('connect', () => {
+            console.log('[Room Socket] Connected');
+            socket.emit('insert name', { jwtoken: Cookies.get('token') });
+        });
     }
 
     // Socket Events

@@ -7,9 +7,8 @@
     // Dynamically import helper to keep code clean and modular
     import('./loadfunc.js').then(({ updateNavState }) => {
 
-        if (Cookies.get('token')) {
-            showError('You are already logged in!');
-        }
+        // Auth is handled by the navigation layer; removing redundant local check.
+
 
         async function handleLogin(e) {
             e.preventDefault();

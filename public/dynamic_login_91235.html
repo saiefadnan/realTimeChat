@@ -1,25 +1,25 @@
-<div class="background-animation">
-    <img src="https://ugokawaii.com/wp-content/uploads/2023/06/conversation.gif"/>
-</div>
-<div id="container" style="border: 1px solid #ddd;border-radius: 8px;margin:auto; background-color:#ddd;max-width: 80%;">
-    <h4 class="center-align" style="color: #333;">Login</h4>
-    <div class="row">
-        <form class="col s12">
-            <div class="input-field col s12">
-                <input id="email" type="email" class="validate">
-                <label for="email">Email</label>
-                <span class="helper-text" data-error="Invalid email" data-success="Valid email"></span>
-            </div>
-            <div class="input-field col s12">
-                <input id="password" type="password" class="validate">
-                <label for="password">Password</label>
-            </div>
-            <div class="input-field col s12">
-                <button id="login-button" class="btn waves-effect waves-light" type="submit" name="action">Login
-                  <i class="material-icons right">send</i>
-                </button> 
-            </div>
-            <div id="error-box" class="input-field col s12" style="display: none;"></div>
-        </form>
+<img src="https://ugokawaii.com/wp-content/uploads/2023/06/conversation.gif" class="background-gif"/>
+<div class="auth-wrapper">
+
+    <div id="box">
+        <h4 class="center-align auth-header">Login</h4>
+        <div class="row">
+            <form class="col s12">
+                <div class="input-field col s12">
+                    <input id="email" type="email" class="validate">
+                    <label for="email">Email</label>
+                </div>
+                <div class="input-field col s12">
+                    <input id="password" type="password" class="validate">
+                    <label for="password">Password</label>
+                </div>
+                <div class="input-field col s12 center-align">
+                    <button id="login-button" class="btn waves-effect waves-light" type="submit">
+                        Login <i class="material-icons right">login</i>
+                    </button> 
+                </div>
+                <div id="error-box" class="input-field col s12 red-text center-align" style="display: none;"></div>
+            </form>
+        </div>
     </div>
-</div>
+</div>

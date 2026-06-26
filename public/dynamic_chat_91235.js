@@ -345,10 +345,16 @@
             border: '1px solid var(--border)',
             borderRadius: '16px',
             cursor: 'pointer',
-            backgroundColor: name === 'public' ? '#e74c3c' : '#111',
+            backgroundColor: name === 'public' ? 'var(--bg-item)' : 'var(--bg-item)',
             transition: 'transform 0.2s ease',
             position: 'relative'
         });
+
+        if (name === 'public') {
+            userDiv.style.border = '1px solid var(--accent)';
+            userDiv.style.opacity = '0.9';
+        }
+
 
         profileImg.src = profile_src || 'https://via.placeholder.com/60';
         Object.assign(profileImg.style, {
@@ -382,12 +388,13 @@
             active.querySelectorAll('div').forEach(d => {
                 const head = d.querySelector('h5');
                 if (head) {
-                  const headName = head.textContent;
-                  d.style.backgroundColor = headName === 'public' ? '#e74c3c' : '#111';
+                  d.style.backgroundColor = 'var(--bg-item)';
                 }
             });
-            userDiv.style.backgroundColor = '#2980b9';
+            userDiv.style.backgroundColor = 'var(--accent)';
+            userDiv.style.color = '#000'; // Contrast for active
         });
+
 
         userNameDiv.textContent = name;
         userNameDiv.style.display = 'none';

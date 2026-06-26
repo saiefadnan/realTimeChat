@@ -105,13 +105,24 @@ export function loadPage(content,element=null){
                 existingScripts?.forEach((existingScript)=>{
                     const srcName = existingScript?.getAttribute('src');
                     if(srcName && srcName.includes('dynamic_') && srcName.includes('_91235')){
+                        if(window.socket) {
+                            closeAllSockets(window.socket);
+                            window.socket.disconnect(); // Definitive fix for '999' session conflict
+                            window.socket = null;
+                        }
                         cleanUp(existingScript);
-                        if(window.socket) closeAllSockets(window.socket);
+
                     }
                 })
             }
             
             document.getElementById('page').innerHTML=data;
+            // Auto-close Materialize sidenav if open (useful for mobile navigation)
+            const sidenavElem = document.querySelector('.sidenav');
+            if (sidenavElem && typeof M !== 'undefined' && M.Sidenav) {
+                const instance = M.Sidenav.getInstance(sidenavElem);
+                if (instance) instance.close();
+            }
             script.src = Script;
             script.onload = () => {
                 //console.log(`${Script} loaded successfully`);

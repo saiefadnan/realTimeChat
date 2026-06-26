@@ -24,15 +24,49 @@
     font-family: 'Inter', system-ui, sans-serif;
 }
 
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+
 body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    height: 100vh;
-    width: 100vw;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
 }
+
+.auth-wrapper {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100%; /* Relative to #page */
+    position: relative;
+    z-index: 10;
+    padding: 20px 0;
+}
+
+
+
+.background-gif {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 0.15;
+    object-fit: cover;
+    filter: grayscale(1) invert(1);
+    pointer-events: none;
+}
+
 
 /* ─── Navbar ────────────────────────────────────────────────────────────────── */
 nav {
@@ -45,15 +79,60 @@ nav {
     font-weight: 800 !important;
     color: var(--accent) !important;
     padding-left: 20px !important;
+    font-family: 'New Amsterdam', sans-serif !important;
 }
+
+.nav-profile-img {
+    height: 44px !important;
+    width: 44px !important;
+    margin: 10px !important;
+    border: 2px solid var(--border);
+    object-fit: cover;
+}
+
+/* ─── Sidenav (Mobile Sidebar) ──────────────────────────────────────────────── */
+.sidenav {
+    background-color: var(--bg-surface) !important;
+    width: 280px !important;
+}
+
+.sidenav-profile-wrap {
+    padding: 40px 0;
+    display: flex;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--bg-item), var(--bg-surface));
+    border-bottom: 1px solid var(--border);
+}
+
+.sidenav-profile-wrap img {
+    width: 140px !important;
+    height: 140px !important;
+    border: 3px solid var(--accent);
+}
+
+.sidenav li a {
+    color: var(--text-main) !important;
+    font-weight: 500 !important;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidenav li a:hover {
+    background-color: var(--bg-item) !important;
+    color: var(--accent) !important;
+}
+
 
 /* ─── Page Container ────────────────────────────────────────────────────────── */
 #page {
     flex: 1;
     display: flex;
-    overflow: hidden;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
     width: 100%;
 }
+
+
 
 /* ─── Chat / Room Containers (The Main Layout) ──────────────────────────────── */
 .chat-container, .room-container {
@@ -67,8 +146,9 @@ nav {
 /* ─── Sidebars (Active Homies / Rooms) ───────────────────────────────────────── */
 .active-container, #room-container {
     width: 260px;
-    background-color: var(--bg-surface);
+    background-color: var(--bg-main); /* Sidebar now matching main theme */
     border-right: 1px solid var(--border);
+
     display: flex;
     flex-direction: column;
     padding: 20px 0;
@@ -309,12 +389,35 @@ nav {
 #box {
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: 24px;
     padding: 40px;
-    width: 100%;
+    width: 90%;
     max-width: 420px;
     margin: auto;
     box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+}
+
+/* Materialize Input Focus Fixes */
+.input-field input:focus {
+    border-bottom: 2px solid var(--accent) !important;
+    box-shadow: 0 1px 0 0 var(--accent) !important;
+}
+.input-field label.active {
+    color: var(--accent) !important;
+}
+.input-field input {
+    color: var(--text-main) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+
+.auth-header {
+    margin-bottom: 30px;
+    font-weight: 800;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
@@ -325,7 +428,8 @@ nav {
     
     .active-container {
         width: 100%;
-        height: 150px; /* Increased to fit pulses & moods */
+        height: 140px;
+        background-color: var(--bg-surface); /* Distinct color for top-bar on mobile */
         border-right: none;
         border-bottom: 1px solid var(--border);
         padding: 5px 0;
@@ -335,14 +439,16 @@ nav {
     #active {
         display: flex;
         gap: 15px;
-        padding: 0 20px;
+        padding: 0 15px;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
     
-    #active > div {
-        flex-shrink: 0;
-        width: 75px !important;
+    #box {
+        padding: 25px;
     }
 }
+
 
 /* ─── Loading & Progress UI ─────────────────────────────────────────────────── */
 .loading-overlay {
