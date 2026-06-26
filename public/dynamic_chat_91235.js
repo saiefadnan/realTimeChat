@@ -281,6 +281,20 @@
 
     window.addEventListener('resize', updateStyles);
 
+    // Mobile "..." actions toggle
+    const moreBtn = document.getElementById('chat-more-button');
+    const chatFooter = document.querySelector('.chat-footer');
+    if (moreBtn && chatFooter) {
+        moreBtn.addEventListener('click', () => {
+            chatFooter.classList.toggle('actions-open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!chatFooter.contains(e.target)) {
+                chatFooter.classList.remove('actions-open');
+            }
+        });
+    }
+
     // Mood Picker Logic
     const moodModal = document.getElementById('mood-modal');
     if (moodModal) {

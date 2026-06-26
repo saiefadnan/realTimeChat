@@ -246,10 +246,12 @@ nav {
     display: flex;
     align-items: center;
     gap: 15px;
+    position: relative;
 }
 
 .message-input {
     flex: 1;
+    min-width: 0;
     background-color: var(--bg-item) !important;
     border: 1px solid var(--border) !important;
     border-radius: 12px !important;
@@ -332,6 +334,10 @@ nav {
     border-color: var(--accent);
 }
 
+.chat-more-button {
+    display: none;
+}
+
 /* ─── Message Bubbles ────────────────────────────────────────────────────────── */
 .message-receive {
     background-color: var(--bg-surface) !important;
@@ -391,6 +397,7 @@ nav {
     max-height: 320px;
     display: block;
     object-fit: contain;
+    touch-action: pan-y;
 }
 
 .receiver-profile-container {
@@ -471,6 +478,80 @@ nav {
         padding: 8px 15px;
         flex-wrap: wrap;
         gap: 8px;
+    }
+
+    .chat-content {
+        padding: 18px 14px;
+    }
+
+    .chat-footer {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .message-input {
+        flex: 1 1 auto;
+        min-width: 140px;
+        min-height: 48px !important;
+        padding: 10px 12px !important;
+    }
+
+    #send-button,
+    .custom-file-upload {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+    }
+
+    .chat-more-button {
+        display: flex;
+    }
+
+    .chat-footer .file-label,
+    .chat-footer #mood-btn {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        display: none;
+        z-index: 20;
+    }
+
+    .chat-footer .file-label {
+        right: 66px;
+    }
+
+    .chat-footer #mood-btn {
+        right: 12px;
+    }
+
+    .chat-footer.actions-open .file-label,
+    .chat-footer.actions-open #mood-btn {
+        display: block;
+    }
+}
+
+@media (max-width: 420px) {
+    .chat-footer {
+        padding: 10px;
+        gap: 6px;
+    }
+
+    .message-input {
+        min-width: 0;
+        font-size: 14px;
+    }
+
+    #send-button,
+    .custom-file-upload {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+@media (pointer: coarse) {
+    .chat-drive-preview,
+    .chat-content iframe {
+        pointer-events: none;
+        touch-action: pan-y;
     }
 }
 
