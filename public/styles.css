@@ -556,12 +556,9 @@ nav {
 }
 
 @media (pointer: coarse) {
-    .chat-drive-preview,
     .chat-content iframe {
-        pointer-events: none;
         touch-action: pan-y;
     }
-}
 
 /* ─── Room Specific Layout ────────────────────────────────────────────────── */
 .room-controls-header {
