@@ -464,6 +464,10 @@ nav {
         display: none;
     }
 
+    #recipientInput {
+        display: none !important;
+    }
+
     #active, #room-list {
         display: flex;
         gap: 10px;
