@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
-// const serviceAccount = require('./private/realtimechat-ea555-firebase-adminsdk-rhfxu-27e6017626.json'); // for local
-const serviceAccount = require('/etc/secrets/realtimechat-ea555-firebase-adminsdk-rhfxu-27e6017626.json'); // for onrender
+const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)

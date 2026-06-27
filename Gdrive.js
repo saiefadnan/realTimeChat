@@ -4,14 +4,10 @@ const { Readable } = require('stream');
 const { v4: uuidv4 } = require('uuid');
 
 const auth = new google.auth.GoogleAuth({
-    keyFile: "/etc/secrets/realtimechat59-4f88949d8c8b.json", //render
-    scopes: ["https://www.googleapis.com/auth/drive"],
+    keyFile: process.env.GOOGLE_KEY_FILE,
+    scopes: ['https://www.googleapis.com/auth/drive'],
 });
 
-// const auth = new google.auth.GoogleAuth({
-//     keyFile: 'private/realtimechat59-4f88949d8c8b.json', //local
-//     scopes: ['https://www.googleapis.com/auth/drive'],
-// });
 const drive = google.drive({ version: 'v3', auth });
 console.log('[GDrive] Connected.');
 

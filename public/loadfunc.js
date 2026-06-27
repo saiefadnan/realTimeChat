@@ -40,31 +40,10 @@ export function hideLoading() {
 }
 
 /**
- * Updates the file upload progress UI.
+ * Legacy upload progress - no longer used. Inline chat progress replaces this.
  */
 export function updateUploadProgress(percent, filename = "File") {
-    let container = document.querySelector('.upload-progress-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.className = 'upload-progress-container';
-        container.innerHTML = `
-            <div class="loading-text" style="margin-bottom:8px; font-weight:600;">Uploading <span id="up-filename"></span>...</div>
-            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
-            <div class="loading-text" style="margin-top:6px; font-size:11px; text-align:right;"><span id="up-percent">0</span>%</div>
-        `;
-        document.body.appendChild(container);
-    }
-    
-    container.style.display = 'block';
-    container.querySelector('#up-filename').textContent = filename;
-    container.querySelector('#up-percent').textContent = Math.round(percent);
-    container.querySelector('.progress-bar-fill').style.width = `${percent}%`;
-
-    if (percent >= 100) {
-        setTimeout(() => {
-            container.style.display = 'none';
-        }, 1000);
-    }
+    // Replaced by in-chat upload progress in dynamic_chat_91235.js / dynamic_room_91235.js
 }
 
 function closeAllSockets(socket){
@@ -88,6 +67,9 @@ function closeAllSockets(socket){
     socket.off('room file');
 }
 export function loadPage(content,element=null){
+    window._uploadAborted = true; // Stop any in-flight uploads
+    const container = document.querySelector('.upload-progress-container');
+    if (container) container.style.display = 'none';
     showLoading(); // Show loader on start
     const page= `dynamic_${content.replace('.html','')}_91235.html`;
     fetch(page)
@@ -184,6 +166,7 @@ export function updateNavState(isLoggedIn) {
 }
 
 export function handleLogout() {
+    window._uploadAborted = true;
     Cookies.remove('token');
     updateNavState(false);
     window.loadPage('login.html', 'login');

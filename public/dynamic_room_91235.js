@@ -2,6 +2,7 @@
     let socket = window.socket;
 
     const chunkSize = 512 * 1024;
+    let _uploadProgressEl = null;
     const items = document.getElementById('item-list');
     const activeRoom = document.getElementById('room-list');
     const roomNameInput = document.getElementById('room-name');
@@ -96,14 +97,68 @@
         addRoomToList(name);
     }
 
+    function addUploadProgress(fileName) {
+        removeUploadProgress();
+        const container = document.createElement('div');
+        container.className = 'send-final-container';
+        const timeLabel = document.createElement('div');
+        timeLabel.textContent = new Date().toLocaleString();
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
+        timeLabel.style.marginBottom = '2px';
+        const body = document.createElement('div');
+        body.className = 'message-send-container';
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-send upload-progress-msg';
+        msgBox.innerHTML = `
+            <div style="font-weight:600;margin-bottom:6px;">Uploading <span class="up-fname"></span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div>
+            <div style="margin-top:4px;font-size:11px;text-align:right;"><span class="up-pct">0</span>%</div>
+        `;
+        body.appendChild(msgBox);
+        container.append(timeLabel, body);
+        const chatContent = document.getElementById('chat-content');
+        if (chatContent) {
+            chatContent.appendChild(container);
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+        _uploadProgressEl = container;
+    }
+
+    function updateChatProgress(percent, fileName) {
+        if (!_uploadProgressEl || !_uploadProgressEl.parentNode) return false;
+        const pct = _uploadProgressEl.querySelector('.up-pct');
+        const fill = _uploadProgressEl.querySelector('.progress-bar-fill');
+        const nameEl = _uploadProgressEl.querySelector('.up-fname');
+        if (pct) pct.textContent = Math.round(percent);
+        if (fill) fill.style.width = percent + '%';
+        if (nameEl && fileName) nameEl.textContent = fileName;
+        if (percent >= 100) {
+            const box = _uploadProgressEl.querySelector('.message-send');
+            if (box) box.innerHTML = '<div style="font-weight:600;color:var(--accent);">Upload complete, waiting for server...</div>';
+        }
+        return true;
+    }
+
+    function removeUploadProgress() {
+        if (_uploadProgressEl && _uploadProgressEl.parentNode) {
+            _uploadProgressEl.remove();
+        }
+        _uploadProgressEl = null;
+    }
+
     function sendChunks(room, file, offset) {
+        if (window._uploadAborted) return;
+
         if (!socket || !socket.connected) {
             if (window.Pending) window.Pending(room, file, offset);
             return;
         }
 
+        if (offset === 0) addUploadProgress(file.name);
+
         if (offset >= file.size) {
-            window.updateUploadProgress(100, file.name);
+            updateChatProgress(100, file.name);
             socket.emit('room file complete', {
                 room: { name: room, admin: window.userInfo.username },
                 fileType: file.type,
@@ -113,11 +168,16 @@
         }
 
         const percent = (offset / file.size) * 100;
-        window.updateUploadProgress(percent, file.name);
+        const cont = updateChatProgress(percent, file.name);
+        if (!cont) {
+            window._uploadAborted = true;
+            return;
+        }
 
         const slice = file.slice(offset, offset + chunkSize);
         const reader = new FileReader();
         reader.onload = () => {
+            if (window._uploadAborted) return;
             socket.emit('room file', { fileData: reader.result });
             sendChunks(room, file, offset + chunkSize);
         };
@@ -241,6 +301,7 @@
     });
 
     socket.on('room file', ({ from, time, fileData, profile }) => {
+        removeUploadProgress();
         const date = new Date(time).toLocaleString();
         if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
         else embedDriveFiles(date, from, fileData, profile);

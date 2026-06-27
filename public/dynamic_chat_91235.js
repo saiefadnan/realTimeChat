@@ -1,6 +1,8 @@
 (async function () {
     let socket;
     const chunkSize = 512 * 1024;
+    let _uploadProgressEl = null;
+    window._uploadAborted = false;
     const listHeader = document.getElementById('list-header');
     const active = document.getElementById('active');
     const sendButton = document.getElementById('send-button');
@@ -112,29 +114,89 @@
         chatContainer.insertBefore(typingIndicator, document.querySelector('.chat-footer'));
     }
 
+    function addUploadProgress(fileName) {
+        removeUploadProgress();
+        const container = document.createElement('div');
+        container.className = 'send-final-container';
+        const timeLabel = document.createElement('div');
+        timeLabel.textContent = new Date().toLocaleString();
+        timeLabel.style.fontSize = '10px';
+        timeLabel.style.color = '#777';
+        timeLabel.style.marginBottom = '2px';
+        const body = document.createElement('div');
+        body.className = 'message-send-container';
+        const msgBox = document.createElement('div');
+        msgBox.className = 'message-send upload-progress-msg';
+        msgBox.innerHTML = `
+            <div style="font-weight:600;margin-bottom:6px;">Uploading <span class="up-fname"></span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%"></div></div>
+            <div style="margin-top:4px;font-size:11px;text-align:right;"><span class="up-pct">0</span>%</div>
+        `;
+        body.appendChild(msgBox);
+        container.append(timeLabel, body);
+        const chatContent = document.getElementById('chat-content');
+        if (chatContent) {
+            chatContent.appendChild(container);
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+        _uploadProgressEl = container;
+    }
+
+    function updateChatProgress(percent, fileName) {
+        if (!_uploadProgressEl || !_uploadProgressEl.parentNode) return false;
+        const pct = _uploadProgressEl.querySelector('.up-pct');
+        const fill = _uploadProgressEl.querySelector('.progress-bar-fill');
+        const nameEl = _uploadProgressEl.querySelector('.up-fname');
+        if (pct) pct.textContent = Math.round(percent);
+        if (fill) fill.style.width = percent + '%';
+        if (nameEl && fileName) nameEl.textContent = fileName;
+        if (percent >= 100) {
+            const box = _uploadProgressEl.querySelector('.message-send');
+            if (box) box.innerHTML = '<div style="font-weight:600;color:var(--accent);">Upload complete, waiting for server...</div>';
+        }
+        return true;
+    }
+
+    function removeUploadProgress() {
+        if (_uploadProgressEl && _uploadProgressEl.parentNode) {
+            _uploadProgressEl.remove();
+        }
+        _uploadProgressEl = null;
+    }
+
     /**
      * Handles segmented file uploads for large images/videos.
      */
     function sendChunks(recipient, file, offset) {
+        if (window._uploadAborted) return;
+
         if (!socket || !socket.connected) {
             if (window.Pending) window.Pending(recipient, file, offset);
             return;
         }
 
+        if (offset === 0) addUploadProgress(file.name);
+
         if (offset >= file.size) {
-            window.updateUploadProgress(100, file.name);
+            updateChatProgress(100, file.name);
             socket.emit('complete', { to: recipient, fileType: file.type, fileName: file.name });
             if (window.clearPending) window.clearPending();
             return;
         }
 
         const percent = (offset / file.size) * 100;
-        window.updateUploadProgress(percent, file.name);
+        const cont = updateChatProgress(percent, file.name);
+        if (!cont) {
+            window._uploadAborted = true;
+            return;
+        }
 
         const fileSlice = file.slice(offset, offset + chunkSize);
         const reader = new FileReader();
 
         reader.onload = () => {
+            if (window._uploadAborted) return;
+
             const payload = { fileData: reader.result, fileType: file.type, fileName: file.name };
             if (recipient !== 'public') payload.to = recipient;
 
@@ -209,6 +271,7 @@
         mediaEvents.forEach(event => {
             socket.on(event, ({ from, time, fileData, profile, state }) => {
                 if (!state) return;
+                removeUploadProgress();
                 const date = new Date(time).toLocaleString();
                 const type = event.includes('image') ? 'image' : event.includes('video') ? 'video' : 'document';
                 if (from === window.userInfo.username) embedDriveFilesTo(date, fileData, type);
@@ -333,11 +396,35 @@
         const isMobile = window.innerWidth < 1000;
         const listHeader = document.getElementById('list-header');
         if (listHeader) listHeader.textContent = isMobile ? '' : 'Active Homies';
-        const userDivs = active.querySelectorAll('div');
-        userDivs.forEach(div => {
-            div.style.width = isMobile ? '70px' : '85%';
-            div.style.margin = isMobile ? '5px' : '5px auto';
-        });
+        const userDivs = active.children;
+        for (let i = 0; i < userDivs.length; i++) {
+            const div = userDivs[i];
+            const h5 = div.querySelector('h5');
+            const img = div.querySelector('img');
+            const wrapper = div.querySelector('div');
+            if (!h5) continue;
+            if (isMobile) {
+                div.style.width = '60px';
+                div.style.height = '60px';
+                div.style.margin = '0';
+                div.style.justifyContent = 'center';
+                div.style.paddingLeft = '0';
+                div.style.gap = '0';
+                h5.style.display = 'none';
+                if (img) { img.style.width = '44px'; img.style.height = '44px'; }
+                if (wrapper) { wrapper.style.width = '44px'; wrapper.style.height = '44px'; }
+            } else {
+                div.style.width = '85%';
+                div.style.height = '70px';
+                div.style.margin = '5px auto';
+                div.style.justifyContent = 'flex-start';
+                div.style.paddingLeft = '6px';
+                div.style.gap = '6px';
+                h5.style.display = '';
+                if (img) { img.style.width = '55px'; img.style.height = '55px'; }
+                if (wrapper) { wrapper.style.width = '55px'; wrapper.style.height = '55px'; }
+            }
+        }
     }
 
     function BuildActiveDiv(activeBar, name, profile_src, mood = '') {
@@ -356,7 +443,9 @@
             color: '#ccc',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
+            gap: '6px',
+            paddingLeft: '6px',
             border: '1px solid var(--border)',
             borderRadius: '16px',
             cursor: 'pointer',
@@ -385,6 +474,9 @@
         imgWrapper.style.position = 'relative';
         imgWrapper.style.width = '55px';
         imgWrapper.style.height = '55px';
+        imgWrapper.style.display = 'flex';
+        imgWrapper.style.alignItems = 'center';
+        imgWrapper.style.justifyContent = 'center';
         imgWrapper.appendChild(profileImg);
 
         if (mood) {
@@ -412,7 +504,13 @@
 
 
         userNameDiv.textContent = name;
-        userNameDiv.style.display = 'none';
+        userNameDiv.style.margin = '0';
+        userNameDiv.style.padding = '0';
+        userNameDiv.style.fontSize = '14px';
+        userNameDiv.style.fontWeight = '600';
+        userNameDiv.style.overflow = 'hidden';
+        userNameDiv.style.textOverflow = 'ellipsis';
+        userNameDiv.style.whiteSpace = 'nowrap';
 
         userDiv.appendChild(imgWrapper);
         userDiv.appendChild(userNameDiv);
