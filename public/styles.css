@@ -392,6 +392,42 @@ nav {
     background-color: #000;
 }
 
+.chat-drive-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-main);
+    cursor: pointer;
+    margin-top: 5px;
+    transition: border-color 0.2s;
+}
+
+.chat-drive-card:hover {
+    border-color: var(--accent);
+}
+
+.drive-card-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.drive-card-text {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.drive-card-arrow {
+    font-size: 16px;
+    color: var(--accent);
+    line-height: 1;
+}
+
 .chat-media-preview {
     height: auto;
     max-height: 320px;
@@ -554,11 +590,6 @@ nav {
         height: 44px;
     }
 }
-
-@media (pointer: coarse) {
-    .chat-content iframe {
-        touch-action: pan-y;
-    }
 
 /* ─── Room Specific Layout ────────────────────────────────────────────────── */
 .room-controls-header {

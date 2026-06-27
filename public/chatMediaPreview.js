@@ -21,8 +21,26 @@
         return iframe;
     }
 
+    function buildDriveCard(fileId, type, doc = document) {
+        const link = doc.createElement('a');
+        link.href = getDriveFileUrl(fileId);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'chat-drive-card';
+
+        const icon = type === 'video' ? '🎬' : type === 'image' ? '🖼️' : '📄';
+        const label = type === 'video' ? 'View Video' : type === 'image' ? 'View Image' : 'View File';
+
+        link.innerHTML = `
+            <span class="drive-card-icon">${icon}</span>
+            <span class="drive-card-text">${label}</span>
+            <span class="drive-card-arrow">↗</span>
+        `;
+        return link;
+    }
+
     function buildDrivePreview(fileId, type, doc = document) {
-        if (type === 'image') {
+        if (type === 'image' || type === 'gif' || (type && type.startsWith('image'))) {
             const link = doc.createElement('a');
             link.href = getDriveFileUrl(fileId);
             link.target = '_blank';
@@ -43,7 +61,7 @@
             return link;
         }
 
-        return buildDriveIframe(fileId, doc);
+        return buildDriveCard(fileId, type, doc);
     }
 
     return {
