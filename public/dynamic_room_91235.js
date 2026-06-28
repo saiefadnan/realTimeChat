@@ -10,14 +10,17 @@
     const messagesDiv = document.getElementById('chat-content');
     const videoModal = document.getElementById('video-modal');
 
+    // Only two STUN servers — avoids browser warning and broken TURN
     const iceConfiguration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'turn:relay.backups.cz', credential: 'webrtc', username: 'webrtc' }
+            { urls: 'stun:stun2.l.google.com:19302' }
         ]
     };
 
-    let localConnection; // Defined in outer scope for signal handler access
+    let localConnection;
+    let connectionId = 0; // guards stale ICE candidates from previous calls
+    let pendingCandidates = [];
     let currentRoom;
     let invitedUsers = [];
     let debounceTimer;
@@ -25,7 +28,7 @@
     function init() {
         const modalElems = document.querySelectorAll('.modal');
         M.Modal.init(modalElems);
-        
+
         if (window.rooms) {
             window.rooms.forEach(room => addRoomToList(room.name));
         }
@@ -222,13 +225,12 @@
 
     function addRoomToList(name) {
         const div = document.createElement('div');
-        div.className = 'room-item'; 
+        div.className = 'room-item';
         div.textContent = name;
 
         div.addEventListener('mouseover', () => div.style.transform = 'scale(0.95)');
         div.addEventListener('mouseout', () => div.style.transform = 'scale(1)');
         div.addEventListener('click', () => {
-            currentRoom = name;
             activeRoom.querySelectorAll('.room-item').forEach(d => {
                 d.classList.remove('active-room-card');
             });
@@ -240,37 +242,117 @@
         activeRoom.appendChild(div);
     }
 
+    // Shared robust ontrack — handles both e.streams[0] and bare track fallback
+    function setupOnTrack(remoteVideo) {
+        localConnection.ontrack = e => {
+            if (e.streams && e.streams[0]) {
+                remoteVideo.srcObject = e.streams[0];
+            } else {
+                let inbound = remoteVideo.srcObject || new MediaStream();
+                inbound.addTrack(e.track);
+                remoteVideo.srcObject = inbound;
+            }
+        };
+    }
+
+    function setupICELogging() {
+        localConnection.oniceconnectionstatechange = () => {
+            console.log('[ICE state]', localConnection.iceConnectionState);
+        };
+    }
+
+    function closeExistingConnection() {
+        if (localConnection) {
+            localConnection.close();
+            localConnection = null;
+        }
+        pendingCandidates = [];
+    }
+
     // WebRTC Logic
     async function startVideoCall() {
         if (!currentRoom) return M.toast({ html: 'Select a room first!', classes: 'rounded' });
-        
-        localConnection = new RTCPeerConnection(iceConfiguration);
-        
-        // Setup local stream (placeholder for UI improvement)
-        localConnection.onicecandidate = e => {
-            if (e.candidate) console.log('[WebRTC] New ICE candidate');
-        };
 
-        const offer = await localConnection.createOffer();
-        await localConnection.setLocalDescription(offer);
-        socket.emit('signal', { room: currentRoom, signal: offer });
-        
-        M.toast({ html: 'Calling room members...', classes: 'rounded blue' });
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+
+        closeExistingConnection();
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = stream;
+
+            localConnection = new RTCPeerConnection(iceConfiguration);
+            const thisConnectionId = ++connectionId;
+            stream.getTracks().forEach(track => localConnection.addTrack(track, stream));
+
+            setupOnTrack(remoteVideo);
+            setupICELogging();
+
+            localConnection.onicecandidate = e => {
+                if (e.candidate && connectionId === thisConnectionId) {
+                    socket.emit('signal', { room: currentRoom, signal: { type: 'candidate', candidate: e.candidate } });
+                }
+            };
+
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            socket.emit('signal', { room: currentRoom, signal: offer });
+
+            M.Modal.getInstance(videoModal).open();
+            M.toast({ html: 'Calling room members...', classes: 'rounded blue' });
+        } catch (err) {
+            console.error('[WebRTC] Failed to start call:', err);
+            M.toast({ html: 'Camera/mic access denied', classes: 'rounded red' });
+        }
     }
 
     async function receiveVideoCall(signal) {
-        const remoteConnection = new RTCPeerConnection(iceConfiguration);
-        await remoteConnection.setRemoteDescription(new RTCSessionDescription(signal));
-        const answer = await remoteConnection.createAnswer();
-        await remoteConnection.setLocalDescription(answer);
-        socket.emit('signal', { room: currentRoom, signal: answer });
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+
+        closeExistingConnection();
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = stream;
+
+            localConnection = new RTCPeerConnection(iceConfiguration);
+            const thisConnectionId = ++connectionId;
+            stream.getTracks().forEach(track => localConnection.addTrack(track, stream));
+
+            setupOnTrack(remoteVideo);
+            setupICELogging();
+
+            localConnection.onicecandidate = e => {
+                if (e.candidate && connectionId === thisConnectionId) {
+                    socket.emit('signal', { room: currentRoom, signal: { type: 'candidate', candidate: e.candidate } });
+                }
+            };
+
+            await localConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            const answer = await localConnection.createAnswer();
+            await localConnection.setLocalDescription(answer);
+
+            pendingCandidates.forEach(c => {
+                localConnection.addIceCandidate(new RTCIceCandidate(c));
+            });
+            pendingCandidates = [];
+
+            socket.emit('signal', { room: currentRoom, signal: answer });
+            M.Modal.getInstance(videoModal).open();
+            M.toast({ html: 'Answering Call...', classes: 'rounded blue' });
+        } catch (err) {
+            console.error('[WebRTC] Failed to receive call:', err);
+            M.toast({ html: 'Failed to connect video call', classes: 'rounded red' });
+        }
     }
 
     // Initialize socket connection if missing
     if (!socket || !socket.connected) {
         socket = io();
         window.socket = socket;
-        
+
         socket.on('connect', () => {
             console.log('[Room Socket] Connected');
             socket.emit('insert name', { jwtoken: Cookies.get('token') });
@@ -294,9 +376,20 @@
 
     socket.on('signal', async ({ signal }) => {
         if (signal.type === 'offer') {
+            // closeExistingConnection is called inside receiveVideoCall
             await receiveVideoCall(signal);
         } else if (signal.type === 'answer' && localConnection) {
             await localConnection.setRemoteDescription(new RTCSessionDescription(signal));
+            pendingCandidates.forEach(c => {
+                localConnection.addIceCandidate(new RTCIceCandidate(c));
+            });
+            pendingCandidates = [];
+        } else if (signal.type === 'candidate') {
+            if (localConnection && localConnection.remoteDescription) {
+                await localConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } else {
+                pendingCandidates.push(signal.candidate);
+            }
         }
     });
 
@@ -326,7 +419,6 @@
         setTimeout(() => err.remove(), 4000);
     }
 
-    // Re-use identical message building functions for consistency with chat
     function addMessage(from, message, time, profile) {
         const finalContainer = document.createElement('div');
         finalContainer.className = 'final-container';
@@ -415,29 +507,45 @@
     // Listeners
     const searchInput = document.getElementById('search');
     if (searchInput) searchInput.addEventListener('input', debounce(handleSearch, 400));
-    
+
     const createRoomBtn = document.getElementById('create-room');
     if (createRoomBtn) createRoomBtn.addEventListener('click', handleRoomCreate);
-    
+
     const inviteUserBtn = document.getElementById('invite-user');
     if (inviteUserBtn) {
         inviteUserBtn.addEventListener('click', () => {
             if (!currentRoom) return M.toast({ html: 'Select a room!', classes: 'rounded' });
-            // socket.emit('invite', {
-            //     room: { name: currentRoom, admin: window.userInfo.username },
-            //     usernames: invitedUsers
-            // });
-            invitedUsers = [];
-            // M.Modal.getInstance(document.getElementById('search-modal')).close();
+            socket.emit('invite', {
+                room: { name: currentRoom, admin: window.userInfo.username },
+                usernames: invitedUsers
+            });
+            M.Modal.getInstance(document.getElementById('search-modal')).close();
         });
     }
-    
+
     const sendBtn = document.getElementById('send-button');
     if (sendBtn) sendBtn.addEventListener('click', sendMessage);
-    
+
     const videoBtn = document.getElementById('video-call-btn');
     if (videoBtn) videoBtn.addEventListener('click', startVideoCall);
-    
+
+    const exitVideoBtn = document.getElementById('exit-video');
+    if (exitVideoBtn) {
+        exitVideoBtn.addEventListener('click', () => {
+            closeExistingConnection();
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            if (localVideo && localVideo.srcObject) {
+                localVideo.srcObject.getTracks().forEach(t => t.stop());
+                localVideo.srcObject = null;
+            }
+            if (remoteVideo && remoteVideo.srcObject) {
+                remoteVideo.srcObject.getTracks().forEach(t => t.stop());
+                remoteVideo.srcObject = null;
+            }
+        });
+    }
+
     const fileInput = document.getElementById('file-input');
     if (fileInput) {
         fileInput.addEventListener('change', () => {

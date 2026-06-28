@@ -10,9 +10,9 @@
             <div class="room-action-buttons">
                 <a class="waves-effect waves-light btn modal-trigger" href="#room-creation-modal" title="Create Room"><i class="material-icons">add</i></a>
                 <a class="waves-effect waves-light btn modal-trigger" href="#search-modal" title="Add Homies"><i class="material-icons">group_add</i></a>
-                <a href="#video-modal" id="video-call-btn" class="waves-effect waves-light btn modal-trigger blue" title="Video Call">
+                <button id="video-call-btn" class="waves-effect waves-light btn blue" title="Video Call">
                     <i class="material-icons">videocam</i>
-                </a>
+                </button>
             </div>
         </div>
         
@@ -36,8 +36,8 @@
       <div class="input-field" style="display: flex;justify-content: flex-end;">
         <button id="exit-video" class="waves-effect waves-light btn red" type="button"><i class="material-icons left">exit_to_app</i></button>
       </div>
-      <video id="localVideo" autoplay muted style="background-color: #2196F3;width: auto;height: 400px;"></video>
-      <video id="remoteVideo" autoplay style="background-color: green;width: auto;height: 400px;"></video>
+      <video id="localVideo" autoplay playsinline muted style="background-color: #2196F3;width: auto;height: 400px;"></video>
+      <video id="remoteVideo" autoplay playsinline muted style="background-color: green;width: auto;height: 400px;"></video>
     </div>
   </div>
 
