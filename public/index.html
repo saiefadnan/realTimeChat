@@ -20,13 +20,13 @@
 <nav>
     <div class="nav-wrapper">
         <a href="#" class="brand-logo">Chit-chat</a>
-        <a href="#" data-target="mobile-demo" class="sidenav-trigger" onclick="toggleColor(window.currentLocation)"><i class="material-icons">menu</i></a>
+        <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
 
             <ul id="nav-mobile" class="right hide-on-med-and-down">
-                <li onclick="window.loadPage('chat.html', 'chat')" class="nav-chat" style="cursor: pointer;"><a href="#" id="chat" data-page="chat" class="tab">Chat</a></li>
-                <li onclick="window.loadPage('room.html', 'room')" class="nav-room" style="cursor: pointer;"><a href="#" id="room" data-page="room" class="tab">Room</a></li>
-                <li onclick="window.loadPage('signup.html', 'signup')" class="nav-signup" style="cursor: pointer;"><a href="#" id="signup" data-page="signup" class="tab">Signup</a></li>
-                <li onclick="window.loadPage('login.html', 'login')" class="nav-login" style="cursor: pointer;"><a href="#" id="login" data-page="login" class="tab">Login</a></li>
+                <li onclick="window.loadPage('chat.html', 'chat')" class="nav-chat" style="cursor: pointer;"><a href="#" id="chat" class="tab">Chat</a></li>
+                <li onclick="window.loadPage('room.html', 'room')" class="nav-room" style="cursor: pointer;"><a href="#" id="room" class="tab">Room</a></li>
+                <li onclick="window.loadPage('signup.html', 'signup')" class="nav-signup" style="cursor: pointer;"><a href="#" id="signup" class="tab">Signup</a></li>
+                <li onclick="window.loadPage('login.html', 'login')" class="nav-login" style="cursor: pointer;"><a href="#" id="login" class="tab">Login</a></li>
                 <li onclick="handleLogout()"
                     class="nav-logout"
                     style="cursor: pointer;">
@@ -40,10 +40,10 @@
     <div class="sidenav-profile-wrap">
         <img class="circle responsive-img" id="nav-profile2" src="https://gifdb.com/images/high/eren-yeager-blowing-hair-o63aaatimhxaojbu.gif" alt="Profile" />
     </div>
-    <li onclick="window.loadPage('chat.html', 'chat')"  class="nav-chat"><a  href="#" id="chat" class="tab">Chat</a></li>
-    <li onclick="window.loadPage('room.html', 'room')" class="nav-room"><a  href="#" id="room" class="tab">Room</a></li>
-    <li onclick="window.loadPage('signup.html', 'signup')" class="nav-signup"><a  href="#" id="signup" class="tab">Signup</a></li>
-    <li onclick="window.loadPage('login.html', 'login')" class="nav-login"><a  href="#" id="login" class="tab">Login</a></li>
+    <li onclick="window.loadPage('chat.html', 'chat')"  class="nav-chat"><a  href="#" id="chat0" class="tab">Chat</a></li>
+    <li onclick="window.loadPage('room.html', 'room')" class="nav-room"><a  href="#" id="room0" class="tab">Room</a></li>
+    <li onclick="window.loadPage('signup.html', 'signup')" class="nav-signup"><a  href="#" id="signup0" class="tab">Signup</a></li>
+    <li onclick="window.loadPage('login.html', 'login')" class="nav-login"><a  href="#" id="login0" class="tab">Login</a></li>
     <li onclick="handleLogout()" class="nav-logout"><a href="#" class="tab">Logout</a></li>
 </ul>
 
@@ -63,7 +63,6 @@
     import fetchData from './fetchData.js';
     import { Pending, clearPending }from './pending.js';
     import  setUserInfo from './userInfo.obf.js';
-    window.currentLocation = "chat"
     window.handleLogout = handleLogout;
     window.loadPage = loadPage;
     window.toggleColor = toggleColor;

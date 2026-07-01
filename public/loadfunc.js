@@ -130,12 +130,14 @@ export function loadPage(content, element = null) {
 }
 
 export function toggleColor(element) {
-  console.log("clicked..", element);
+const element0 = element + "0";
+console.log("Toggling color for:", element);
   const links = document.querySelectorAll(".tab");
   links.forEach((link) => {
     link.classList.remove("clicked");
   });
   document.getElementById(element).classList.toggle("clicked");
+  document.getElementById(element0).classList.toggle("clicked");
 }
 
 /**
