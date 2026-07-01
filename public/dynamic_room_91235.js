@@ -24,6 +24,16 @@
     return video;
   }
 
+  function getDivByTextContent(text) {
+    console.log("[getDivByTextContent] Searching for:", text);
+    Array.from(activeRoom.children).forEach((div) => {
+      console.log(`[${div.textContent}]`);
+    });
+    return Array.from(activeRoom.children).find(
+      (div) => div.textContent === text,
+    );
+  }
+
   function updateStyles() {
     const count = document.querySelectorAll(".video-modal-child").length;
     const isTablet = window.innerWidth < 1000;
@@ -271,6 +281,15 @@
     }
   }
 
+  function selectRoom(div, name) {
+    activeRoom.querySelectorAll(".room-item").forEach((d) => {
+      d.classList.remove("active-room-card");
+    });
+    div.classList.add("active-room-card");
+    currentRoom = name;
+    CurrentroomLabel.textContent = `Room: ${name}`;
+  }
+
   function addRoomToList(name) {
     const div = document.createElement("div");
     div.className = "room-item";
@@ -281,14 +300,7 @@
       () => (div.style.transform = "scale(0.95)"),
     );
     div.addEventListener("mouseout", () => (div.style.transform = "scale(1)"));
-    div.addEventListener("click", () => {
-      activeRoom.querySelectorAll(".room-item").forEach((d) => {
-        d.classList.remove("active-room-card");
-      });
-      div.classList.add("active-room-card");
-      currentRoom = name;
-      CurrentroomLabel.textContent = `Room: ${name}`;
-    });
+    div.addEventListener("click", () => selectRoom(div, name));
 
     activeRoom.appendChild(div);
   }
@@ -296,12 +308,22 @@
   // Shared robust ontrack — handles both e.streams[0] and bare track fallback
   function setupOnTrack(remoteVideo) {
     localConnection.ontrack = (e) => {
-      console.log("[WebRTC] ontrack fired:", e.track.kind, "streams:", e.streams.length, "target:", remoteVideo.id);
+      console.log(
+        "[WebRTC] ontrack fired:",
+        e.track.kind,
+        "streams:",
+        e.streams.length,
+        "target:",
+        remoteVideo.id,
+      );
 
       const incomingStream = e.streams && e.streams[0];
 
       if (incomingStream) {
-        console.log("[WebRTC] incoming stream tracks:", incomingStream.getTracks().map(t => t.kind));
+        console.log(
+          "[WebRTC] incoming stream tracks:",
+          incomingStream.getTracks().map((t) => t.kind),
+        );
         if (remoteVideo.srcObject !== incomingStream) {
           remoteVideo.srcObject = incomingStream;
           console.log("[WebRTC] srcObject set on", remoteVideo.id);
@@ -320,7 +342,14 @@
 
       clearTimeout(remoteVideo._playDebounce);
       remoteVideo._playDebounce = setTimeout(() => {
-        console.log("[WebRTC] calling play() on", remoteVideo.id, "muted:", remoteVideo.muted, "srcObject:", !!remoteVideo.srcObject);
+        console.log(
+          "[WebRTC] calling play() on",
+          remoteVideo.id,
+          "muted:",
+          remoteVideo.muted,
+          "srcObject:",
+          !!remoteVideo.srcObject,
+        );
         remoteVideo.play().catch((err) => {
           if (err.name === "AbortError") return;
           console.warn("[WebRTC] autoplay blocked, retrying muted:", err);
@@ -347,7 +376,9 @@
       localConnection = null;
     }
     pendingCandidates = [];
-    const existing = container.querySelectorAll(".video-modal-child:not(#localVideo)");
+    const existing = container.querySelectorAll(
+      ".video-modal-child:not(#localVideo)",
+    );
     existing.forEach((el) => el.remove());
   }
 
@@ -368,7 +399,10 @@
         audio: true,
       });
       localVideo.srcObject = stream;
-      console.log("[WebRTC] getUserMedia OK, tracks:", stream.getTracks().map(t => t.kind));
+      console.log(
+        "[WebRTC] getUserMedia OK, tracks:",
+        stream.getTracks().map((t) => t.kind),
+      );
 
       localConnection = new RTCPeerConnection(iceConfiguration);
       const thisConnectionId = ++connectionId;
@@ -403,11 +437,13 @@
     }
   }
 
-  async function receiveVideoCall(signal) {
+  async function receiveVideoCall(name, signal) {
     const localVideo = document.getElementById("localVideo");
 
     closeExistingConnection();
-
+    const div = getDivByTextContent(name);
+    console.log("got you", div);
+    selectRoom(div, name);
     const remoteVideo = addVideo();
 
     try {
@@ -416,7 +452,10 @@
         audio: true,
       });
       localVideo.srcObject = stream;
-      console.log("[WebRTC] receiveVideoCall getUserMedia OK, tracks:", stream.getTracks().map(t => t.kind));
+      console.log(
+        "[WebRTC] receiveVideoCall getUserMedia OK, tracks:",
+        stream.getTracks().map((t) => t.kind),
+      );
 
       localConnection = new RTCPeerConnection(iceConfiguration);
       const thisConnectionId = ++connectionId;
@@ -486,12 +525,17 @@
     }
   });
 
-  socket.on("signal", async ({ signal }) => {
-    console.log("[WebRTC] signal received:", signal.type, "localConnection:", !!localConnection);
+  socket.on("signal", async ({ room, signal }) => {
+    console.log(
+      "[WebRTC] signal received:",
+      signal.type,
+      "localConnection:",
+      !!localConnection,
+    );
 
     if (signal.type === "offer") {
       // closeExistingConnection is called inside receiveVideoCall
-      await receiveVideoCall(signal);
+      await receiveVideoCall(room, signal);
     } else if (signal.type === "answer" && localConnection) {
       await localConnection.setRemoteDescription(
         new RTCSessionDescription(signal),
@@ -508,7 +552,10 @@
         );
       } else {
         pendingCandidates.push(signal.candidate);
-        console.log("[WebRTC] candidate queued (no remote desc yet), pending:", pendingCandidates.length);
+        console.log(
+          "[WebRTC] candidate queued (no remote desc yet), pending:",
+          pendingCandidates.length,
+        );
       }
     }
   });

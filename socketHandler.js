@@ -283,7 +283,8 @@ function socketHandler(io) {
 
         // ── WebRTC signaling ──────────────────────────────────────────────── 
         socket.on('signal', ({ room, signal }) => {
-            socket.broadcast.to(room).emit('signal', { signal });
+            console.log(room);
+            socket.broadcast.to(room).emit('signal', { room, signal });
         });
 
         // ── Disconnect ────────────────────────────────────────────────────── 
