@@ -31,13 +31,19 @@
     </div>
 </div>
 
-  <div id="video-modal" class="modal">
-    <div class="modal-content">
-      <div class="input-field" style="display: flex;justify-content: flex-end;">
-        <button id="exit-video" class="waves-effect waves-light btn red" type="button"><i class="material-icons left">exit_to_app</i></button>
-      </div>
-      <video id="localVideo" autoplay playsinline muted style="background-color: #2196F3;width: auto;height: 400px;"></video>
-      <video id="remoteVideo" autoplay playsinline muted style="background-color: green;width: auto;height: 400px;"></video>
+  <div id="video-modal">
+    <div class="input-field" style="display: flex;justify-content: flex-end;">
+      <button id="exit-video" class="btn red" type="button">
+        <i class="material-icons">call_end</i>
+      </button>
+    </div>
+    <div class="modal-content" id="video-modal-content">
+      <video id="localVideo" class="video-modal-child" autoplay playsinline muted ></video>
+      <video id="remoteVideo" class="video-modal-child" autoplay playsinline muted ></video>
+      <video class="video-modal-child" autoplay playsinline muted style="background-color: green;"></video>
+      <video class="video-modal-child" autoplay playsinline muted style="background-color: green;"></video>
+      <video  class="video-modal-child" autoplay playsinline muted style="background-color: green;"></video>
+      <video  class="video-modal-child" autoplay playsinline muted style="background-color: green;"></video>
     </div>
   </div>
 
