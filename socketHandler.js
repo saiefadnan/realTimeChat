@@ -284,7 +284,11 @@ function socketHandler(io) {
         // ── WebRTC signaling ──────────────────────────────────────────────── 
         socket.on('signal', ({ room, signal }) => {
             console.log(room);
-            socket.broadcast.to(room).emit('signal', { room, signal });
+            socket.broadcast.to(room).emit('signal', { id: socket.id, room, signal });
+        });
+
+        socket.on('exit-room', ({room }) => {
+           socket.broadcast.to(room.name).emit('exit-room', { id: socket.id });
         });
 
         // ── Disconnect ────────────────────────────────────────────────────── 

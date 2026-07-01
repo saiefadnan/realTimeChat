@@ -1,6 +1,5 @@
 (async function () {
   let socket = window.socket;
-  let peerId = 0;
   const chunkSize = 512 * 1024;
   let _uploadProgressEl = null;
   const items = document.getElementById("item-list");
@@ -11,17 +10,27 @@
   const videoModal = document.getElementById("video-modal");
   const container = document.getElementById("video-modal-content");
   window.addEventListener("resize", updateStyles);
+  const joinedIds = [];
 
-  function addVideo() {
-    const id = `remoteVideo${peerId}`;
+  function addVideo(id) {
+    const videoId = `remoteVideo${id}`;
+    joinedIds.push(id);
     container.insertAdjacentHTML(
       "beforeend",
-      `<video id="${id}" class="video-modal-child" autoplay playsinline muted style="border: 2px solid red;"></video>`,
+      `<video id="${videoId}" class="video-modal-child" autoplay playsinline muted style="border: 2px solid red;"></video>`,
     );
-    const video = document.getElementById(id);
-    peerId++;
-    console.log("[WebRTC] addVideo created:", id);
+    const video = document.getElementById(videoId);
+    console.log("[WebRTC] addVideo created:", videoId);
     return video;
+  }
+
+  function removeVideo(id) {
+    const videoId = `remoteVideo${id}`;
+    const video = document.getElementById(videoId);
+    if (video) {
+      video.remove();
+      console.log("[WebRTC] removeVideo called:", videoId);
+    }
   }
 
   function getDivByTextContent(text) {
@@ -391,7 +400,7 @@
 
     closeExistingConnection();
 
-    const remoteVideo = addVideo();
+    const remoteVideo = addVideo(0);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -425,7 +434,10 @@
       const offer = await localConnection.createOffer();
       await localConnection.setLocalDescription(offer);
       console.log("[WebRTC] offer created and sent");
-      socket.emit("signal", { room: currentRoom, signal: offer });
+      socket.emit("signal", {
+        room: currentRoom,
+        signal: offer,
+      });
 
       // M.Modal.getInstance(videoModal).open();
       videoModal.style.display = "flex";
@@ -437,14 +449,13 @@
     }
   }
 
-  async function receiveVideoCall(name, signal) {
+  async function receiveVideoCall(id, name, signal) {
     const localVideo = document.getElementById("localVideo");
-
     closeExistingConnection();
     const div = getDivByTextContent(name);
     console.log("got you", div);
     selectRoom(div, name);
-    const remoteVideo = addVideo();
+    const remoteVideo = addVideo(id);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -488,7 +499,10 @@
       });
       pendingCandidates = [];
 
-      socket.emit("signal", { room: currentRoom, signal: answer });
+      socket.emit("signal", {
+        room: currentRoom,
+        signal: answer,
+      });
       // M.Modal.getInstance(videoModal).open();
       videoModal.style.display = "flex";
       M.toast({ html: "Answering Call...", classes: "rounded blue" });
@@ -516,7 +530,6 @@
   socket.on("room message", ({ from, time, message, profile }) => {
     addMessage(from, message, new Date(time).toLocaleString(), profile);
   });
-
   socket.on("invitation", ({ name, notify }) => {
     addFeedback(notify, "orange");
     if (!window.rooms.some((r) => r.name === name)) {
@@ -524,8 +537,7 @@
       addRoomToList(name);
     }
   });
-
-  socket.on("signal", async ({ room, signal }) => {
+  socket.on("signal", async ({ id, room, signal }) => {
     console.log(
       "[WebRTC] signal received:",
       signal.type,
@@ -535,7 +547,7 @@
 
     if (signal.type === "offer") {
       // closeExistingConnection is called inside receiveVideoCall
-      await receiveVideoCall(room, signal);
+      await receiveVideoCall(id, room, signal);
     } else if (signal.type === "answer" && localConnection) {
       await localConnection.setRemoteDescription(
         new RTCSessionDescription(signal),
@@ -559,14 +571,16 @@
       }
     }
   });
-
   socket.on("room file", ({ from, time, fileData, profile }) => {
     removeUploadProgress();
     const date = new Date(time).toLocaleString();
     if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
     else embedDriveFiles(date, from, fileData, profile);
   });
-
+  socket.on("exit-room", ({ id }) => {
+    console.log(id);
+    removeVideo(id);
+  });
   // UI Feedback
   function addFeedback(msg, color) {
     const err = document.createElement("div");
@@ -730,21 +744,20 @@
     exitVideoBtn.addEventListener("click", () => {
       closeExistingConnection();
       const localVideo = document.getElementById("localVideo");
-      const remoteVideos = [];
-      for (let i = 0; i < peerId; i++) {
-        remoteVideos.push(document.getElementById(`remoteVideo${i}`));
-      }
       if (localVideo && localVideo.srcObject) {
         localVideo.srcObject.getTracks().forEach((t) => t.stop());
         localVideo.srcObject = null;
       }
-      remoteVideos.forEach((remoteVideo) => {
+      joinedIds.forEach((remoteVideo) => {
         if (remoteVideo && remoteVideo.srcObject) {
           remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
           remoteVideo.srcObject = null;
         }
       });
       videoModal.style.display = "none";
+      socket.emit("exit-room", {
+      room: { name: currentRoom },
+    });
     });
   }
 
