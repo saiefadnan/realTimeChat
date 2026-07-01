@@ -1,6 +1,6 @@
 (async function () {
   let socket = window.socket;
-
+  let peerId = 0;
   const chunkSize = 512 * 1024;
   let _uploadProgressEl = null;
   const items = document.getElementById("item-list");
@@ -11,6 +11,18 @@
   const videoModal = document.getElementById("video-modal");
   const container = document.getElementById("video-modal-content");
   window.addEventListener("resize", updateStyles);
+
+  function addVideo() {
+    const id = `remoteVideo${peerId}`;
+    container.insertAdjacentHTML(
+      "beforeend",
+      `<video id="${id}" class="video-modal-child" autoplay playsinline muted style="border: 2px solid red;"></video>`,
+    );
+    const video = document.getElementById(id);
+    peerId++;
+    console.log("[WebRTC] addVideo created:", id);
+    return video;
+  }
 
   function updateStyles() {
     const count = document.querySelectorAll(".video-modal-child").length;
@@ -284,13 +296,42 @@
   // Shared robust ontrack — handles both e.streams[0] and bare track fallback
   function setupOnTrack(remoteVideo) {
     localConnection.ontrack = (e) => {
-      if (e.streams && e.streams[0]) {
-        remoteVideo.srcObject = e.streams[0];
+      console.log("[WebRTC] ontrack fired:", e.track.kind, "streams:", e.streams.length, "target:", remoteVideo.id);
+
+      const incomingStream = e.streams && e.streams[0];
+
+      if (incomingStream) {
+        console.log("[WebRTC] incoming stream tracks:", incomingStream.getTracks().map(t => t.kind));
+        if (remoteVideo.srcObject !== incomingStream) {
+          remoteVideo.srcObject = incomingStream;
+          console.log("[WebRTC] srcObject set on", remoteVideo.id);
+        }
       } else {
-        let inbound = remoteVideo.srcObject || new MediaStream();
-        inbound.addTrack(e.track);
-        remoteVideo.srcObject = inbound;
+        let inbound = remoteVideo.srcObject;
+        if (!(inbound instanceof MediaStream)) {
+          inbound = new MediaStream();
+          remoteVideo.srcObject = inbound;
+        }
+        if (!inbound.getTracks().includes(e.track)) {
+          inbound.addTrack(e.track);
+        }
+        console.log("[WebRTC] bare track added to", remoteVideo.id);
       }
+
+      clearTimeout(remoteVideo._playDebounce);
+      remoteVideo._playDebounce = setTimeout(() => {
+        console.log("[WebRTC] calling play() on", remoteVideo.id, "muted:", remoteVideo.muted, "srcObject:", !!remoteVideo.srcObject);
+        remoteVideo.play().catch((err) => {
+          if (err.name === "AbortError") return;
+          console.warn("[WebRTC] autoplay blocked, retrying muted:", err);
+          remoteVideo.muted = true;
+          remoteVideo
+            .play()
+            .catch((e2) =>
+              console.error("[WebRTC] play() failed even muted:", e2),
+            );
+        });
+      }, 50);
     };
   }
 
@@ -306,6 +347,8 @@
       localConnection = null;
     }
     pendingCandidates = [];
+    const existing = container.querySelectorAll(".video-modal-child:not(#localVideo)");
+    existing.forEach((el) => el.remove());
   }
 
   // WebRTC Logic
@@ -314,9 +357,10 @@
       return M.toast({ html: "Select a room first!", classes: "rounded" });
 
     const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
 
     closeExistingConnection();
+
+    const remoteVideo = addVideo();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -324,6 +368,7 @@
         audio: true,
       });
       localVideo.srcObject = stream;
+      console.log("[WebRTC] getUserMedia OK, tracks:", stream.getTracks().map(t => t.kind));
 
       localConnection = new RTCPeerConnection(iceConfiguration);
       const thisConnectionId = ++connectionId;
@@ -345,6 +390,7 @@
 
       const offer = await localConnection.createOffer();
       await localConnection.setLocalDescription(offer);
+      console.log("[WebRTC] offer created and sent");
       socket.emit("signal", { room: currentRoom, signal: offer });
 
       // M.Modal.getInstance(videoModal).open();
@@ -359,9 +405,10 @@
 
   async function receiveVideoCall(signal) {
     const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
 
     closeExistingConnection();
+
+    const remoteVideo = addVideo();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -369,6 +416,7 @@
         audio: true,
       });
       localVideo.srcObject = stream;
+      console.log("[WebRTC] receiveVideoCall getUserMedia OK, tracks:", stream.getTracks().map(t => t.kind));
 
       localConnection = new RTCPeerConnection(iceConfiguration);
       const thisConnectionId = ++connectionId;
@@ -391,8 +439,10 @@
       await localConnection.setRemoteDescription(
         new RTCSessionDescription(signal),
       );
+      console.log("[WebRTC] remote description (offer) set");
       const answer = await localConnection.createAnswer();
       await localConnection.setLocalDescription(answer);
+      console.log("[WebRTC] answer created and sent");
 
       pendingCandidates.forEach((c) => {
         localConnection.addIceCandidate(new RTCIceCandidate(c));
@@ -437,6 +487,8 @@
   });
 
   socket.on("signal", async ({ signal }) => {
+    console.log("[WebRTC] signal received:", signal.type, "localConnection:", !!localConnection);
+
     if (signal.type === "offer") {
       // closeExistingConnection is called inside receiveVideoCall
       await receiveVideoCall(signal);
@@ -444,6 +496,7 @@
       await localConnection.setRemoteDescription(
         new RTCSessionDescription(signal),
       );
+      console.log("[WebRTC] remote description (answer) set");
       pendingCandidates.forEach((c) => {
         localConnection.addIceCandidate(new RTCIceCandidate(c));
       });
@@ -455,6 +508,7 @@
         );
       } else {
         pendingCandidates.push(signal.candidate);
+        console.log("[WebRTC] candidate queued (no remote desc yet), pending:", pendingCandidates.length);
       }
     }
   });
@@ -604,7 +658,8 @@
 
   const inviteUserBtn = document.getElementById("invite-user");
   if (inviteUserBtn) {
-    inviteUserBtn.addEventListener("click", () => {
+    inviteUserBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       if (!currentRoom)
         return M.toast({ html: "Select a room!", classes: "rounded" });
       if (invitedUsers.length === 0)
@@ -628,15 +683,20 @@
     exitVideoBtn.addEventListener("click", () => {
       closeExistingConnection();
       const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
+      const remoteVideos = [];
+      for (let i = 0; i < peerId; i++) {
+        remoteVideos.push(document.getElementById(`remoteVideo${i}`));
+      }
       if (localVideo && localVideo.srcObject) {
         localVideo.srcObject.getTracks().forEach((t) => t.stop());
         localVideo.srcObject = null;
       }
-      if (remoteVideo && remoteVideo.srcObject) {
-        remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
-        remoteVideo.srcObject = null;
-      }
+      remoteVideos.forEach((remoteVideo) => {
+        if (remoteVideo && remoteVideo.srcObject) {
+          remoteVideo.srcObject.getTracks().forEach((t) => t.stop());
+          remoteVideo.srcObject = null;
+        }
+      });
       videoModal.style.display = "none";
     });
   }
