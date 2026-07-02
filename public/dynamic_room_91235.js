@@ -15,14 +15,17 @@
 
   window.addEventListener("resize", updateStyles);
   function addVideo(id) {
+    if (document.getElementById(`remoteVideo${id}`)) return null;
     const videoId = `remoteVideo${id}`;
     joinedIds.push(id);
+    if (!container) return null;
     container.insertAdjacentHTML(
       "beforeend",
-      `<video id="${videoId}" class="video-modal-child" autoplay playsinline style="border: 2px solid red;"></video>`,
+      `<video id="${videoId}" class="video-modal-child" autoplay playsinline></video>`,
     );
     const video = document.getElementById(videoId);
     console.log("[WebRTC] addVideo created:", videoId);
+    updateStyles();
     return video;
   }
 
@@ -36,6 +39,7 @@
     if (video) {
       video.remove();
       console.log("[WebRTC] removeVideo called:", videoId);
+      updateStyles();
     }
   }
 
@@ -109,16 +113,23 @@
         window.socket = socket;
 
         socket.on("connect", async () => {
-          console.log("[Room Socket] Connected");
-          socket.emit("insert name", { jwtoken: Cookies.get("token") });
-          const data = await window.fetchData("/api/user-rooms");
-          if (data && data.rooms) {
-            window.rooms = data.rooms;
-            window.rooms.forEach((room) => addRoomToList(room.name));
-            socket.emit("join-rooms", { rooms: data.rooms.map(r => r.name) });
+          try {
+            console.log("[Room Socket] Connected");
+            socket.emit("insert name", { jwtoken: Cookies.get("token") });
+            const data = await window.fetchData("/api/user-rooms");
+            if (data && data.rooms) {
+              window.rooms = data.rooms;
+              window.rooms.forEach((room) => addRoomToList(room.name));
+              socket.emit("join-rooms", {
+                rooms: data.rooms.map((r) => r.name),
+              });
+            }
+          } catch (err) {
+            console.error("[Room] Failed to load rooms after connect:", err);
           }
         });
       }
+      registerSocketEvents();
     } catch (err) {
       console.error("[Room] Failed to load rooms from server:", err);
       if (window.rooms) {
@@ -127,6 +138,11 @@
     }
     updateLayout();
     window.addEventListener("resize", updateLayout);
+    window.eventListeners.push({
+      element: window,
+      event: "resize",
+      handler: updateLayout,
+    });
   }
 
   init();
@@ -410,9 +426,9 @@
     };
   }
 
-  function setupICELogging() {
-    localConnection.oniceconnectionstatechange = () => {
-      console.log("[ICE state]", localConnection.iceConnectionState);
+  function setupICELogging(pc) {
+    pc.oniceconnectionstatechange = () => {
+      console.log("[ICE state]", pc.iceConnectionState);
     };
   }
 
@@ -428,6 +444,7 @@
         console.warn("[WebRTC] close existing pc error:", e);
       }
       peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
+      console.log("new peer connection created for id:", id);
     }
     pendingCandidates = [];
     joinedIds = [];
@@ -435,6 +452,28 @@
       ".video-modal-child:not(#localVideo)",
     );
     existing.forEach((el) => el.remove());
+    updateStyles();
+  }
+
+  function cleanupVideoCall() {
+    if (localConnection) {
+      localConnection.close();
+      localConnection = null;
+    }
+    for (const [id, pc] of peerConnections) {
+      try {
+        pc.close();
+      } catch (e) {
+        console.warn("[WebRTC] cleanup pc close error:", e);
+      }
+    }
+    pendingCandidates = [];
+    joinedIds = [];
+    const existing = container.querySelectorAll(
+      ".video-modal-child:not(#localVideo)",
+    );
+    existing.forEach((el) => el.remove());
+    updateStyles();
   }
 
   // WebRTC Logic
@@ -443,10 +482,8 @@
       return M.toast({ html: "Select a room first!", classes: "rounded" });
     }
     const localVideo = document.getElementById("localVideo");
+    socket.emit("initiator", { room: { name: currentRoom } });
     closeExistingConnection();
-    socket.emit("initiator", {
-      room: { name: currentRoom },
-    });
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -454,6 +491,7 @@
       });
       localVideo.srcObject = stream;
       for (const [id, peerConnection] of peerConnections) {
+        console.log("this is ID:", id);
         if (joinedIds.includes(id)) continue;
         const remoteVideo = addVideo(id);
         const thisConnectionId = ++connectionId;
@@ -463,7 +501,7 @@
           .forEach((track) => peerConnection.addTrack(track, stream));
 
         setupOnTrack(peerConnection, remoteVideo);
-        setupICELogging();
+        setupICELogging(peerConnection);
 
         peerConnection.onicecandidate = (e) => {
           if (e.candidate && connectionId === thisConnectionId) {
@@ -521,7 +559,7 @@
         .forEach((track) => peerConnection.addTrack(track, stream));
 
       setupOnTrack(peerConnection, remoteVideo);
-      setupICELogging();
+      setupICELogging(peerConnection);
 
       peerConnection.onicecandidate = (e) => {
         if (e.candidate && connectionId === thisConnectionId) {
@@ -561,72 +599,7 @@
     }
   }
 
-  // Socket Events
-  socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
-  socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
-  socket.on("room-info", ({ name, admin, created_at, memberIds }) => {
-    console.log("[Room] Info received:", { admin, created_at, memberIds });
-    for (const id of memberIds) {
-      if (
-        socket.id !== id &&
-        !peerConnections.has(id) &&
-        id !== window.userInfo.username
-      ) {
-        peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
-      }
-    }
-  });
-  socket.on("room message", ({ from, time, message, profile }) => {
-    addMessage(from, message, new Date(time).toLocaleString(), profile);
-  });
-  socket.on("invitation", ({ name, notify }) => {
-    addFeedback(notify, "orange");
-    if (!window.rooms.some((r) => r.name === name)) {
-      window.rooms.push({ name });
-      addRoomToList(name);
-    }
-  });
-  socket.on("handshake", async ({ id, room, signal }) => {
-    console.log(
-      "[WebRTC] handshake received from",
-      id,
-      "signal type:",
-      signal.type,
-    );
-    if (signal.type === "offer") {
-      // closeExistingConnection is called inside receiveVideoCall
-      await receiveVideoCall(id, room.name, signal);
-    } else if (signal.type === "answer" && localConnection) {
-      await localConnection.setRemoteDescription(
-        new RTCSessionDescription(signal),
-      );
-      console.log("[WebRTC] remote description (answer) set");
-      pendingCandidates.forEach((c) => {
-        localConnection.addIceCandidate(new RTCIceCandidate(c));
-      });
-      pendingCandidates = [];
-    } else if (signal.type === "candidate") {
-      if (localConnection && localConnection.remoteDescription) {
-        await localConnection.addIceCandidate(
-          new RTCIceCandidate(signal.candidate),
-        );
-      } else {
-        pendingCandidates.push(signal.candidate);
-      }
-    } else if (signal.type === "mesh-request") {
-      startVideoCall();
-    }
-  });
-  socket.on("room file", ({ from, time, fileData, profile }) => {
-    removeUploadProgress();
-    const date = new Date(time).toLocaleString();
-    if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
-    else embedDriveFiles(date, from, fileData, profile);
-  });
-  socket.on("exit-room", ({ id }) => {
-    console.log(id);
-    removeVideo(id);
-  });
+  // UI Feedback
   // UI Feedback
   function addFeedback(msg, color) {
     const err = document.createElement("div");
@@ -786,13 +759,12 @@
   if (videoBtn)
     videoBtn.addEventListener("click", () => {
       startVideoCall();
-      establishMeshConnections();
     });
 
   const exitVideoBtn = document.getElementById("exit-video");
   if (exitVideoBtn) {
     exitVideoBtn.addEventListener("click", () => {
-      closeExistingConnection();
+      cleanupVideoCall();
       const localVideo = document.getElementById("localVideo");
       if (localVideo && localVideo.srcObject) {
         localVideo.srcObject.getTracks().forEach((t) => t.stop());
@@ -807,17 +779,23 @@
       });
       joinedIds = [];
       videoModal.style.display = "none";
-      socket.emit("exit-room", {
+      socket.emit("exit-video", {
         room: { name: currentRoom },
       });
     });
   }
 
   const fileInput = document.getElementById("file-input");
+  function onFileChange() {
+    const uploadBtn = document.getElementById("custom-file-upload");
+    if (uploadBtn) uploadBtn.style.backgroundColor = "#e67e22";
+  }
   if (fileInput) {
-    fileInput.addEventListener("change", () => {
-      const uploadBtn = document.getElementById("custom-file-upload");
-      if (uploadBtn) uploadBtn.style.backgroundColor = "#e67e22";
+    fileInput.addEventListener("change", onFileChange);
+    window.eventListeners.push({
+      element: fileInput,
+      event: "change",
+      handler: onFileChange,
     });
   }
 
@@ -826,4 +804,75 @@
     event: "resize",
     handler: updateStyles,
   });
+
+  function registerSocketEvents() {
+    socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
+    socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
+    socket.on("room-info", ({ name, admin, created_at, memberIds }) => {
+      console.log("[Room] Info received:", { admin, created_at, memberIds });
+      for (const id of memberIds) {
+        if (socket.id !== id && !peerConnections.has(id)) {
+          peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
+          console.log("New member added:", id);
+        }
+      }
+    });
+    socket.on("room message", ({ from, time, message, profile }) => {
+      addMessage(from, message, new Date(time).toLocaleString(), profile);
+    });
+    socket.on("invitation", ({ name, notify }) => {
+      addFeedback(notify, "orange");
+      if (!window.rooms.some((r) => r.name === name)) {
+        window.rooms.push({ name });
+        addRoomToList(name);
+      }
+    });
+    socket.on("handshake", async ({ id, room, signal }) => {
+      console.log(
+        "[WebRTC] handshake received from",
+        id,
+        "signal type:",
+        signal.type,
+      );
+      if (signal.type === "offer") {
+        await receiveVideoCall(id, room.name, signal);
+      } else if (signal.type === "answer") {
+        const pc = peerConnections.get(id);
+        if (pc) {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          console.log("[WebRTC] remote description (answer) set for", id);
+          pendingCandidates.forEach((c) => {
+            pc.addIceCandidate(new RTCIceCandidate(c));
+          });
+          pendingCandidates = [];
+        }
+        if (joinedIds.length === peerConnections.size) {
+          establishMeshConnections();
+        }
+      } else if (signal.type === "candidate") {
+        const pc = peerConnections.get(id);
+        if (pc && pc.remoteDescription) {
+          await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        } else {
+          pendingCandidates.push(signal.candidate);
+        }
+      } else if (signal.type === "mesh-request") {
+        startVideoCall();
+      }
+    });
+    socket.on("room file", ({ from, time, fileData, profile }) => {
+      removeUploadProgress();
+      const date = new Date(time).toLocaleString();
+      if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
+      else embedDriveFiles(date, from, fileData, profile);
+    });
+    socket.on("exit-video", ({ id }) => {
+      console.log("exited video call", id);
+      removeVideo(id);
+    });
+    socket.on("exit-room", ({ id }) => {
+      console.log("exited room", id);
+      peerConnections.delete(id);
+    });
+  }
 })();

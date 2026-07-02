@@ -138,7 +138,7 @@
         document.getElementById('messageInput').value = '';
         return;
       }
-      socket.emit('public message', message, date);
+      socket.emit('public message', { message, date });
       document.getElementById('messageInput').value = '';
     }
     else if (recipient.trim() && message.trim()) {

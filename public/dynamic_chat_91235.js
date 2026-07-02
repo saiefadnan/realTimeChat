@@ -241,7 +241,7 @@
             }
 
             const event = (recipient === 'public') ? 'public message' : 'private message';
-            const payload = (recipient === 'public') ? [message, date] : [{ to: recipient, message, date }];
+            const payload = (recipient === 'public') ? [{ message, date }] : [{ to: recipient, message, date }];
             socket.emit(event, ...payload);
             messageInput.value = '';
         }

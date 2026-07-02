@@ -80,10 +80,17 @@ function socketHandler(io) {
 
       const { username, imageurl } = decoded;
 
-      if (users[username]) {
-        // Username already connected on another socket
-        io.to(socket.id).emit("error", { error: "999" });
-        return;
+      const existingSocketId = users[username];
+      if (existingSocketId) {
+        const existingSocket = socIns[username];
+        // Only reject if the stored socket is still connected (genuine duplicate)
+        if (existingSocket && existingSocket.connected) {
+          io.to(socket.id).emit("error", { error: "999" });
+          return;
+        }
+        // Stale entry from a disconnected socket — clean up and allow re-registration
+        delete users[username];
+        delete socIns[username];
       }
 
       users[username] = socket.id;
@@ -124,6 +131,7 @@ function socketHandler(io) {
     socket.on("complete", async ({ to, fileType, fileName }) => {
       const date = new Date().toLocaleString();
       const fromUsername = names[socket.id];
+      if (!fromUsername) return;
 
       try {
         // uploadFile now reads from per-socket buffer
@@ -214,9 +222,9 @@ function socketHandler(io) {
     // ── Room file upload ────────────────────────────────────────────────
     socket.on("room file complete", async ({ room, fileType, fileName }) => {
       const fromUsername = names[socket.id];
+      if (!fromUsername) return;
       try {
         let docUrl;
-        let event = "room file";
         const payload = {
           from: fromUsername,
           time: Date.now(),
@@ -233,7 +241,7 @@ function socketHandler(io) {
         }
 
         payload.fileData = docUrl;
-        io.to(room.name).emit(event, payload);
+        io.to(room.name).emit("room file", payload);
       } catch (err) {
         console.error("[Socket] Room file upload error:", err);
         io.to(socket.id).emit("error", { error: "Room file upload failed." });
@@ -244,6 +252,7 @@ function socketHandler(io) {
     socket.on("private message", async ({ to, message, date }) => {
       if (!message || !message.trim()) return;
       const fromUsername = names[socket.id];
+      if (!fromUsername) return;
       const recipientSocketId = users[to];
 
       if (recipientSocketId) {
@@ -268,6 +277,7 @@ function socketHandler(io) {
     socket.on("public message", async ({ message, date }) => {
       if (!message || !message.trim()) return;
       const fromUsername = names[socket.id];
+      if (!fromUsername) return;
       try {
         await storeChats(fromUsername, "public", message, "text", date);
         socket.broadcast.emit("public message", {
@@ -286,7 +296,7 @@ function socketHandler(io) {
       for (const roomName of roomNames) {
         if (rooms[roomName]) {
           socket.join(roomName);
-          io.to(socket.id).emit("room-info", {
+          io.to(roomName).emit("room-info", {
             name: roomName,
             admin: rooms[roomName].admin,
             created_at: rooms[roomName].created_at,
@@ -384,6 +394,9 @@ function socketHandler(io) {
     // ── WebRTC signaling ────────────────────────────────────────────────
     socket.on("initiator", ({ room }) => {
       rooms[room.name].initiator = rooms[room.name].initiator ?? socket.id;
+      if (!rooms[room.name].members.includes(socket.id)) {
+        rooms[room.name].members.push(socket.id);
+      }
     });
     socket.on("handshake", ({ id, room, signal }) => {
       const memberIds = rooms[room.name]?.members || [];
@@ -401,11 +414,14 @@ function socketHandler(io) {
         signal: { type: "mesh-request" },
       });
     });
-    socket.on("exit-room", ({ room }) => {
+    socket.on("exit-video", ({ room }) => {
       if (socket.id === rooms[room.name]?.initiator) {
         rooms[room.name].initiator = null;
       }
-      socket.broadcast.to(room.name).emit("exit-room", { id: socket.id });
+      // rooms[room.name].members = rooms[room.name].members.filter(
+      //   (id) => id !== socket.id,
+      // );
+      socket.broadcast.to(room.name).emit("exit-video", { id: socket.id });
     });
 
     // ── Disconnect ──────────────────────────────────────────────────────
@@ -422,6 +438,7 @@ function socketHandler(io) {
         if (rooms[roomName].initiator === socket.id) {
           rooms[roomName].initiator = null;
         }
+        socket.broadcast.to(roomName).emit("exit-room", { id: socket.id });
       }
 
       if (username) {

@@ -15,6 +15,9 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 const app = express();
 const server = http.createServer(app);
 
+// Trust the first proxy so rate-limiter reads real client IP from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // ─── CORS ─────────────────────────────────────────────────────────────────── 
 // Allow all origins in development; restrict to env-specified origins in prod.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
