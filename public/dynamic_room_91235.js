@@ -9,9 +9,11 @@
   const messagesDiv = document.getElementById("chat-content");
   const videoModal = document.getElementById("video-modal");
   const container = document.getElementById("video-modal-content");
-  window.addEventListener("resize", updateStyles);
+
+  const peerConnections = new Map();
   const joinedIds = [];
 
+  window.addEventListener("resize", updateStyles);
   function addVideo(id) {
     const videoId = `remoteVideo${id}`;
     joinedIds.push(id);
@@ -30,6 +32,15 @@
     if (video) {
       video.remove();
       console.log("[WebRTC] removeVideo called:", videoId);
+    }
+  }
+
+  function establishMeshConnections() {
+    for (let i = 0; i + 1 < joinedIds.length; ++i) {
+      socket.emit("mesh-connection", {
+        room: currentRoom,
+        to: joinedIds[i],
+      });
     }
   }
 
@@ -315,8 +326,8 @@
   }
 
   // Shared robust ontrack — handles both e.streams[0] and bare track fallback
-  function setupOnTrack(remoteVideo) {
-    localConnection.ontrack = (e) => {
+  function setupOnTrack(peerConnection, remoteVideo) {
+    peerConnection.ontrack = (e) => {
       console.log(
         "[WebRTC] ontrack fired:",
         e.track.kind,
@@ -393,53 +404,47 @@
 
   // WebRTC Logic
   async function startVideoCall() {
-    if (!currentRoom)
+    if (!currentRoom) {
       return M.toast({ html: "Select a room first!", classes: "rounded" });
-
+    }
     const localVideo = document.getElementById("localVideo");
-
     closeExistingConnection();
-
-    const remoteVideo = addVideo(0);
-
+    socket.emit("initiator", {
+      room: { name: currentRoom },
+    });
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       localVideo.srcObject = stream;
-      console.log(
-        "[WebRTC] getUserMedia OK, tracks:",
-        stream.getTracks().map((t) => t.kind),
-      );
+      for (const [id, peerConnection] of peerConnections) {
+        if (joinedIds.includes(id)) continue; // Skip already connected peers
+        const remoteVideo = addVideo(id);
+        const thisConnectionId = ++connectionId;
+        stream
+          .getTracks()
+          .forEach((track) => peerConnection.addTrack(track, stream));
 
-      localConnection = new RTCPeerConnection(iceConfiguration);
-      const thisConnectionId = ++connectionId;
-      stream
-        .getTracks()
-        .forEach((track) => localConnection.addTrack(track, stream));
+        setupOnTrack(peerConnection, remoteVideo);
+        setupICELogging();
 
-      setupOnTrack(remoteVideo);
-      setupICELogging();
+        peerConnection.onicecandidate = (e) => {
+          if (e.candidate && connectionId === thisConnectionId) {
+            socket.emit("handshake", {
+              room: currentRoom,
+              signal: { type: "candidate", candidate: e.candidate },
+            });
+          }
+        };
 
-      localConnection.onicecandidate = (e) => {
-        if (e.candidate && connectionId === thisConnectionId) {
-          socket.emit("signal", {
-            room: currentRoom,
-            signal: { type: "candidate", candidate: e.candidate },
-          });
-        }
-      };
-
-      const offer = await localConnection.createOffer();
-      await localConnection.setLocalDescription(offer);
-      console.log("[WebRTC] offer created and sent");
-      socket.emit("signal", {
-        room: currentRoom,
-        signal: offer,
-      });
-
-      // M.Modal.getInstance(videoModal).open();
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit("handshake", {
+          room: currentRoom,
+          signal: offer,
+        });
+      }
       videoModal.style.display = "flex";
       M.toast({ html: "Calling room members...", classes: "rounded blue" });
       updateStyles();
@@ -453,45 +458,39 @@
     const localVideo = document.getElementById("localVideo");
     closeExistingConnection();
     const div = getDivByTextContent(name);
-    console.log("got you", div);
     selectRoom(div, name);
     const remoteVideo = addVideo(id);
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       localVideo.srcObject = stream;
-      console.log(
-        "[WebRTC] receiveVideoCall getUserMedia OK, tracks:",
-        stream.getTracks().map((t) => t.kind),
-      );
 
-      localConnection = new RTCPeerConnection(iceConfiguration);
+      const peerConnection = peerConnections.get(id);
       const thisConnectionId = ++connectionId;
       stream
         .getTracks()
-        .forEach((track) => localConnection.addTrack(track, stream));
+        .forEach((track) => peerConnection.addTrack(track, stream));
 
-      setupOnTrack(remoteVideo);
+      setupOnTrack(peerConnection, remoteVideo);
       setupICELogging();
 
-      localConnection.onicecandidate = (e) => {
+      peerConnection.onicecandidate = (e) => {
         if (e.candidate && connectionId === thisConnectionId) {
-          socket.emit("signal", {
+          socket.emit("handshake", {
             room: currentRoom,
             signal: { type: "candidate", candidate: e.candidate },
           });
         }
       };
 
-      await localConnection.setRemoteDescription(
+      await peerConnection.setRemoteDescription(
         new RTCSessionDescription(signal),
       );
       console.log("[WebRTC] remote description (offer) set");
-      const answer = await localConnection.createAnswer();
-      await localConnection.setLocalDescription(answer);
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
       console.log("[WebRTC] answer created and sent");
 
       pendingCandidates.forEach((c) => {
@@ -499,7 +498,7 @@
       });
       pendingCandidates = [];
 
-      socket.emit("signal", {
+      socket.emit("handshake", {
         room: currentRoom,
         signal: answer,
       });
@@ -527,6 +526,14 @@
   // Socket Events
   socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
   socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
+  socket.on("room-info", ({ name, admin, created_at, memberIds }) => {
+    console.log("[Room] Info received:", { admin, created_at, memberIds });
+    for (const id of memberIds) {
+      if (!peerConnections.has(id) && id !== window.userInfo.username) {
+        peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
+      }
+    }
+  });
   socket.on("room message", ({ from, time, message, profile }) => {
     addMessage(from, message, new Date(time).toLocaleString(), profile);
   });
@@ -537,14 +544,7 @@
       addRoomToList(name);
     }
   });
-  socket.on("signal", async ({ id, room, signal }) => {
-    console.log(
-      "[WebRTC] signal received:",
-      signal.type,
-      "localConnection:",
-      !!localConnection,
-    );
-
+  socket.on("handshake", async ({ id, room, signal }) => {
     if (signal.type === "offer") {
       // closeExistingConnection is called inside receiveVideoCall
       await receiveVideoCall(id, room, signal);
@@ -564,11 +564,9 @@
         );
       } else {
         pendingCandidates.push(signal.candidate);
-        console.log(
-          "[WebRTC] candidate queued (no remote desc yet), pending:",
-          pendingCandidates.length,
-        );
       }
+    } else if (signal.type === "mesh-request") {
+      startVideoCall();
     }
   });
   socket.on("room file", ({ from, time, fileData, profile }) => {
@@ -737,7 +735,10 @@
   if (sendBtn) sendBtn.addEventListener("click", sendMessage);
 
   const videoBtn = document.getElementById("video-call-btn");
-  if (videoBtn) videoBtn.addEventListener("click", startVideoCall);
+  if (videoBtn) videoBtn.addEventListener("click", ()=>{
+    startVideoCall();
+    establishMeshConnections();
+  });
 
   const exitVideoBtn = document.getElementById("exit-video");
   if (exitVideoBtn) {
@@ -756,8 +757,8 @@
       });
       videoModal.style.display = "none";
       socket.emit("exit-room", {
-      room: { name: currentRoom },
-    });
+        room: { name: currentRoom },
+      });
     });
   }
 
