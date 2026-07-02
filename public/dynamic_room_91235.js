@@ -28,6 +28,10 @@
 
   function removeVideo(id) {
     const videoId = `remoteVideo${id}`;
+    const indx = joinedIds.indexOf(id);
+    if (indx !== -1) {
+      joinedIds.splice(indx, 1);
+    }
     const video = document.getElementById(videoId);
     if (video) {
       video.remove();
@@ -94,16 +98,38 @@
   let invitedUsers = [];
   let debounceTimer;
 
-  function init() {
+  async function init() {
     const modalElems = document.querySelectorAll(".modal");
     M.Modal.init(modalElems);
 
-    if (window.rooms) {
-      window.rooms.forEach((room) => addRoomToList(room.name));
+    try {
+      // Initialize socket connection if missing
+      if (!socket || !socket.connected) {
+        socket = io();
+        window.socket = socket;
+
+        socket.on("connect", async () => {
+          console.log("[Room Socket] Connected");
+          socket.emit("insert name", { jwtoken: Cookies.get("token") });
+          const data = await window.fetchData("/api/user-rooms");
+          if (data && data.rooms) {
+            window.rooms = data.rooms;
+            window.rooms.forEach((room) => addRoomToList(room.name));
+            socket.emit("join-rooms", { rooms: data.rooms.map(r => r.name) });
+          }
+        });
+      }
+    } catch (err) {
+      console.error("[Room] Failed to load rooms from server:", err);
+      if (window.rooms) {
+        window.rooms.forEach((room) => addRoomToList(room.name));
+      }
     }
     updateLayout();
     window.addEventListener("resize", updateLayout);
   }
+
+  init();
 
   function updateLayout() {
     const isMobile = window.innerWidth < 1000;
@@ -535,17 +561,6 @@
     }
   }
 
-  // Initialize socket connection if missing
-  if (!socket || !socket.connected) {
-    socket = io();
-    window.socket = socket;
-
-    socket.on("connect", () => {
-      console.log("[Room Socket] Connected");
-      socket.emit("insert name", { jwtoken: Cookies.get("token") });
-    });
-  }
-
   // Socket Events
   socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
   socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
@@ -572,7 +587,12 @@
     }
   });
   socket.on("handshake", async ({ id, room, signal }) => {
-    console.log("[WebRTC] handshake received from", id, "signal type:", signal.type);
+    console.log(
+      "[WebRTC] handshake received from",
+      id,
+      "signal type:",
+      signal.type,
+    );
     if (signal.type === "offer") {
       // closeExistingConnection is called inside receiveVideoCall
       await receiveVideoCall(id, room.name, signal);
@@ -806,6 +826,4 @@
     event: "resize",
     handler: updateStyles,
   });
-
-  init();
 })();

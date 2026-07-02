@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { uploadFile, gatherChunksMap } = require("./Gdrive");
-const { storeChats } = require("./storeChats");
+const { storeChats, storeRoom, addRoomMembers } = require("./storeChats");
 
 const secretKey = process.env.JWT_SECRET;
 
@@ -282,6 +282,19 @@ function socketHandler(io) {
     });
 
     // ── Room management ─────────────────────────────────────────────────
+    socket.on("join-rooms", ({ rooms: roomNames }) => {
+      for (const roomName of roomNames) {
+        if (rooms[roomName]) {
+          socket.join(roomName);
+          io.to(socket.id).emit("room-info", {
+            name: roomName,
+            admin: rooms[roomName].admin,
+            created_at: rooms[roomName].created_at,
+            memberIds: rooms[roomName].members,
+          });
+        }
+      }
+    });
     socket.on("create-room", ({ room }) => {
       socket.join(room.name);
       rooms[room.name] = {
@@ -290,12 +303,12 @@ function socketHandler(io) {
         created_at: Date.now(),
         members: [socket.id],
       };
+      storeRoom(room.name, room.admin);
       io.to(room.name).emit("room-created", {
         notify: `Room "${room.name}" created by ${room.admin}`,
       });
     });
 
-  
     socket.on("invite", ({ room, usernames }) => {
       for (const username of usernames) {
         if (socIns[username]) {
@@ -305,6 +318,7 @@ function socketHandler(io) {
           }
         }
       }
+      addRoomMembers(room.name, usernames);
       socket.broadcast.to(room.name).emit("invitation", {
         name: room.name,
         notify: `${names[socket.id]} added you to room "${room.name}"`,
@@ -371,7 +385,7 @@ function socketHandler(io) {
     socket.on("initiator", ({ room }) => {
       rooms[room.name].initiator = rooms[room.name].initiator ?? socket.id;
     });
-    socket.on("handshake", ({id, room, signal }) => {
+    socket.on("handshake", ({ id, room, signal }) => {
       const memberIds = rooms[room.name]?.members || [];
       for (const memberId of memberIds) {
         if (memberId !== socket.id) {
@@ -381,7 +395,11 @@ function socketHandler(io) {
     });
     socket.on("mesh-connection", ({ room, to }) => {
       if (socket.id !== rooms[room.name]?.initiator) return;
-      io.to(to).emit("handshake", { id: socket.id, room, signal: { type: "mesh-request" } });
+      io.to(to).emit("handshake", {
+        id: socket.id,
+        room,
+        signal: { type: "mesh-request" },
+      });
     });
     socket.on("exit-room", ({ room }) => {
       if (socket.id === rooms[room.name]?.initiator) {
@@ -396,6 +414,15 @@ function socketHandler(io) {
       console.log(
         `[Socket] Disconnected: ${socket.id} (${username || "unregistered"})`,
       );
+
+      for (const roomName of Object.keys(rooms)) {
+        rooms[roomName].members = rooms[roomName].members.filter(
+          (id) => id !== socket.id,
+        );
+        if (rooms[roomName].initiator === socket.id) {
+          rooms[roomName].initiator = null;
+        }
+      }
 
       if (username) {
         emitActiveUsers(io, "remove", username, null, socket);
@@ -413,4 +440,4 @@ function socketHandler(io) {
   });
 }
 
-module.exports = { socketHandler, names, photos, users };
+module.exports = { socketHandler, names, photos, users, rooms };
