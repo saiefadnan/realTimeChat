@@ -265,7 +265,7 @@ function socketHandler(io) {
       }
     });
 
-    socket.on("public message", async (message, date) => {
+    socket.on("public message", async ({ message, date }) => {
       if (!message || !message.trim()) return;
       const fromUsername = names[socket.id];
       try {
@@ -285,9 +285,10 @@ function socketHandler(io) {
     socket.on("create-room", ({ room }) => {
       socket.join(room.name);
       rooms[room.name] = {
+        initiator: null,
         admin: room.admin,
         created_at: Date.now(),
-        members: [],
+        members: [socket.id],
       };
       io.to(room.name).emit("room-created", {
         notify: `Room "${room.name}" created by ${room.admin}`,
@@ -299,7 +300,9 @@ function socketHandler(io) {
       for (const username of usernames) {
         if (socIns[username]) {
           socIns[username].join(room.name);
-          rooms[room.name].members.push(users[username]);
+          if (!rooms[room.name].members.includes(users[username])) {
+            rooms[room.name].members.push(users[username]);
+          }
         }
       }
       socket.broadcast.to(room.name).emit("invitation", {
@@ -368,10 +371,12 @@ function socketHandler(io) {
     socket.on("initiator", ({ room }) => {
       rooms[room.name].initiator = rooms[room.name].initiator ?? socket.id;
     });
-    socket.on("handshake", ({ room, signal }) => {
+    socket.on("handshake", ({id, room, signal }) => {
       const memberIds = rooms[room.name]?.members || [];
       for (const memberId of memberIds) {
-        io.to(memberId).emit("handshake", { id: socket.id, room, signal });
+        if (memberId !== socket.id) {
+          io.to(memberId).emit("handshake", { id: socket.id, room, signal });
+        }
       }
     });
     socket.on("mesh-connection", ({ room, to }) => {
@@ -379,6 +384,9 @@ function socketHandler(io) {
       io.to(to).emit("handshake", { id: socket.id, room, signal: { type: "mesh-request" } });
     });
     socket.on("exit-room", ({ room }) => {
+      if (socket.id === rooms[room.name]?.initiator) {
+        rooms[room.name].initiator = null;
+      }
       socket.broadcast.to(room.name).emit("exit-room", { id: socket.id });
     });
 
