@@ -393,7 +393,7 @@ function socketHandler(io) {
 
     // ── WebRTC signaling ────────────────────────────────────────────────
     socket.on("initiator", ({ room }) => {
-      rooms[room.name].initiator = rooms[room.name].initiator ?? socket.id;
+      rooms[room.name].initiator = rooms[room.name]?.initiator ?? socket.id;
       if (!rooms[room.name].members.includes(socket.id)) {
         rooms[room.name].members.push(socket.id);
       }
