@@ -19,7 +19,7 @@
     joinedIds.push(id);
     container.insertAdjacentHTML(
       "beforeend",
-      `<video id="${videoId}" class="video-modal-child" autoplay playsinline muted style="border: 2px solid red;"></video>`,
+      `<video id="${videoId}" class="video-modal-child" autoplay playsinline style="border: 2px solid red;"></video>`,
     );
     const video = document.getElementById(videoId);
     console.log("[WebRTC] addVideo created:", videoId);
