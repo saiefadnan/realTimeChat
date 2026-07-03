@@ -7,8 +7,8 @@ require('dotenv').config();
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cors = require('cors');
-const { socketHandler } = require('./socketHandler');
-const { assign } = require('./controllers/controller');
+const { socketHandler } = require('./sockets/chatSocket');
+const { assign } = require('./controllers/chatController');
 const routes = require('./routes/route');
 const { generalLimiter } = require('./middleware/rateLimiter');
 

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { loginData, signinData, chatData, getUserInfo, queryUser, getUserRooms, getRoomChats } = require('../controllers/controller');
+const { loginData, signinData } = require('../controllers/authController');
+const { chatData, getUserInfo, queryUser } = require('../controllers/chatController');
+const { getUserRooms, getRoomChats } = require('../controllers/roomController');
 const authMiddleware = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 

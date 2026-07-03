@@ -1,10 +1,15 @@
-const {google} = require('googleapis'); 
+const { google } = require('googleapis');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+
+const keyFile = path.isAbsolute(process.env.GOOGLE_KEY_FILE)
+  ? process.env.GOOGLE_KEY_FILE
+  : path.resolve(process.cwd(), process.env.GOOGLE_KEY_FILE);
 
 const auth = new google.auth.GoogleAuth({
-    keyFile: process.env.GOOGLE_KEY_FILE,
+    keyFile: keyFile,
     scopes: ['https://www.googleapis.com/auth/drive'],
 });
 
@@ -12,8 +17,6 @@ const drive = google.drive({ version: 'v3', auth });
 console.log('[GDrive] Connected.');
 
 // Per-socket chunk buffer — Map<socketId, Buffer[]>
-// Fixes race condition where concurrent uploads from different users
-// would share a single global array and corrupt each other's data.
 const gatherChunksMap = new Map();
 
 const documentsId = process.env.DOCUMENTS_ID;

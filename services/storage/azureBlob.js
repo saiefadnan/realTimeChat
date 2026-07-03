@@ -1,5 +1,5 @@
 const { BlobServiceClient, generateBlobSASQueryParameters, ContainerSASPermissions } = require('@azure/storage-blob');
-const {v4: uuidv4} = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const moment = require('moment');
 
 async function generateSasToken(blobName, blobCredential){
@@ -30,7 +30,6 @@ async function uploadImageToAzure(profile) {
         }
         
         const uniqueName = `${uuidv4()}-${name}`;
-        // console.log(uniqueName);
 
         const blockBlobClient = containerClient.getBlockBlobClient(uniqueName);
 
@@ -51,7 +50,3 @@ async function uploadImageToAzure(profile) {
 }
 
 module.exports = { uploadImageToAzure, generateSasToken };
-
-
-
-

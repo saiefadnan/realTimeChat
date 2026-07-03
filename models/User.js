@@ -38,7 +38,7 @@ const userSchema = new Schema({
     timestamps: true  // adds createdAt + updatedAt automatically
 });
 
-// Hash password before saving — fix: this.new → this.isNew (Mongoose API)
+// Hash password before saving
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password') && !this.isNew) {
         return next();

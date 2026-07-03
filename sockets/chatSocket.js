@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
-const { uploadFile, gatherChunksMap } = require("./Gdrive");
-const { storeChats, storeRoom, addRoomMembers } = require("./storeChats");
+const { uploadFile, gatherChunksMap } = require("../services/storage/googleDrive");
+const { storeChats, storeRoom, addRoomMembers } = require("../services/database/chatStore");
 
 const secretKey = process.env.JWT_SECRET;
 
@@ -14,7 +14,6 @@ const rooms = {};
 
 /**
  * Verifies a JWT and extracts { username, imageurl }.
- * Returns null on failure instead of throwing — keeps socket handlers clean.
  * @param {string} token
  * @returns {{ username: string, imageurl: string } | null}
  */
@@ -28,11 +27,6 @@ function verifyToken(token) {
 
 /**
  * Broadcasts the active user list to the appropriate target(s).
- * @param {import('socket.io').Server} io
- * @param {'init'|'refresh'|'add'|'remove'} operation
- * @param {string|null} name
- * @param {string|null} photo
- * @param {import('socket.io').Socket} socket
  */
 function emitActiveUsers(io, operation, name, photo, socket) {
   const activeUsers = Object.values(names);
@@ -83,12 +77,10 @@ function socketHandler(io) {
       const existingSocketId = users[username];
       if (existingSocketId) {
         const existingSocket = socIns[username];
-        // Only reject if the stored socket is still connected (genuine duplicate)
         if (existingSocket && existingSocket.connected) {
           io.to(socket.id).emit("error", { error: "999" });
           return;
         }
-        // Stale entry from a disconnected socket — clean up and allow re-registration
         delete users[username];
         delete socIns[username];
       }
@@ -107,8 +99,6 @@ function socketHandler(io) {
     });
 
     // ── File chunk collection (per-socket buffer) ───────────────────────
-    // Each socket gets its own chunk buffer to prevent race conditions
-    // when multiple users upload files simultaneously.
     const chunkHandlers = [
       "private image",
       "public image",
@@ -134,7 +124,6 @@ function socketHandler(io) {
       if (!fromUsername) return;
 
       try {
-        // uploadFile now reads from per-socket buffer
         if (to === "public") {
           let docUrl;
           if (fileType.startsWith("image/")) {
@@ -170,12 +159,12 @@ function socketHandler(io) {
             });
           }
         } else {
-          const recipientSocketId = users[to]; // `to` is a username
+          const recipientSocketId = users[to];
           let docUrl;
 
           if (fileType.startsWith("image/")) {
             docUrl = await uploadFile(socket.id, "image", fileName);
-            await storeChats(fromUsername, to, docUrl, "image", date); // FIX: was names[recipientSocketId]
+            await storeChats(fromUsername, to, docUrl, "image", date);
           } else if (fileType.startsWith("video/")) {
             docUrl = await uploadFile(socket.id, "video", fileName);
             await storeChats(fromUsername, to, docUrl, "video", date);
@@ -367,7 +356,6 @@ function socketHandler(io) {
         message,
         profile: photos[socket.id],
       });
-      // Persist to Firestore so history can be retrieved
       storeChats(fromUsername, room.name, message, "text", date || new Date().toLocaleString());
     });
 

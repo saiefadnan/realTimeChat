@@ -71,7 +71,7 @@ export function loadPage(content, element = null) {
   const container = document.querySelector(".upload-progress-container");
   if (container) container.style.display = "none";
   showLoading(); // Show loader on start
-  const page = `dynamic_${content.replace(".html", "")}_91235.html`;
+  const page = `views/dynamic_${content.replace(".html", "")}_91235.html`;
   fetch(page)
     .then((response) => {
       if (!response.ok) {
@@ -81,7 +81,7 @@ export function loadPage(content, element = null) {
     })
     .then((data) => {
       const script = document.createElement("script");
-      const Script = page.replace(".html", ".js");
+      const Script = page.replace(".html", ".js"); // e.g. views/dynamic_chat_91235.js
       const existingScripts = document.querySelectorAll("script");
       if (existingScripts) {
         existingScripts?.forEach((existingScript) => {
