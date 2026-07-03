@@ -21,12 +21,16 @@
         <div class="chat-footer">
             <textarea id="message-input" class="message-input" rows="1" placeholder="Type your message...."></textarea>
             <button id="send-button"><i class="fas fa-paper-plane send-icon"></i></button>
-            <label for="file-input" class="file-label">
+            <button id="chat-more-button" class="custom-file-upload chat-more-button" type="button" title="More actions" aria-label="More actions" aria-expanded="false">
+                <i class="fas fa-ellipsis-h"></i>
+            </button>
+            <label for="file-input" class="file-label" title="Upload GIF, image, video, or file">
                 <div class="custom-file-upload" id="custom-file-upload">
-                    <i class="fas fa-file upload-icon"></i>
+                    <i class="fas fa-photo-video upload-icon"></i>
                 </div>
-                <input type="file" id="file-input" class="file-input" style="display: none;">
+                <input type="file" id="file-input" class="file-input" placeholder="file" accept="image/gif,image/*,video/*,*/*" style="display: none;">
             </label>
+            <button id="mood-btn" class="custom-file-upload" title="Set Vibe"><i class="fas fa-smile"></i></button>
         </div>
     </div>
 </div>

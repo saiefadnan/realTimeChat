@@ -241,7 +241,13 @@ function socketHandler(io) {
         }
 
         payload.fileData = docUrl;
+        payload.fileType = fileType;
+        payload.roomName = room.name;
         io.to(room.name).emit("room file", payload);
+
+        // Persist to Firestore
+        const chatType = fileType.startsWith("image/") ? "image" : fileType.startsWith("video/") ? "video" : "document";
+        storeChats(fromUsername, room.name, docUrl, chatType, new Date().toLocaleString());
       } catch (err) {
         console.error("[Socket] Room file upload error:", err);
         io.to(socket.id).emit("error", { error: "Room file upload failed." });
@@ -352,12 +358,17 @@ function socketHandler(io) {
 
     socket.on("room message", ({ room, message, date }) => {
       if (!message || !message.trim()) return;
+      const fromUsername = names[socket.id];
+      if (!fromUsername) return;
       socket.broadcast.to(room.name).emit("room message", {
-        from: names[socket.id],
+        roomName: room.name,
+        from: fromUsername,
         time: Date.now(),
         message,
         profile: photos[socket.id],
       });
+      // Persist to Firestore so history can be retrieved
+      storeChats(fromUsername, room.name, message, "text", date || new Date().toLocaleString());
     });
 
     // ── Gen Z Features: Typing & Moods ──────────────────────────────────
@@ -372,6 +383,11 @@ function socketHandler(io) {
           from: names[socket.id],
           to: "private",
         });
+      } else if (rooms[to]) {
+        socket.broadcast.to(to).emit("user-typing", {
+          from: names[socket.id],
+          to: to,
+        });
       }
     });
 
@@ -385,6 +401,11 @@ function socketHandler(io) {
         io.to(users[to]).emit("user-stop-typing", {
           from: names[socket.id],
           to: "private",
+        });
+      } else if (rooms[to]) {
+        socket.broadcast.to(to).emit("user-stop-typing", {
+          from: names[socket.id],
+          to: to,
         });
       }
     });

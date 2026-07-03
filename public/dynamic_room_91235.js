@@ -94,9 +94,25 @@
   let invitedUsers = [];
   let debounceTimer;
 
+  // Typing storage
+  let typingTimer;
+  let isTyping = false;
+  const typingUsers = new Set();
+  let typingIndicator;
+
   async function init() {
     const modalElems = document.querySelectorAll(".modal");
     M.Modal.init(modalElems);
+
+    // UI Setup: Typing Indicator Box
+    const chatWrapper = document.getElementById("room-chat-wrapper");
+    typingIndicator = document.createElement("div");
+    typingIndicator.className = "typing-indicator-box";
+    typingIndicator.style.display = "none";
+    typingIndicator.innerHTML = '<span id="typing-text"></span><div class="typing-dots"><span></span><span></span><span></span></div>';
+    if (chatWrapper) {
+      chatWrapper.insertBefore(typingIndicator, document.querySelector(".chat-footer"));
+    }
 
     try {
       // Initialize socket connection if missing
@@ -262,14 +278,17 @@
   }
 
   function sendChunks(room, file, offset) {
+    if (offset === 0) {
+      window._uploadAborted = false;
+      addUploadProgress(file.name);
+    }
+
     if (window._uploadAborted) return;
 
     if (!socket || !socket.connected) {
       if (window.Pending) window.Pending(room, file, offset);
       return;
     }
-
-    if (offset === 0) addUploadProgress(file.name);
 
     if (offset >= file.size) {
       updateChatProgress(100, file.name);
@@ -328,10 +347,14 @@
 
     const fileInputEl = document.getElementById("file-input");
     const file = fileInputEl.files[0];
-    if (file && targetRoom) {
-      document.getElementById("custom-file-upload").style.backgroundColor =
-        "#2ecc71";
+    if (file) {
+      if (!targetRoom) {
+        return M.toast({ html: "Select a room first!", classes: "rounded red" });
+      }
+      document.getElementById("custom-file-upload").style.backgroundColor = "#2ecc71";
       sendChunks(targetRoom, file, 0);
+      fileInputEl.value = "";
+      document.getElementById("custom-file-upload").style.backgroundColor = "";
     }
   }
 
@@ -342,6 +365,34 @@
     div.classList.add("active-room-card");
     currentRoom = name;
     CurrentroomLabel.textContent = `Room: ${name}`;
+
+    // Clear typing indicator and old messages on room switch
+    typingUsers.clear();
+    updateTypingUI();
+    if (messagesDiv) messagesDiv.innerHTML = "";
+    loadRoomHistory(name);
+  }
+
+  async function loadRoomHistory(roomName) {
+    try {
+      const data = await window.fetchData("/api/room-chats", { roomName });
+      if (!data || !data.chats) return;
+      data.chats.forEach((chat) => {
+        const isSelf = chat.sender === window.userInfo.username;
+        const timeStr = new Date(chat.timestamp).toLocaleString();
+        const type = chat.type; // "text" | "image" | "video" | "document"
+
+        if (type === "text") {
+          if (isSelf) addMessageTo(chat.content, timeStr);
+          else addMessage(chat.sender, chat.content, timeStr, chat.imageUrl);
+        } else {
+          if (isSelf) embedDriveFilesTo(timeStr, chat.content, type);
+          else embedDriveFiles(timeStr, chat.sender, chat.content, chat.imageUrl, type);
+        }
+      });
+    } catch (err) {
+      console.error("[Room] Failed to load room history:", err);
+    }
   }
 
   function addRoomToList(name) {
@@ -777,7 +828,26 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  function embedDriveFiles(time, from, file_id, profile) {
+  function updateTypingUI() {
+    const textEl = document.getElementById("typing-text");
+    if (!textEl || !typingIndicator) return;
+    if (typingUsers.size > 0) {
+      const names = Array.from(typingUsers);
+      textEl.textContent =
+        names.length > 1
+          ? `${names[0]} and others are typing`
+          : `${names[0]} is typing`;
+      typingIndicator.style.display = "flex";
+    } else {
+      typingIndicator.style.display = "none";
+    }
+  }
+
+  function buildDrivePreview(fileId, type) {
+    return window.ChatMediaPreview.buildDrivePreview(fileId, type);
+  }
+
+  function embedDriveFiles(time, from, file_id, profile, type = "document") {
     const container = document.createElement("div");
     container.className = "message-receive-container";
     container.style.flexDirection = "column";
@@ -785,6 +855,7 @@
     container.style.padding = "10px";
     const header = document.createElement("div");
     header.style.display = "flex";
+    header.style.alignItems = "center";
     header.style.gap = "10px";
     const img = document.createElement("img");
     img.src = profile;
@@ -796,24 +867,15 @@
     nameSpan.textContent = from;
     const timeSpan = document.createElement("small");
     timeSpan.textContent = ` ${time}`;
+    timeSpan.style.color = "#777";
     info.append(nameSpan, timeSpan);
     header.append(img, info);
-    const iframe = document.createElement("iframe");
-    iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
-    Object.assign(iframe.style, {
-      width: "100%",
-      maxWidth: "300px",
-      height: "215px",
-      border: "none",
-      borderRadius: "8px",
-      backgroundColor: "#000",
-    });
-    container.append(header, iframe);
+    container.append(header, buildDrivePreview(file_id, type));
     messagesDiv.appendChild(container);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  function embedDriveFilesTo(time, file_id) {
+  function embedDriveFilesTo(time, file_id, type = "document") {
     const container = document.createElement("div");
     container.style.display = "flex";
     container.style.flexDirection = "column";
@@ -821,17 +883,8 @@
     container.style.padding = "10px";
     const timeLabel = document.createElement("small");
     timeLabel.textContent = time;
-    const iframe = document.createElement("iframe");
-    iframe.src = `https://drive.google.com/file/d/${file_id}/preview`;
-    Object.assign(iframe.style, {
-      width: "100%",
-      maxWidth: "300px",
-      height: "215px",
-      border: "none",
-      borderRadius: "8px",
-      backgroundColor: "#000",
-    });
-    container.append(timeLabel, iframe);
+    timeLabel.style.color = "#777";
+    container.append(timeLabel, buildDrivePreview(file_id, type));
     messagesDiv.appendChild(container);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
@@ -862,6 +915,51 @@
 
   const sendBtn = document.getElementById("send-button");
   if (sendBtn) sendBtn.addEventListener("click", sendMessage);
+
+  const messageInput = document.getElementById("message-input");
+  if (messageInput) {
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    messageInput.addEventListener("input", () => {
+      if (!isTyping && currentRoom) {
+        isTyping = true;
+        socket.emit("typing", { to: currentRoom });
+      }
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => {
+        isTyping = false;
+        if (currentRoom) {
+          socket.emit("stop-typing", { to: currentRoom });
+        }
+      }, 3000);
+    });
+  }
+
+  // Mobile "..." toggle for file upload button
+  const moreBtn = document.getElementById("chat-more-button");
+  const chatFooter = document.querySelector(".chat-footer");
+  if (moreBtn && chatFooter) {
+    moreBtn.addEventListener("click", () => {
+      chatFooter.classList.toggle("actions-open");
+    });
+    document.addEventListener("click", (e) => {
+      if (!chatFooter.contains(e.target)) {
+        chatFooter.classList.remove("actions-open");
+      }
+    });
+  }
+
+  // Mood Button feedback (vibe/mood features are in the main Chat page)
+  const moodBtn = document.getElementById("mood-btn");
+  if (moodBtn) {
+    moodBtn.addEventListener("click", () => {
+      M.toast({ html: "Vibe features are available on the Chat page!", classes: "rounded orange" });
+    });
+  }
 
   const videoBtn = document.getElementById("video-call-btn");
   if (videoBtn)
@@ -907,8 +1005,10 @@
       console.log("[Room] Info received:", { admin, created_at, memberIds });
       roomMembers = memberIds.filter((id) => id !== socket.id);
     });
-    socket.on("room message", ({ from, time, message, profile }) => {
-      addMessage(from, message, new Date(time).toLocaleString(), profile);
+    socket.on("room message", ({ roomName, from, time, message, profile }) => {
+      if (roomName === currentRoom) {
+        addMessage(from, message, new Date(time).toLocaleString(), profile);
+      }
     });
     socket.on("invitation", ({ name, notify }) => {
       addFeedback(notify, "orange");
@@ -956,11 +1056,28 @@
         startVideoCall(excludeIds);
       }
     });
-    socket.on("room file", ({ from, time, fileData, profile }) => {
-      removeUploadProgress();
-      const date = new Date(time).toLocaleString();
-      if (from === window.userInfo.username) embedDriveFilesTo(date, fileData);
-      else embedDriveFiles(date, from, fileData, profile);
+    socket.on("user-typing", ({ from, to }) => {
+      if (to === currentRoom) {
+        typingUsers.add(from);
+        updateTypingUI();
+      }
+    });
+    socket.on("user-stop-typing", ({ from }) => {
+      typingUsers.delete(from);
+      updateTypingUI();
+    });
+    socket.on("room file", ({ roomName, from, time, fileData, fileType, profile }) => {
+      if (roomName === currentRoom) {
+        removeUploadProgress();
+        const date = new Date(time).toLocaleString();
+        const type = fileType && fileType.startsWith('image/')
+          ? 'image'
+          : fileType && fileType.startsWith('video/')
+            ? 'video'
+            : 'document';
+        if (from === window.userInfo.username) embedDriveFilesTo(date, fileData, type);
+        else embedDriveFiles(date, from, fileData, profile, type);
+      }
     });
     socket.on("exit-video", ({ id }) => {
       console.log("exited video call", id);

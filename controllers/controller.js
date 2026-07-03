@@ -270,7 +270,7 @@ const queryUser = async (req, res) => {
  * POST /api/user-rooms  (protected)
  * Returns all rooms where the logged-in user is a member.
  */
-const getUserRooms = async (req, res) => {
+  const getUserRooms = async (req, res) => {
   try {
     const username = req.user.username;
     const snapshot = await db
@@ -300,6 +300,53 @@ const getUserRooms = async (req, res) => {
   } catch (err) {
     console.error("[getUserRooms] Error:", err);
     return res.status(500).json({ error: "Failed to retrieve rooms." });
+  }
+};
+
+/**
+ * POST /api/room-chats  (protected)
+ * Fetches all chat messages for a given room, sorted by timestamp.
+ */
+const getRoomChats = async (req, res) => {
+  try {
+    const { roomName } = req.body;
+    if (!roomName) {
+      return res.status(400).json({ error: "roomName is required." });
+    }
+
+    const snapshot = await db
+      .collection("chat")
+      .where("receiver", "==", roomName)
+      .get();
+
+    const chats = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        sender: data.sender,
+        content: data.content,
+        type: data.type,
+        timestamp:
+          data.timestamp && data.timestamp.toDate
+            ? data.timestamp.toDate()
+            : data.timestamp ? new Date(data.timestamp) : new Date(),
+        imageUrl: photos[users[data.sender]] || DEACTIVE_AVATAR,
+      };
+    });
+
+    // Sort in-memory to avoid Firestore composite index requirement error
+    chats.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Convert timestamps to ISO string before sending to client
+    const formattedChats = chats.map((chat) => ({
+      ...chat,
+      timestamp: chat.timestamp.toISOString(),
+    }));
+
+    return res.status(200).json({ chats: formattedChats });
+  } catch (err) {
+    console.error("[getRoomChats] Error:", err);
+    return res.status(500).json({ error: "Failed to retrieve room chats." });
   }
 };
 
@@ -359,4 +406,5 @@ module.exports = {
   getUserInfo,
   queryUser,
   getUserRooms,
+  getRoomChats,
 };
