@@ -291,6 +291,7 @@ const getUserRooms = async (req, res) => {
         admin: data.admin,
         created_at: data.created_at || Date.now(),
         members: activeMemberIds,
+        onCallIds: rooms[data.name]?.onCallIds || [],
       };
       console.log("active members:", activeMemberIds);
       return { name: data.name, admin: data.admin };

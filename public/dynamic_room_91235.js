@@ -43,15 +43,6 @@
     }
   }
 
-  function establishMeshConnections() {
-    for (let i = 0; i + 1 < joinedIds.length; ++i) {
-      socket.emit("mesh-connection", {
-        room: { name: currentRoom },
-        to: joinedIds[i],
-      });
-    }
-  }
-
   function getDivByTextContent(text) {
     console.log("[getDivByTextContent] Searching for:", text);
     Array.from(activeRoom.children).forEach((div) => {
@@ -94,6 +85,7 @@
       { urls: "stun:stun2.l.google.com:19302" },
     ],
   };
+  const peerConfig = { ...iceConfiguration, offerExtmapAllowMixed: true };
 
   let localConnection;
   let connectionId = 0; // guards stale ICE candidates from previous calls
@@ -443,7 +435,7 @@
       } catch (e) {
         console.warn("[WebRTC] close existing pc error:", e);
       }
-      peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
+      peerConnections.set(id, new RTCPeerConnection(peerConfig));
       console.log("new peer connection created for id:", id);
     }
     pendingCandidates = [];
@@ -477,12 +469,11 @@
   }
 
   // WebRTC Logic
-  async function startVideoCall() {
+  async function startVideoCall(excludeIds) {
     if (!currentRoom) {
       return M.toast({ html: "Select a room first!", classes: "rounded" });
     }
     const localVideo = document.getElementById("localVideo");
-    socket.emit("initiator", { room: { name: currentRoom } });
     closeExistingConnection();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -492,7 +483,7 @@
       localVideo.srcObject = stream;
       for (const [id, peerConnection] of peerConnections) {
         console.log("this is ID:", id);
-        if (joinedIds.includes(id)) continue;
+        if (joinedIds.includes(id) || excludeIds.includes(id)) continue;
         const remoteVideo = addVideo(id);
         const thisConnectionId = ++connectionId;
         localConnection = peerConnection;
@@ -509,6 +500,7 @@
               id: socket.id,
               room: { name: currentRoom },
               signal: { type: "candidate", candidate: e.candidate },
+              excludeIds: excludeIds,
             });
           }
         };
@@ -519,6 +511,7 @@
           id: socket.id,
           room: { name: currentRoom },
           signal: offer,
+          excludeIds: excludeIds,
         });
       }
       videoModal.style.display = "flex";
@@ -575,7 +568,7 @@
 
       let peerConnection = peerConnections.get(id);
       if (!peerConnection) {
-        peerConnection = new RTCPeerConnection(iceConfiguration);
+        peerConnection = new RTCPeerConnection(peerConfig);
         peerConnections.set(id, peerConnection);
       }
       localConnection = peerConnection;
@@ -605,9 +598,11 @@
       await peerConnection.setLocalDescription(answer);
       console.log("[WebRTC] answer created and sent");
 
-      pendingCandidates.forEach((c) => {
-        localConnection.addIceCandidate(new RTCIceCandidate(c));
-      });
+      for (const c of pendingCandidates) {
+        try {
+          await localConnection.addIceCandidate(new RTCIceCandidate(c));
+        } catch (_) {}
+      }
       pendingCandidates = [];
 
       socket.emit("handshake", {
@@ -860,7 +855,7 @@
   const videoBtn = document.getElementById("video-call-btn");
   if (videoBtn)
     videoBtn.addEventListener("click", () => {
-      startVideoCall();
+      startVideoCall([]);
     });
 
   const exitVideoBtn = document.getElementById("exit-video");
@@ -914,7 +909,7 @@
       console.log("[Room] Info received:", { admin, created_at, memberIds });
       for (const id of memberIds) {
         if (socket.id !== id && !peerConnections.has(id)) {
-          peerConnections.set(id, new RTCPeerConnection(iceConfiguration));
+          peerConnections.set(id, new RTCPeerConnection(peerConfig));
           console.log("New member added:", id);
         }
       }
@@ -929,7 +924,7 @@
         addRoomToList(name);
       }
     });
-    socket.on("handshake", async ({ id, room, signal }) => {
+    socket.on("handshake", async ({ id, room, signal, excludeIds = [] }) => {
       console.log(
         "[WebRTC] handshake received from",
         id,
@@ -943,15 +938,12 @@
         if (pc) {
           await pc.setRemoteDescription(new RTCSessionDescription(signal));
           console.log("[WebRTC] remote description (answer) set for", id);
-          pendingCandidates.forEach((c) => {
+          for (const c of pendingCandidates) {
             try {
-              pc.addIceCandidate(new RTCIceCandidate(c));
+              await pc.addIceCandidate(new RTCIceCandidate(c));
             } catch (_) {}
-          });
+          }
           pendingCandidates = [];
-        }
-        if (joinedIds.length === peerConnections.size) {
-          establishMeshConnections();
         }
       } else if (signal.type === "candidate") {
         const pc = peerConnections.get(id);
@@ -962,8 +954,9 @@
         } else {
           pendingCandidates.push(signal.candidate);
         }
-      } else if (signal.type === "mesh-request") {
-        startVideoCall();
+      } else if (signal.type === "connect-rest-members") {
+        console.log("Connecting rest members:", excludeIds);
+        startVideoCall(excludeIds);
       }
     });
     socket.on("room file", ({ from, time, fileData, profile }) => {
