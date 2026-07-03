@@ -296,12 +296,15 @@ function socketHandler(io) {
       for (const roomName of roomNames) {
         if (rooms[roomName]) {
           socket.join(roomName);
+          if (!rooms[roomName].members.includes(socket.id)) {
+            rooms[roomName].members.push(socket.id);
+          }
           io.to(roomName).emit("room-info", {
             name: roomName,
             admin: rooms[roomName].admin,
             created_at: rooms[roomName].created_at,
             memberIds: rooms[roomName].members,
-            onCallIds: [],
+            onCallIds: rooms[roomName].onCallIds || [],
           });
         }
       }
@@ -395,25 +398,31 @@ function socketHandler(io) {
     });
 
     // ── WebRTC signaling ────────────────────────────────────────────────
-    socket.on("handshake", ({ id, room, signal, excludeIds = [] }) => {
-      const isCallOngoing = rooms[room.name]?.onCallIds.length > 0;
-      if (!isCallOngoing && signal.type === "offer") {
+    socket.on("handshake", ({ id, to, room, signal, excludeIds = [] }) => {
+      const isCallOngoing = rooms[room.name] && rooms[room.name].onCallIds.length > 0;
+      if (!isCallOngoing && signal.type === "offer" && rooms[room.name]) {
         rooms[room.name].initiator = socket.id;
       }
       if (
+        rooms[room.name] &&
         !rooms[room.name].onCallIds.includes(socket.id) &&
         rooms[room.name]?.members.includes(socket.id)
       ) {
         rooms[room.name].onCallIds.push(socket.id);
       }
-      const memberIds = rooms[room.name]?.members || [];
-      for (const memberId of memberIds) {
-        if (memberId !== socket.id && !excludeIds.includes(memberId)) {
-          io.to(memberId).emit("handshake", { id: socket.id, room, signal, excludeIds });
+      if (to) {
+        io.to(to).emit("handshake", { id: socket.id, room, signal, excludeIds });
+      } else {
+        const memberIds = rooms[room.name]?.members || [];
+        for (const memberId of memberIds) {
+          if (memberId !== socket.id && !excludeIds.includes(memberId)) {
+            io.to(memberId).emit("handshake", { id: socket.id, room, signal, excludeIds });
+          }
         }
       }
-      if (rooms[room.name].initiator === socket.id && signal.type === "offer") {
+      if (rooms[room.name] && rooms[room.name].initiator === socket.id && signal.type === "offer") {
         const initExclude = [socket.id];
+        const memberIds = rooms[room.name]?.members || [];
         for (const memberId of memberIds) {
           if (memberId !== socket.id) {
             io.to(memberId).emit("handshake", {
