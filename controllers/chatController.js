@@ -47,19 +47,28 @@ const getUserInfo = async (req, res) => {
 
 /**
  * POST /api/getchats (protected)
+ * Supports cursor-based pagination via `before` (ISO timestamp) and `limit`.
  */
 const chatData = async (req, res) => {
   try {
     const username = req.user.username;
+    const limit = Math.min(parseInt(req.body.limit) || 30, 100);
+    const before = req.body.before ? new Date(req.body.before) : null;
+    const beforeTs = before ? admin.firestore.Timestamp.fromDate(before) : null;
+
     const chatRef = db.collection("chat");
 
+    const buildQuery = (baseQuery) =>
+      beforeTs ? baseQuery.where("timestamp", "<", beforeTs) : baseQuery;
+
     const [senderSnap, publicSnap, receiverSnap] = await Promise.all([
-      chatRef.where("sender", "==", username).get(),
-      chatRef
-        .where("receiver", "==", "public")
-        .where("sender", "!=", username)
-        .get(),
-      chatRef.where("receiver", "==", username).get(),
+      buildQuery(chatRef.where("sender", "==", username)).get(),
+      buildQuery(
+        chatRef
+          .where("receiver", "==", "public")
+          .where("sender", "!=", username)
+      ).get(),
+      buildQuery(chatRef.where("receiver", "==", username)).get(),
     ]);
 
     const combined = [
@@ -69,11 +78,13 @@ const chatData = async (req, res) => {
     ];
 
     combined.sort(
-      (a, b) => a.data().timestamp.toMillis() - b.data().timestamp.toMillis(),
+      (a, b) => b.data().timestamp.toMillis() - a.data().timestamp.toMillis()
     );
 
+    const page = combined.slice(0, limit);
+
     return res.status(200).json({
-      chats: combined.map((doc) => {
+      chats: page.reverse().map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -85,6 +96,7 @@ const chatData = async (req, res) => {
           imageUrl: photos[users[data.sender]] || DEACTIVE_AVATAR,
         };
       }),
+      hasMore: combined.length > limit,
     });
   } catch (err) {
     console.error("[chatData] Error:", err);

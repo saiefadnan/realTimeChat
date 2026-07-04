@@ -1,4 +1,4 @@
-const { db } = require("../config/firebase");
+const { admin, db } = require("../config/firebase");
 const { users, photos, rooms } = require("../sockets/chatSocket");
 
 const DEACTIVE_AVATAR =
@@ -42,15 +42,20 @@ const getUserRooms = async (req, res) => {
  */
 const getRoomChats = async (req, res) => {
   try {
-    const { roomName } = req.body;
+    const { roomName, limit, before } = req.body;
     if (!roomName) {
       return res.status(400).json({ error: "roomName is required." });
     }
 
-    const snapshot = await db
-      .collection("chat")
-      .where("receiver", "==", roomName)
-      .get();
+    const chatLimit = Math.min(parseInt(limit) || 30, 100);
+    const beforeTs = before ? admin.firestore.Timestamp.fromDate(new Date(before)) : null;
+
+    let query = db.collection("chat").where("receiver", "==", roomName);
+    if (beforeTs) {
+      query = query.where("timestamp", "<", beforeTs);
+    }
+
+    const snapshot = await query.get();
 
     const chats = snapshot.docs.map((doc) => {
       const data = doc.data();
@@ -67,16 +72,18 @@ const getRoomChats = async (req, res) => {
       };
     });
 
-    // Sort in-memory to avoid Firestore composite index requirement error
-    chats.sort((a, b) => a.timestamp - b.timestamp);
+    // Sort descending (newest first) for consistent cursor-based pagination
+    chats.sort((a, b) => b.timestamp - a.timestamp);
 
-    // Convert timestamps to ISO string before sending to client
-    const formattedChats = chats.map((chat) => ({
-      ...chat,
-      timestamp: chat.timestamp.toISOString(),
-    }));
+    const page = chats.slice(0, chatLimit);
 
-    return res.status(200).json({ chats: formattedChats });
+    return res.status(200).json({
+      chats: page.reverse().map((chat) => ({
+        ...chat,
+        timestamp: chat.timestamp.toISOString(),
+      })),
+      hasMore: chats.length > chatLimit,
+    });
   } catch (err) {
     console.error("[getRoomChats] Error:", err);
     return res.status(500).json({ error: "Failed to retrieve room chats." });

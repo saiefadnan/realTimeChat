@@ -61,7 +61,7 @@
 <script type="module">
     import { loadPage, toggleColor, handleLogout, updateUploadProgress } from './js/loadfunc.js'; 
     import fetchData from './js/fetchData.js';
-    import { Pending, clearPending } from './js/pending.js';
+    import { Pending, clearPending, getPending, deletePending } from './js/pending.js';
     import setUserInfo from './js/userInfo.obf.js';
     window.handleLogout = handleLogout;
     window.loadPage = loadPage;
@@ -70,6 +70,8 @@
     window.fetchData = fetchData;
     window.Pending = Pending;
     window.clearPending = clearPending;
+    window.getPending = getPending;
+    window.deletePending = deletePending;
     window.setUserInfo = setUserInfo;
     window.eventListeners = [];
     window.rooms = [];
