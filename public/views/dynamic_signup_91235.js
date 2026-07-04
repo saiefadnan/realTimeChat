@@ -6,7 +6,7 @@
     const previewImg = document.getElementById('profile-container').querySelector('img');
 
     // Dynamically import helper
-    import('./loadfunc.js').then(({ updateNavState }) => {
+    import('../js/loadfunc.js').then(({ updateNavState }) => {
 
         function handleProfilePreview(event) {
             const file = event.target.files[0];

@@ -5,7 +5,7 @@
     const errorBox = document.getElementById('error-box');
 
     // Dynamically import helper to keep code clean and modular
-    import('./loadfunc.js').then(({ updateNavState }) => {
+    import('../js/loadfunc.js').then(({ updateNavState }) => {
 
         // Auth is handled by the navigation layer; removing redundant local check.
 

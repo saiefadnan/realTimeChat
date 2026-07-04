@@ -2,7 +2,7 @@ const {
     buildDrivePreview,
     getDriveFileUrl,
     getDrivePreviewUrl
-} = require('../public/chatMediaPreview');
+} = require('../public/js/chatMediaPreview');
 
 function createFakeDocument() {
     return {
@@ -67,13 +67,13 @@ describe('chat media preview helpers', () => {
         expect(preview.replacement.attributes.allow).toBe('autoplay');
     });
 
-    test('keeps non-image uploads in the Drive iframe preview', () => {
+    test('keeps non-image uploads in the Drive card preview', () => {
         const doc = createFakeDocument();
         const preview = buildDrivePreview('video-file-id', 'video', doc);
 
-        expect(preview.tagName).toBe('IFRAME');
-        expect(preview.src).toBe('https://drive.google.com/file/d/video-file-id/preview');
-        expect(preview.className).toBe('chat-drive-preview');
-        expect(preview.attributes.allow).toBe('autoplay');
+        expect(preview.tagName).toBe('A');
+        expect(preview.href).toBe('https://drive.google.com/file/d/video-file-id/view');
+        expect(preview.className).toBe('chat-drive-card');
     });
 });
+
