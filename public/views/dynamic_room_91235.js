@@ -102,6 +102,19 @@
   let invitedUsers = [];
   let debounceTimer;
 
+  let _lastPing = 0;
+  async function isOnline() {
+    const now = Date.now();
+    if (now - _lastPing < 2000) return true;
+    try {
+      await fetch("/ping", { method: "HEAD", cache: "no-store" });
+      _lastPing = now;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function init() {
     const modalElems = document.querySelectorAll(".modal");
     M.Modal.init(modalElems);
@@ -131,7 +144,7 @@
             !window.getPending ||
             !socket ||
             !socket.connected ||
-            !navigator.onLine
+            !(await isOnline())
           )
             return;
           try {
@@ -401,14 +414,14 @@
     chatContent.scrollTop = chatContent.scrollHeight;
   }
 
-  function sendChunks(room, file, offset) {
+  async function sendChunks(room, file, offset) {
     if (offset === 0) {
       window._uploadAborted = false;
     }
 
     if (window._uploadAborted) return;
 
-    if (!socket || !socket.connected || !navigator.onLine) {
+    if (!socket || !socket.connected || !(await isOnline())) {
       if (window.Pending) window.Pending(room, file, offset);
       if (offset === 0) addOfflineFilePreview(file);
       return;
@@ -458,7 +471,7 @@
     if (message && targetRoom) {
       const date = new Date().toLocaleString();
 
-      if (!socket || !socket.connected || !navigator.onLine) {
+      if (!socket || !socket.connected || !(await isOnline())) {
         if (window.Pending) window.Pending(targetRoom, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";

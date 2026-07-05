@@ -171,9 +171,17 @@ const cleanUpOldChats = async () => {
 
 cron.schedule("0 */1 * * *", cleanUpOldChats);
 
+/**
+ * GET /ping (no auth, no rate-limit)
+ */
+const ping = async (req, res) => {
+  res.status(200).end();
+};
+
 module.exports = {
   chatData,
   assign,
   getUserInfo,
   queryUser,
+  ping,
 };

@@ -16,6 +16,23 @@
   let hasMoreHistory = true;
   let isLoadingHistory = false;
 
+  /**
+   * Reliable online check — does a HEAD request to /ping instead of relying
+   * on the unreliable navigator.onLine API.
+   */
+  let _lastPing = 0;
+  async function isOnline() {
+    const now = Date.now();
+    if (now - _lastPing < 2000) return true;
+    try {
+      await fetch("/ping", { method: "HEAD", cache: "no-store" });
+      _lastPing = now;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Typing Indicator — must be created before any socket events fire
   const chatContainer = document.getElementById("chat-container");
   const typingIndicator = document.createElement("div");
@@ -155,7 +172,7 @@
         !window.getPending ||
         !socket ||
         !socket.connected ||
-        !navigator.onLine
+        !(await isOnline())
       ) {
         console.log("[Chat] Socket not connected or offline");
         return;
@@ -373,10 +390,10 @@
   /**
    * Handles segmented file uploads for large images/videos.
    */
-  function sendChunks(recipient, file, offset) {
+  async function sendChunks(recipient, file, offset) {
     if (window._uploadAborted) return;
 
-    if (!socket || !socket.connected || !navigator.onLine) {
+    if (!socket || !socket.connected || !(await isOnline())) {
       if (window.Pending) window.Pending(recipient, file, offset);
       if (offset === 0) {
         addOfflineFilePreview(file);
@@ -450,8 +467,8 @@
     }
     if (recipient && message) {
       const date = new Date().toLocaleString();
-      console.log(!socket, !socket.connected, !navigator.onLine);
-      if (!socket || !socket.connected || !navigator.onLine) {
+      console.log(!socket, !socket.connected, !(await isOnline()));
+      if (!socket || !socket.connected || !(await isOnline())) {
         if (window.Pending) window.Pending(recipient, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";

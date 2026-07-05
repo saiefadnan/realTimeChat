@@ -11,6 +11,7 @@ const { socketHandler } = require('./sockets/chatSocket');
 const { assign } = require('./controllers/chatController');
 const routes = require('./routes/route');
 const { generalLimiter } = require('./middleware/rateLimiter');
+const { ping } = require('./controllers/chatController');
 
 const app = express();
 const server = http.createServer(app);
@@ -76,6 +77,9 @@ app.use('/api', generalLimiter);
 
 // ─── Static Files ─────────────────────────────────────────────────────────── 
 app.use(express.static(path.join(__dirname, './public')));
+
+// ─── Ping (no auth, no rate-limit) ───────────────────────────────────────── 
+app.all('/ping', ping);
 
 // ─── Routes ───────────────────────────────────────────────────────────────── 
 app.use('/api', routes);
