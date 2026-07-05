@@ -141,6 +141,7 @@
           socket.emit("insert name", { jwtoken: Cookies.get("token") });
           addError("Connected");
           const data = await window.fetchData("/api/user-rooms");
+          activeRoom.innerHTML = "";
           if (data && data.rooms) {
             window.rooms = data.rooms;
             window.rooms.forEach((room) => addRoomToList(room.name));
