@@ -1256,6 +1256,10 @@
   });
 
   function registerSocketEvents() {
+    socket.on("error", ({ error }) => {
+      if (error === "999") window.loadPage("login.html", "login");
+      else addFeedback(error, "red");
+    });
     socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
     socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
     socket.on("room-info", ({ name, admin, created_at, memberIds }) => {
