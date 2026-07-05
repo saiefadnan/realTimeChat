@@ -47,7 +47,6 @@ export function updateUploadProgress(percent, filename = "File") {
 }
 
 function closeAllSockets(socket) {
-  console.log("all sockets closing...");
   socket.off("disconnect");
   socket.off("private message");
   socket.off("public message");
@@ -132,7 +131,6 @@ export function loadPage(content, element = null) {
 
 export function toggleColor(element) {
   const element0 = element + "0";
-  console.log("Toggling color for:", element);
   const links = document.querySelectorAll(".tab");
   links.forEach((link) => {
     link.classList.remove("clicked");
@@ -176,7 +174,6 @@ export function updateNavState(isLoggedIn) {
 }
 
 export function handleLogout() {
-  console.log("yeah i was called");
   window._uploadAborted = true;
   Cookies.remove("token");
   updateNavState(false);

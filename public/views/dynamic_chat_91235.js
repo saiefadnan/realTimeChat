@@ -467,7 +467,6 @@
     }
     if (recipient && message) {
       const date = new Date().toLocaleString();
-      console.log(!socket, !socket.connected, !(await isOnline()));
       if (!socket || !socket.connected || !(await isOnline())) {
         if (window.Pending) window.Pending(recipient, message, -1);
         addOfflineTextPreview(message);

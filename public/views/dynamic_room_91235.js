@@ -48,10 +48,6 @@
   }
 
   function getDivByTextContent(text) {
-    console.log("[getDivByTextContent] Searching for:", text);
-    Array.from(activeRoom.children).forEach((div) => {
-      console.log(`[${div.textContent}]`);
-    });
     return Array.from(activeRoom.children).find(
       (div) => div.textContent === text,
     );
@@ -770,7 +766,6 @@
         localVideo.srcObject = localStream;
       }
       for (const id of roomMembers) {
-        console.log("this is ID:", id);
         if (joinedIds.includes(id) || excludeIds.includes(id)) continue;
         const remoteVideo = addVideo(id);
         const peerConnection = getOrCreatePeerConnection(id, localStream);
