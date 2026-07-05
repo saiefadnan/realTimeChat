@@ -167,6 +167,7 @@
             console.log("[Room Socket] Connected");
             socket.emit("insert name", { jwtoken: Cookies.get("token") });
             const data = await window.fetchData("/api/user-rooms");
+            activeRoom.innerHTML = "";
             if (data && data.rooms) {
               window.rooms = data.rooms;
               window.rooms.forEach((room) => addRoomToList(room.name));
@@ -471,7 +472,7 @@
     if (message && targetRoom) {
       const date = new Date().toLocaleString();
 
-      if (!socket || !socket.connected || !(await isOnline())) {
+      if (!socket || !socket.connected || !navigator.onLine) {
         if (window.Pending) window.Pending(targetRoom, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";

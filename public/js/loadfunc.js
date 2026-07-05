@@ -67,6 +67,7 @@ function closeAllSockets(socket) {
   socket.off("room file");
 }
 export function loadPage(content, element = null) {
+  console.log("Loading page:", content, "element:", element);
   window._uploadAborted = true; // Stop any in-flight uploads
   const container = document.querySelector(".upload-progress-container");
   if (container) container.style.display = "none";
@@ -175,6 +176,7 @@ export function updateNavState(isLoggedIn) {
 }
 
 export function handleLogout() {
+  console.log("yeah i was called");
   window._uploadAborted = true;
   Cookies.remove("token");
   updateNavState(false);

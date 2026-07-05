@@ -75,11 +75,11 @@ function socketHandler(io) {
       const { username, imageurl } = decoded;
 
       const existingSocketId = users[username];
-      if (existingSocketId) {
+      if (existingSocketId && existingSocketId !== socket.id) {
         const existingSocket = socIns[username];
         if (existingSocket && existingSocket.connected) {
-          io.to(socket.id).emit("error", { error: "999" });
-          return;
+          io.to(existingSocketId).emit("error", { error: "999" });
+          existingSocket.disconnect(true);
         }
         delete users[username];
         delete socIns[username];
