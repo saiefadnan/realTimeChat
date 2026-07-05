@@ -162,20 +162,22 @@
           try {
             console.log("[Room Socket] Connected");
             socket.emit("insert name", { jwtoken: Cookies.get("token") });
-            const data = await window.fetchData("/api/user-rooms");
-            activeRoom.innerHTML = "";
-            if (data && data.rooms) {
-              window.rooms = data.rooms;
-              window.rooms.forEach((room) => addRoomToList(room.name));
-              socket.emit("join-rooms", {
-                rooms: data.rooms.map((r) => r.name),
-              });
-            }
+            addError("Connected");
             setTimeout(flushPendingQueue, 2000);
           } catch (err) {
             console.error("[Room] Failed to load rooms after connect:", err);
           }
         });
+
+        const data = await window.fetchData("/api/user-rooms");
+        activeRoom.innerHTML = "";
+        if (data && data.rooms) {
+          window.rooms = data.rooms;
+          window.rooms.forEach((room) => addRoomToList(room.name));
+          socket.emit("join-rooms", {
+            rooms: data.rooms.map((r) => r.name),
+          });
+        }
 
         const onRoomOnline = () => {
           console.log("[Room] Network restored — flushing pending queue");
@@ -244,6 +246,35 @@
     } catch (err) {
       console.error("[RoomSearch] Error:", err);
     }
+  }
+
+  function addError(message, color) {
+    const err = document.createElement("div");
+    err.textContent = message;
+    Object.assign(err.style, {
+      color:
+        color === "green"
+          ? "#2ecc71"
+          : color === "blue"
+            ? "#3498db"
+            : message === "Connected"
+              ? "#2ecc71"
+              : "#e74c3c",
+      backgroundColor: "#222",
+      borderRadius: "5px",
+      padding: "8px",
+      margin: "10px auto",
+      width: "fit-content",
+      textAlign: "center",
+      fontSize: "13px",
+    });
+    messagesDiv.appendChild(err);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    setTimeout(() => {
+      err.style.opacity = "0";
+      err.style.transition = "opacity 1s";
+      setTimeout(() => err.remove(), 1000);
+    }, 3000);
   }
 
   function debounce(func, delay) {
@@ -464,7 +495,12 @@
       targetRoom = rec;
       message = msg;
     }
-
+    if (!targetRoom) {
+      return M.toast({
+        html: "Select a room first!",
+        classes: "rounded red",
+      });
+    }
     if (message && targetRoom) {
       const date = new Date().toLocaleString();
 
@@ -472,17 +508,15 @@
         if (window.Pending) window.Pending(targetRoom, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";
-        return;
+      } else {
+        addMessageTo(message, date);
+        socket.emit("room message", {
+          room: { name: targetRoom, admin: window.userInfo.username },
+          message,
+          date,
+        });
+        messageInput.value = "";
       }
-
-      addMessageTo(message, date);
-
-      socket.emit("room message", {
-        room: { name: targetRoom, admin: window.userInfo.username },
-        message,
-        date,
-      });
-      messageInput.value = "";
     }
 
     const fileInputEl = document.getElementById("file-input");
@@ -966,30 +1000,6 @@
     return d.innerHTML;
   }
 
-  // UI Feedback
-  function addFeedback(msg, color) {
-    const err = document.createElement("div");
-    err.textContent = msg;
-    Object.assign(err.style, {
-      color:
-        color === "green"
-          ? "#2ecc71"
-          : color === "blue"
-            ? "#3498db"
-            : "#f39c12",
-      backgroundColor: "#222",
-      borderRadius: "5px",
-      padding: "8px",
-      margin: "10px auto",
-      width: "fit-content",
-      textAlign: "center",
-      fontSize: "13px",
-    });
-    messagesDiv.appendChild(err);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    setTimeout(() => err.remove(), 4000);
-  }
-
   function addMessage(from, message, time, profile, prepend = false) {
     const finalContainer = document.createElement("div");
     finalContainer.className = "final-container";
@@ -1253,10 +1263,13 @@
   function registerSocketEvents() {
     socket.on("error", ({ error }) => {
       if (error === "999") window.loadPage("login.html", "login");
-      else addFeedback(error, "red");
+      else addError(error);
     });
-    socket.on("room-created", ({ notify }) => addFeedback(notify, "green"));
-    socket.on("invited", ({ notify }) => addFeedback(notify, "blue"));
+    socket.on("disconnect", () => {
+      addError("Connection lost. Reconnecting...");
+    });
+    socket.on("room-created", ({ notify }) => addError(notify, "green"));
+    socket.on("invited", ({ notify }) => addError(notify, "blue"));
     socket.on("room-info", ({ name, admin, created_at, memberIds }) => {
       console.log("[Room] Info received:", { admin, created_at, memberIds });
       roomMembers = memberIds.filter((id) => id !== socket.id);
@@ -1267,7 +1280,7 @@
       }
     });
     socket.on("invitation", ({ name, notify }) => {
-      addFeedback(notify, "orange");
+      addError(notify, "orange");
       if (!window.rooms.some((r) => r.name === name)) {
         window.rooms.push({ name });
         addRoomToList(name);

@@ -471,19 +471,18 @@
         if (window.Pending) window.Pending(recipient, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";
-        return;
+      } else {
+        addMessageTo(message, date);
+
+        const event =
+          recipient === "public" ? "public message" : "private message";
+        const payload =
+          recipient === "public"
+            ? [{ message, date }]
+            : [{ to: recipient, message, date }];
+        socket.emit(event, ...payload);
+        messageInput.value = "";
       }
-
-      addMessageTo(message, date);
-
-      const event =
-        recipient === "public" ? "public message" : "private message";
-      const payload =
-        recipient === "public"
-          ? [{ message, date }]
-          : [{ to: recipient, message, date }];
-      socket.emit(event, ...payload);
-      messageInput.value = "";
     }
 
     const file = fileInput.files[0];
@@ -761,7 +760,6 @@
       userDiv.style.transform = "scale(1)";
     });
 
-    
     userDiv.addEventListener("click", () => {
       document.getElementById("recipientInput").value = name;
       typingUsers.clear(); // Clear typing on switch
@@ -871,11 +869,18 @@
     }
   }
 
-  function addError(message) {
+  function addError(message, color) {
     const err = document.createElement("div");
     err.textContent = message;
     Object.assign(err.style, {
-      color: message === "Connected" ? "#2ecc71" : "#e74c3c",
+      color:
+        color === "green"
+          ? "#2ecc71"
+          : color === "blue"
+            ? "#3498db"
+            : message === "Connected"
+              ? "#2ecc71"
+              : "#e74c3c",
       backgroundColor: "#222",
       borderRadius: "5px",
       padding: "8px",
