@@ -143,6 +143,7 @@
           const data = await window.fetchData("/api/user-rooms");
           if (data && data.rooms) {
             window.rooms = data.rooms;
+            window.rooms.forEach((room) => addRoomToList(room.name));
             socket.emit("join-rooms", {
               rooms: data.rooms.map((r) => r.name),
             });
@@ -152,6 +153,7 @@
           console.error("[Room] Failed to load rooms after connect:", err);
         }
       });
+
       registerSocketEvents();
     } catch (err) {
       console.error("[Room] Failed to load rooms from server:", err);
