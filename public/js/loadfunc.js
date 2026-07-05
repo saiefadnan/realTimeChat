@@ -47,6 +47,7 @@ export function updateUploadProgress(percent, filename = "File") {
 }
 
 function closeAllSockets(socket) {
+  socket.off("connect");
   socket.off("disconnect");
   socket.off("private message");
   socket.off("public message");

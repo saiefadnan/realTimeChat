@@ -130,40 +130,28 @@
     }
 
     try {
-      // Initialize socket connection if missing
       if (!socket || !socket.connected) {
         socket = io();
         window.socket = socket;
+      }
 
-        socket.on("connect", async () => {
-          try {
-            console.log("[Room Socket] Connected");
-            socket.emit("insert name", { jwtoken: Cookies.get("token") });
-            addError("Connected");
-            setTimeout(flushPendingQueue, 2000);
-          } catch (err) {
-            console.error("[Room] Failed to load rooms after connect:", err);
-          }
-        });
-
-        const data = await window.fetchData("/api/user-rooms");
-        activeRoom.innerHTML = "";
-        if (data && data.rooms) {
-          window.rooms = data.rooms;
-          window.rooms.forEach((room) => addRoomToList(room.name));
-          socket.emit("join-rooms", {
-            rooms: data.rooms.map((r) => r.name),
-          });
-        }
-      } else {
-        socket.on("connect", async () => {
+      socket.on("connect", async () => {
+        try {
           console.log("[Room Socket] Connected");
           socket.emit("insert name", { jwtoken: Cookies.get("token") });
           addError("Connected");
+          const data = await window.fetchData("/api/user-rooms");
+          if (data && data.rooms) {
+            window.rooms = data.rooms;
+            socket.emit("join-rooms", {
+              rooms: data.rooms.map((r) => r.name),
+            });
+          }
           setTimeout(flushPendingQueue, 2000);
-        });
-      }
-
+        } catch (err) {
+          console.error("[Room] Failed to load rooms after connect:", err);
+        }
+      });
       registerSocketEvents();
     } catch (err) {
       console.error("[Room] Failed to load rooms from server:", err);
