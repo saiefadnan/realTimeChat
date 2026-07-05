@@ -184,7 +184,7 @@
           if (item.offset >= 0) {
             sendChunks(item.recipient, item.content, item.offset);
           } else {
-            sendMessage(item.recipient, item.content);
+            sendMessage(item.recipient, item.content, true);
           }
         }
       } catch (err) {
@@ -452,7 +452,7 @@
     if (e.key === "Enter") sendMessage();
   }
 
-  async function sendMessage(rec = null, msg = null) {
+  async function sendMessage(rec = null, msg = null, flush = false) {
     const recipientInput = document.getElementById("recipientInput");
     const messageInput = document.getElementById("message-input");
     const fileInput = document.getElementById("file-input");
@@ -484,12 +484,15 @@
       }
     }
 
+    if (flush) return;
+
     const file = fileInput.files[0];
     if (file && recipient) {
       document.getElementById("custom-file-upload").style.backgroundColor =
         "#007bff";
       sendChunks(recipient, file, 0); // Reset offset to 0
       fileInput.value = "";
+      document.getElementById("custom-file-upload").style.backgroundColor = "";
     }
   }
 

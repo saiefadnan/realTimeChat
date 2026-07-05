@@ -135,29 +135,6 @@
         socket = io();
         window.socket = socket;
 
-        async function flushPendingQueue() {
-          if (
-            !window.getPending ||
-            !socket ||
-            !socket.connected ||
-            !(await isOnline())
-          )
-            return;
-          try {
-            const queue = await window.getPending("room");
-            for (const item of queue) {
-              if (window.deletePending) await window.deletePending(item.id);
-              if (item.offset >= 0) {
-                sendChunks(item.recipient, item.content, item.offset);
-              } else {
-                sendMessage(item.recipient, item.content);
-              }
-            }
-          } catch (err) {
-            console.error("[Room] Failed to process pending queue:", err);
-          }
-        }
-
         socket.on("connect", async () => {
           try {
             console.log("[Room Socket] Connected");
@@ -178,16 +155,12 @@
             rooms: data.rooms.map((r) => r.name),
           });
         }
-
-        const onRoomOnline = () => {
-          console.log("[Room] Network restored — flushing pending queue");
-          setTimeout(flushPendingQueue, 1500);
-        };
-        window.addEventListener("online", onRoomOnline);
-        window.eventListeners.push({
-          element: window,
-          event: "online",
-          handler: onRoomOnline,
+      } else {
+        socket.on("connect", async () => {
+          console.log("[Room Socket] Connected");
+          socket.emit("insert name", { jwtoken: Cookies.get("token") });
+          addError("Connected");
+          setTimeout(flushPendingQueue, 2000);
         });
       }
 
@@ -198,6 +171,40 @@
         window.rooms.forEach((room) => addRoomToList(room.name));
       }
     }
+
+    async function flushPendingQueue() {
+      if (
+        !window.getPending ||
+        !socket ||
+        !socket.connected ||
+        !(await isOnline())
+      )
+        return;
+      try {
+        const queue = await window.getPending("room");
+        for (const item of queue) {
+          if (window.deletePending) await window.deletePending(item.id);
+          if (item.offset >= 0) {
+            sendChunks(item.recipient, item.content, item.offset);
+          } else {
+            sendMessage(item.recipient, item.content, true);
+          }
+        }
+      } catch (err) {
+        console.error("[Room] Failed to process pending queue:", err);
+      }
+    }
+
+    const onRoomOnline = () => {
+      console.log("[Room] Network restored — flushing pending queue");
+      setTimeout(flushPendingQueue, 1500);
+    };
+    window.addEventListener("online", onRoomOnline);
+    window.eventListeners.push({
+      element: window,
+      event: "online",
+      handler: onRoomOnline,
+    });
     updateLayout();
     window.addEventListener("resize", updateLayout);
     window.eventListeners.push({
@@ -486,8 +493,9 @@
     reader.readAsArrayBuffer(slice);
   }
 
-  async function sendMessage(rec = null, msg = null) {
+  async function sendMessage(rec = null, msg = null, flush = false) {
     const messageInput = document.getElementById("message-input");
+    const fileInputEl = document.getElementById("file-input");
     let message = messageInput.value.trim();
     let targetRoom = currentRoom;
 
@@ -504,7 +512,7 @@
     if (message && targetRoom) {
       const date = new Date().toLocaleString();
 
-      if (!socket || !socket.connected || !navigator.onLine) {
+      if (!socket || !socket.connected || !(await isOnline())) {
         if (window.Pending) window.Pending(targetRoom, message, -1);
         addOfflineTextPreview(message);
         messageInput.value = "";
@@ -519,15 +527,10 @@
       }
     }
 
-    const fileInputEl = document.getElementById("file-input");
+    if (flush) return;
+
     const file = fileInputEl.files[0];
-    if (file) {
-      if (!targetRoom) {
-        return M.toast({
-          html: "Select a room first!",
-          classes: "rounded red",
-        });
-      }
+    if (file && targetRoom) {
       document.getElementById("custom-file-upload").style.backgroundColor =
         "#2ecc71";
       sendChunks(targetRoom, file, 0);
