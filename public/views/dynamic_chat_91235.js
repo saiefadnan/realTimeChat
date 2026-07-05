@@ -446,7 +446,6 @@
     };
 
     reader.readAsArrayBuffer(fileSlice);
-    document.getElementById("file-input").value = "";
   }
 
   async function _handleKeyPress(e) {
@@ -490,6 +489,7 @@
       document.getElementById("custom-file-upload").style.backgroundColor =
         "#007bff";
       sendChunks(recipient, file, 0); // Reset offset to 0
+      fileInput.value = "";
     }
   }
 
