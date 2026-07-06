@@ -16,6 +16,7 @@
   let typingIndicator;
   const peerConnections = new Map();
   let joinedIds = [];
+  let _callEnded = false;
 
   window.addEventListener("resize", updateStyles);
   function addVideo(id) {
@@ -728,9 +729,7 @@
   function getOrCreatePeerConnection(id, stream) {
     let pc = peerConnections.get(id);
     if (pc) {
-      try {
-        pc.close();
-      } catch (e) {}
+      return pc;
     }
     pc = new RTCPeerConnection(peerConfig);
     peerConnections.set(id, pc);
@@ -743,8 +742,13 @@
   }
 
   function cleanupVideoCall() {
+    _callEnded = true;
+    setTimeout(() => {
+      _callEnded = false;
+    }, 2000);
     if (localStream) {
       try {
+        console.log("cleaning up local stream");
         localStream.getTracks().forEach((t) => t.stop());
       } catch (e) {}
       localStream = null;
@@ -772,10 +776,6 @@
     updateStyles();
   }
 
-  function closeExistingConnection() {
-    // Left as legacy compatibility stub
-  }
-
   // WebRTC Logic
   async function startVideoCall(excludeIds) {
     if (!currentRoom) {
@@ -784,6 +784,9 @@
     const localVideo = document.getElementById("localVideo");
     if (excludeIds.length === 0) {
       cleanupVideoCall();
+      _callEnded = false;
+    } else if (_callEnded) {
+      return;
     }
     try {
       if (!localStream) {
@@ -795,6 +798,8 @@
       }
       for (const id of roomMembers) {
         if (joinedIds.includes(id) || excludeIds.includes(id)) continue;
+        // Skip if already connected to this peer (prevents glare)
+        if (peerConnections.has(id)) continue;
         const remoteVideo = addVideo(id);
         const peerConnection = getOrCreatePeerConnection(id, localStream);
 
@@ -847,6 +852,7 @@
             const oldRoom = currentRoom;
             socket.emit("exit-video", { room: { name: oldRoom } });
             cleanupVideoCall();
+            _callEnded = false;
             selectRoom(div, name);
             receiveVideoCall(id, name, signal, true);
           },
@@ -861,6 +867,14 @@
       return;
     }
     selectRoom(div, name);
+    if (peerConnections.has(id)) {
+      console.log("[WebRTC] Already have PC for", id, "skipping offer");
+      return;
+    }
+    if (_callEnded) {
+      console.log("[WebRTC] Call ended, ignoring offer from", id);
+      return;
+    }
     const remoteVideo = addVideo(id);
     try {
       if (!localStream) {
@@ -1289,6 +1303,38 @@
       );
       if (signal.type === "offer") {
         await receiveVideoCall(id, room.name, signal);
+        // After receiving an offer, connect to remaining room members (mesh)
+        for (const memberId of roomMembers) {
+          if (joinedIds.includes(memberId)) continue;
+          // Already have a PC for this peer (prevents double-offer glare)
+          if (peerConnections.has(memberId)) continue;
+          const rv = addVideo(memberId);
+          if (!rv) continue;
+          const pc = getOrCreatePeerConnection(memberId, localStream);
+          setupOnTrack(pc, rv);
+          pc.onicecandidate = (e) => {
+            if (e.candidate && peerConnections.get(memberId) === pc) {
+              socket.emit("handshake", {
+                id: socket.id,
+                to: memberId,
+                room: { name: currentRoom },
+                signal: { type: "candidate", candidate: e.candidate },
+              });
+            }
+          };
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit("handshake", {
+              id: socket.id,
+              to: memberId,
+              room: { name: currentRoom },
+              signal: offer,
+            });
+          } catch (err) {
+            console.error("[WebRTC] Failed to mesh-connect to", memberId, err);
+          }
+        }
       } else if (signal.type === "answer") {
         const pc = peerConnections.get(id);
         if (pc) {

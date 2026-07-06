@@ -1,6 +1,13 @@
 const jwt = require("jsonwebtoken");
-const { uploadFile, gatherChunksMap } = require("../services/storage/googleDrive");
-const { storeChats, storeRoom, addRoomMembers } = require("../services/database/chatStore");
+const {
+  uploadFile,
+  gatherChunksMap,
+} = require("../services/storage/googleDrive");
+const {
+  storeChats,
+  storeRoom,
+  addRoomMembers,
+} = require("../services/database/chatStore");
 
 const secretKey = process.env.JWT_SECRET;
 
@@ -235,8 +242,18 @@ function socketHandler(io) {
         io.to(room.name).emit("room file", payload);
 
         // Persist to Firestore
-        const chatType = fileType.startsWith("image/") ? "image" : fileType.startsWith("video/") ? "video" : "document";
-        storeChats(fromUsername, room.name, docUrl, chatType, new Date().toLocaleString());
+        const chatType = fileType.startsWith("image/")
+          ? "image"
+          : fileType.startsWith("video/")
+            ? "video"
+            : "document";
+        storeChats(
+          fromUsername,
+          room.name,
+          docUrl,
+          chatType,
+          new Date().toLocaleString(),
+        );
       } catch (err) {
         console.error("[Socket] Room file upload error:", err);
         io.to(socket.id).emit("error", { error: "Room file upload failed." });
@@ -356,7 +373,13 @@ function socketHandler(io) {
         message,
         profile: photos[socket.id],
       });
-      storeChats(fromUsername, room.name, message, "text", date || new Date().toLocaleString());
+      storeChats(
+        fromUsername,
+        room.name,
+        message,
+        "text",
+        date || new Date().toLocaleString(),
+      );
     });
 
     // ── Gen Z Features: Typing & Moods ──────────────────────────────────
@@ -408,7 +431,8 @@ function socketHandler(io) {
 
     // ── WebRTC signaling ────────────────────────────────────────────────
     socket.on("handshake", ({ id, to, room, signal, excludeIds = [] }) => {
-      const isCallOngoing = rooms[room.name] && rooms[room.name].onCallIds.length > 0;
+      const isCallOngoing =
+        rooms[room.name] && rooms[room.name].onCallIds.length > 0;
       if (!isCallOngoing && signal.type === "offer" && rooms[room.name]) {
         rooms[room.name].initiator = socket.id;
       }
@@ -420,16 +444,30 @@ function socketHandler(io) {
         rooms[room.name].onCallIds.push(socket.id);
       }
       if (to) {
-        io.to(to).emit("handshake", { id: socket.id, room, signal, excludeIds });
+        io.to(to).emit("handshake", {
+          id: socket.id,
+          room,
+          signal,
+          excludeIds,
+        });
       } else {
         const memberIds = rooms[room.name]?.members || [];
         for (const memberId of memberIds) {
           if (memberId !== socket.id && !excludeIds.includes(memberId)) {
-            io.to(memberId).emit("handshake", { id: socket.id, room, signal, excludeIds });
+            io.to(memberId).emit("handshake", {
+              id: socket.id,
+              room,
+              signal,
+              excludeIds,
+            });
           }
         }
       }
-      if (rooms[room.name] && rooms[room.name].initiator === socket.id && signal.type === "offer") {
+      if (
+        rooms[room.name] &&
+        rooms[room.name].initiator === socket.id &&
+        signal.type === "offer"
+      ) {
         const initExclude = [socket.id];
         const memberIds = rooms[room.name]?.members || [];
         for (const memberId of memberIds) {

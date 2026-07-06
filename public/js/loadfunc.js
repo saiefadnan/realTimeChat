@@ -65,6 +65,36 @@ function closeAllSockets(socket) {
   socket.off("room message");
   socket.off("invitation");
   socket.off("room file");
+  socket.off("handshake");
+  socket.off("room-info");
+  socket.off("exit-video");
+  socket.off("exit-room");
+  socket.off("user-typing");
+  socket.off("user-stop-typing");
+  // Stop camera/mic tracks from local video
+  const localVideo = document.getElementById("localVideo");
+  if (localVideo) {
+    if (localVideo.srcObject instanceof MediaStream) {
+      localVideo.srcObject.getTracks().forEach(function (t) { t.stop(); });
+    }
+    localVideo.srcObject = null;
+  }
+  // Stop any remote video tracks & close peer connections
+  document.querySelectorAll(".video-modal-child").forEach(function (video) {
+    if (video.srcObject instanceof MediaStream) {
+      video.srcObject.getTracks().forEach(function (t) { t.stop(); });
+    }
+    video.srcObject = null;
+  });
+  // Clear the video modal container
+  var modalContent = document.getElementById("video-modal-content");
+  if (modalContent) {
+    modalContent.innerHTML = "";
+  }
+  var videoModal = document.getElementById("video-modal");
+  if (videoModal) {
+    videoModal.style.display = "none";
+  }
 }
 export function loadPage(content, element = null) {
   console.log("Loading page:", content, "element:", element);
