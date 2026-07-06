@@ -851,7 +851,9 @@
           () => {
             const oldRoom = currentRoom;
             socket.emit("exit-video", { room: { name: oldRoom } });
+            const savedCandidates = pendingCandidates.get(id) || [];
             cleanupVideoCall();
+            if (savedCandidates.length) pendingCandidates.set(id, savedCandidates);
             _callEnded = false;
             selectRoom(div, name);
             receiveVideoCall(id, name, signal, true);
