@@ -852,8 +852,15 @@
             const oldRoom = currentRoom;
             socket.emit("exit-video", { room: { name: oldRoom } });
             const savedCandidates = pendingCandidates.get(id) || [];
+            const savedStream = localStream;
+            localStream = null;
             cleanupVideoCall();
             if (savedCandidates.length) pendingCandidates.set(id, savedCandidates);
+            if (savedStream) {
+              localStream = savedStream;
+              const lv = document.getElementById("localVideo");
+              if (lv) lv.srcObject = savedStream;
+            }
             _callEnded = false;
             selectRoom(div, name);
             receiveVideoCall(id, name, signal, true);
