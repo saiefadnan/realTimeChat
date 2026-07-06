@@ -1303,7 +1303,8 @@
       );
       if (signal.type === "offer") {
         await receiveVideoCall(id, room.name, signal);
-        // After receiving an offer, connect to remaining room members (mesh)
+        // Only mesh-connect if we're actually in this room (not busy elsewhere)
+        if (currentRoom !== room.name) return;
         for (const memberId of roomMembers) {
           if (joinedIds.includes(memberId)) continue;
           // Already have a PC for this peer (prevents double-offer glare)
