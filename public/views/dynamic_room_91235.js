@@ -852,15 +852,20 @@
             const oldRoom = currentRoom;
             socket.emit("exit-video", { room: { name: oldRoom } });
             const savedCandidates = pendingCandidates.get(id) || [];
-            const savedStream = localStream;
-            localStream = null;
-            cleanupVideoCall();
-            if (savedCandidates.length) pendingCandidates.set(id, savedCandidates);
-            if (savedStream) {
-              localStream = savedStream;
-              const lv = document.getElementById("localVideo");
-              if (lv) lv.srcObject = savedStream;
+            _callEnded = true;
+            setTimeout(() => { _callEnded = false; }, 2000);
+            for (const [pcId, pc] of peerConnections) {
+              try { pc.close(); } catch (e) {}
             }
+            peerConnections.clear();
+            pendingCandidates.clear();
+            if (savedCandidates.length) pendingCandidates.set(id, savedCandidates);
+            joinedIds = [];
+            if (container) {
+              container.querySelectorAll(".video-modal-child:not(#localVideo)")
+                .forEach((el) => el.remove());
+            }
+            updateStyles();
             _callEnded = false;
             selectRoom(div, name);
             receiveVideoCall(id, name, signal, true);
