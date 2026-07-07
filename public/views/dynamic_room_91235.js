@@ -16,7 +16,6 @@
   let typingIndicator;
   const peerConnections = new Map();
   let joinedIds = [];
-  let _callEnded = false;
 
   window.addEventListener("resize", updateStyles);
   function addVideo(id) {
@@ -87,7 +86,6 @@
     ],
   };
   const peerConfig = { ...iceConfiguration, offerExtmapAllowMixed: true };
-
   let localStream = null;
   let roomMembers = [];
   const pendingCandidates = new Map(); // id -> Array of candidates
@@ -742,10 +740,6 @@
   }
 
   function cleanupVideoCall() {
-    _callEnded = true;
-    setTimeout(() => {
-      _callEnded = false;
-    }, 2000);
     if (localStream) {
       try {
         console.log("cleaning up local stream");
@@ -784,9 +778,6 @@
     const localVideo = document.getElementById("localVideo");
     if (excludeIds.length === 0) {
       cleanupVideoCall();
-      _callEnded = false;
-    } else if (_callEnded) {
-      return;
     }
     try {
       if (!localStream) {
@@ -849,26 +840,13 @@
         showNotification(
           `🔥 Room "<strong>${escapeHtml(name)}</strong>" is live! Wanna join?`,
           () => {
-            const oldRoom = currentRoom;
-            socket.emit("exit-video", { room: { name: oldRoom } });
-            const savedCandidates = pendingCandidates.get(id) || [];
-            _callEnded = true;
-            setTimeout(() => { _callEnded = false; }, 2000);
-            for (const [pcId, pc] of peerConnections) {
-              try { pc.close(); } catch (e) {}
-            }
-            peerConnections.clear();
-            pendingCandidates.clear();
-            if (savedCandidates.length) pendingCandidates.set(id, savedCandidates);
-            joinedIds = [];
-            if (container) {
-              container.querySelectorAll(".video-modal-child:not(#localVideo)")
-                .forEach((el) => el.remove());
-            }
-            updateStyles();
-            _callEnded = false;
+            cleanupVideoCall();
+            videoModal.style.display = "none";
+            socket.emit("exit-video", {
+              room: { name: currentRoom },
+            });
             selectRoom(div, name);
-            receiveVideoCall(id, name, signal, true);
+            startVideoCall([]);
           },
         );
         return;
@@ -883,10 +861,6 @@
     selectRoom(div, name);
     if (peerConnections.has(id)) {
       console.log("[WebRTC] Already have PC for", id, "skipping offer");
-      return;
-    }
-    if (_callEnded) {
-      console.log("[WebRTC] Call ended, ignoring offer from", id);
       return;
     }
     const remoteVideo = addVideo(id);
