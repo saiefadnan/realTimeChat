@@ -95,6 +95,10 @@ function closeAllSockets(socket) {
   if (videoModal) {
     videoModal.style.display = "none";
   }
+  // Close incoming call modal if open
+  if (typeof window.incomingCallClose === "function") {
+    window.incomingCallClose();
+  }
 }
 export function loadPage(content, element = null) {
   console.log("Loading page:", content, "element:", element);
