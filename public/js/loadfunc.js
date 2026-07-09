@@ -72,6 +72,8 @@ function closeAllSockets(socket) {
   socket.off("user-typing");
   socket.off("user-stop-typing");
   socket.off("update-room-info");
+  socket.off("reject-call");
+  socket.off("ack");
   // Stop camera/mic tracks from local video
   const localVideo = document.getElementById("localVideo");
   if (localVideo) {

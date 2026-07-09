@@ -18,7 +18,9 @@ const photos = {}; // socket.id  → profile picture URL
 const socIns = {}; // username   → socket instance
 const moods = {}; // username   → emoji mood
 const rooms = {}; // stores live room-info centrally
-const sequence = {}; // roomId → join sequence number
+const ackIds = {};
+const handshakeQueue = {}; // roomName → [{ socket, data }]
+const processingAcks = {}; // roomName → boolean
 
 /**
  * Verifies a JWT and extracts { username, imageurl }.
@@ -31,14 +33,6 @@ function verifyToken(token) {
   } catch {
     return null;
   }
-}
-
-function generateSequence(roomName) {
-  if (!sequence[roomName]) {
-    sequence[roomName] = 0;
-  }
-  sequence[roomName]++;
-  return sequence[roomName];
 }
 
 /**
@@ -348,9 +342,7 @@ function socketHandler(io) {
       for (const username of usernames) {
         if (socIns[username]) {
           socIns[username].join(room.name);
-          if (
-            !rooms[room.name].members.includes(users[username])
-          ) {
+          if (!rooms[room.name].members.includes(users[username])) {
             rooms[room.name].members.push(users[username]);
           }
         }
@@ -440,18 +432,31 @@ function socketHandler(io) {
     });
 
     // ── WebRTC signaling ────────────────────────────────────────────────
-    socket.on("handshake", ({ id, to, room, signal }) => {
+    function processNextHandshake(roomName) {
+      if (!handshakeQueue[roomName] || handshakeQueue[roomName].length === 0) {
+        processingAcks[roomName] = false;
+        console.log("[Queue] No pending handshakes for", roomName);
+        return;
+      }
+      processingAcks[roomName] = true;
+      const { socket: qs, data } = handshakeQueue[roomName].shift();
+      console.log(
+        "[Queue] Processing next handshake for",
+        roomName,
+        "- remaining:",
+        handshakeQueue[roomName].length,
+      );
+      processHandshake(qs, data);
+    }
+
+    function processHandshake(socket, { id, to, room, signal }) {
       const isCallOngoing =
         rooms[room.name] && rooms[room.name].onCallIds.length > 0;
       if (
-        !rooms[room.name].onCallIds.some((member) => member.id === socket.id) &&
+        !rooms[room.name].onCallIds.includes(socket.id) &&
         rooms[room.name].members.includes(socket.id)
       ) {
-        rooms[room.name].onCallIds.push({
-          id: socket.id,
-          sequence: generateSequence(room.name),
-        });
-        console.log(rooms[room.name].onCallIds);
+        rooms[room.name].onCallIds.push(socket.id);
         io.to(room.name).emit("update-room-info", {
           name: room.name,
           signal:
@@ -466,14 +471,39 @@ function socketHandler(io) {
           memberIds: rooms[room.name].members || [],
           onCallIds: rooms[room.name].onCallIds || [],
         });
+        if (signal?.type !== "init-call") {
+          ackIds[room.name] = [...rooms[room.name].onCallIds];
+          processingAcks[room.name] = true;
+          console.log("[Queue] Waiting for acks from", ackIds[room.name]);
+        }
       }
-      if (to && rooms[room.name].onCallIds.some((member) => member.id === to)) {
+      if (to && rooms[room.name].onCallIds.includes(to)) {
         io.to(to).emit("handshake", {
           id: socket.id,
           room,
           signal,
         });
       }
+    }
+
+    socket.on("handshake", (data) => {
+      const isNewCaller =
+        data.to &&
+        rooms[data.room.name]?.members.includes(socket.id) &&
+        !rooms[data.room.name]?.onCallIds.includes(socket.id);
+      if (isNewCaller && processingAcks[data.room.name]) {
+        if (!handshakeQueue[data.room.name])
+          handshakeQueue[data.room.name] = [];
+        handshakeQueue[data.room.name].push({ socket, data });
+        console.log(
+          "[Queue] Queued NEW caller for",
+          data.room.name,
+          "- queue length:",
+          handshakeQueue[data.room.name].length,
+        );
+        return;
+      }
+      processHandshake(socket, data);
     });
     socket.on("reject-call", ({ to, room }) => {
       io.to(to).emit("reject-call", {
@@ -484,14 +514,35 @@ function socketHandler(io) {
     });
     socket.on("exit-video", ({ room }) => {
       rooms[room.name].onCallIds = rooms[room.name]?.onCallIds.filter(
-        (member) => member.id !== socket.id,
+        (id) => id !== socket.id,
       );
+      if (ackIds[room.name]) {
+        ackIds[room.name] = ackIds[room.name].filter((id) => id !== socket.id);
+        if (ackIds[room.name].length === 0) {
+          processNextHandshake(room.name);
+        }
+      }
       io.to(room.name).emit("update-room-info", {
         name: room.name,
         memberIds: rooms[room.name]?.members || [],
         onCallIds: rooms[room.name]?.onCallIds || [],
       });
       socket.broadcast.to(room.name).emit("exit-video", { id: socket.id });
+    });
+
+    socket.on("ack", ({ roomName }) => {
+      if (ackIds[roomName] && ackIds[roomName].includes(socket.id)) {
+        ackIds[roomName] = ackIds[roomName].filter((id) => id !== socket.id);
+        console.log(
+          "[Queue] Ack received for",
+          roomName,
+          "- remaining:",
+          ackIds[roomName].length,
+        );
+        if (ackIds[roomName].length === 0) {
+          processNextHandshake(roomName);
+        }
+      }
     });
 
     // ── Disconnect ──────────────────────────────────────────────────────
@@ -506,8 +557,20 @@ function socketHandler(io) {
           (id) => id !== socket.id,
         );
         rooms[roomName].onCallIds = rooms[roomName].onCallIds.filter(
-          (member) => member.id !== socket.id,
+          (id) => id !== socket.id,
         );
+        if (ackIds[roomName] && ackIds[roomName].includes(socket.id)) {
+          ackIds[roomName] = ackIds[roomName].filter((id) => id !== socket.id);
+          console.log(
+            "[Queue] Disconnect cleanup ack for",
+            roomName,
+            "- remaining:",
+            ackIds[roomName].length,
+          );
+          if (ackIds[roomName].length === 0) {
+            processNextHandshake(roomName);
+          }
+        }
         io.to(roomName).emit("update-room-info", {
           name: roomName,
           memberIds: rooms[roomName]?.members || [],

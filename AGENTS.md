@@ -23,9 +23,25 @@ No `dev` script in `package.json` (README says `npm run dev` but it doesn't exis
 - **Chat cleanup**: Cron job hourly — deletes Firestore chats >5h old + their GDrive files (`controllers/controller.js:351`)
 - **WebRTC**: Signaling infra in `socketHandler.js`; full reference in `docs/video-call-workflow.md`
 
+## Client-side modules (`public/components/`)
+
+View files (`views/dynamic_*.js`) dynamically import ES modules from `components/`:
+
+| Module | Exports | Used by |
+|--------|---------|---------|
+| `components/chatMessage.js` | `addMessage`, `addMessageTo`, `embedDriveFiles`, `embedDriveFilesTo`, `addError`, `addOfflineTextPreview`, `addOfflineFilePreview`, `buildDrivePreview` | chat, room |
+| `components/uploadProgress.js` | `createUploadProgress()` → `{addUploadProgress, updateChatProgress, removeUploadProgress}` | chat, room |
+| `components/typingIndicator.js` | `createTypingIndicator(chatWrapper)` → `{typingUsers, updateTypingUI, indicatorEl}` | chat, room |
+| `components/notificationDrawer.js` | `createNotificationDrawer()` → `show(msg, action?)` | room |
+| `components/webRTC.js` | `default: WebRTCManager` class | room |
+| `components/incomingCallModal.js` | `window.incomingCall()` via IIFE (loaded as `<script>`, not module) | room |
+
+All components accept their dependencies (DOM refs, socket, etc.) explicitly — no global state coupling.
+
 ## Gotchas
 
-- Frontend is vanilla JS SPA (no framework). Pages loaded via `loadPage()` in `public/loadfunc.js` — fetches `dynamic_{name}_91235.html`, appends `dynamic_{name}_91235.js` as script tag
+- Frontend is vanilla JS SPA (no framework). Pages loaded via `loadPage()` in `public/loadfunc.js` — fetches `dynamic_{name}_91235.html`, appends `dynamic_{name}_91235.js` as script tag (NOT `type="module"`; view files use dynamic `import()` instead)
+- View IIFEs use `import("../components/...")` — ensure all imports return a promise before wiring socket events
 - Helmet CSP disabled (`contentSecurityPolicy: false`) — CDN-loaded scripts depend on it
 - Body parser limit: 50mb
 - `private/` contains Firebase service account JSONs (gitignored). Set `FIREBASE_SERVICE_ACCOUNT` env var to the JSON path
