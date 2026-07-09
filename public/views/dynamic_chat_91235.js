@@ -26,9 +26,27 @@
   let oldestTimestamp = null;
   let hasMoreHistory = true;
   let isLoadingHistory = false;
+  let uploadQueue = [];
+  let isUploadingFile = false;
+
+  async function processUploadQueue() {
+    if (isUploadingFile || uploadQueue.length === 0) return;
+    isUploadingFile = true;
+    const { recipient, file, offset } = uploadQueue[0];
+    try {
+      await sendChunks(recipient, file, offset || 0);
+    } catch (err) {
+      console.error("[Chat] Upload queue error:", err);
+    } finally {
+      uploadQueue.shift();
+      isUploadingFile = false;
+      processUploadQueue();
+    }
+  }
 
   let _lastPing = 0;
   async function isOnline() {
+    if (socket && socket.connected) return true;
     const now = Date.now();
     if (now - _lastPing < 2000) return true;
     try {
@@ -119,7 +137,10 @@
         const queue = await window.getPending("chat");
         for (const item of queue) {
           if (window.deletePending) await window.deletePending(item.id);
-          if (item.offset >= 0) sendChunks(item.recipient, item.content, item.offset);
+          if (item.offset >= 0) {
+            uploadQueue.push({ recipient: item.recipient, file: item.content, offset: item.offset });
+            processUploadQueue();
+          }
           else sendMessage(item.recipient, item.content, true);
         }
       } catch (err) { console.error("[Chat] Failed to process pending queue:", err); }
@@ -174,21 +195,6 @@
     });
   }
 
-  async function waitForFlush(socket) {
-    try {
-      const ws = socket?.io?.engine?.transport?.ws;
-      if (ws && typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 0) {
-        await new Promise(resolve => {
-          const check = () => {
-            if (ws.bufferedAmount === 0) resolve();
-            else setTimeout(check, 5);
-          };
-          setTimeout(check, 5);
-        });
-      }
-    } catch {}
-  }
-
   function chunkEventName(file, recipient) {
     if (file.type.startsWith("image/")) return recipient === "public" ? "public image" : "private image";
     if (file.type.startsWith("video/")) return recipient === "public" ? "public video" : "private video";
@@ -196,7 +202,7 @@
   }
 
   async function sendChunks(recipient, file, offset) {
-    if (offset === 0) addUploadProgress(file.name);
+    if (offset === 0) { window._uploadAborted = false; addUploadProgress(file.name); }
     while (offset < file.size) {
       if (window._uploadAborted) return;
       if (!socket || !socket.connected || !(await isOnline())) {
@@ -212,7 +218,6 @@
         if (recipient !== "public") payload.to = recipient;
         socket.emit(chunkEventName(file, recipient), payload);
         offset += chunkSize;
-        await waitForFlush(socket);
       } catch {
         window._uploadAborted = true;
         return;
@@ -233,26 +238,28 @@
       let message = messageInput.value.trim();
       if (rec && msg) { recipient = rec; message = msg; }
       if (recipient && message) {
+        if (!rec && !msg) {
+          messageInput.value = "";
+        }
         const date = new Date().toLocaleString();
         if (!socket || !socket.connected || !(await isOnline())) {
           if (window.Pending) window.Pending(recipient, message, -1);
           addOfflineTextPreview(message, messagesDiv);
-          messageInput.value = "";
         } else {
           addMessageTo(message, date, messagesDiv);
           const event = recipient === "public" ? "public message" : "private message";
           const payload = recipient === "public" ? [{ message, date }] : [{ to: recipient, message, date }];
           socket.emit(event, ...payload);
-          messageInput.value = "";
         }
       }
       if (flush) return;
       const file = fileInput.files[0];
       if (file && recipient) {
-        sendChunks(recipient, file, 0);
         fileInput.value = "";
         const uploadBtn = document.getElementById("custom-file-upload");
         if (uploadBtn) uploadBtn.style.backgroundColor = "";
+        uploadQueue.push({ recipient, file, offset: 0 });
+        processUploadQueue();
       }
     } catch (err) {
       console.error("[Chat] sendMessage error:", err);

@@ -5,8 +5,8 @@ function processHandshake(io, socket, { id, to, room, signal }) {
     state.rooms[room.name] && state.rooms[room.name].onCallIds.length > 0;
 
   if (
-    !state.rooms[room.name].onCallIds.includes(socket.id) &&
-    state.rooms[room.name].members.includes(socket.id)
+    !state.rooms[room.name]?.onCallIds.includes(socket.id) &&
+    state.rooms[room.name]?.members.includes(socket.id)
   ) {
     state.rooms[room.name].onCallIds.push(socket.id);
     io.to(room.name).emit("update-room-info", {

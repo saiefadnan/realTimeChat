@@ -499,6 +499,18 @@ nav {
 
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
+  #room-list > div,
+  .room-item {
+    margin-bottom: 0 !important;
+  }
+
+  .room-item .call-dot {
+    top: -4px;
+    right: -4px;
+    transform: none;
+    border: 2px solid var(--bg-surface);
+  }
+
   .chat-container,
   .room-container {
     flex-direction: column;
@@ -668,17 +680,29 @@ nav {
   position: relative;
 }
 
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+
 .call-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background-color: #2ecc71;
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  box-shadow: 0 0 6px rgba(46, 204, 113, 0.6);
   transition: opacity 0.25s ease;
+  animation: pulse-green 2s infinite ease-in-out;
 }
 
 .room-item:hover {

@@ -38,9 +38,27 @@
   let roomMembers = new Map();
   let liveMembers = new Map();
   let roomDotIndicators = new Map();
+  let uploadQueue = [];
+  let isUploadingFile = false;
+
+  async function processUploadQueue() {
+    if (isUploadingFile || uploadQueue.length === 0) return;
+    isUploadingFile = true;
+    const { room, file, offset, socket } = uploadQueue[0];
+    try {
+      await sendChunks(room, file, offset || 0, socket);
+    } catch (err) {
+      console.error("[Room] Upload queue error:", err);
+    } finally {
+      uploadQueue.shift();
+      isUploadingFile = false;
+      processUploadQueue();
+    }
+  }
 
   let _lastPing = 0;
   async function isOnline() {
+    if (window.socket && window.socket.connected) return true;
     const now = Date.now();
     if (now - _lastPing < 2000) return true;
     try {
@@ -97,7 +115,10 @@
         const queue = await window.getPending("room");
         for (const item of queue) {
           if (window.deletePending) await window.deletePending(item.id);
-          if (item.offset >= 0) sendChunks(item.recipient, item.content, item.offset, socket);
+          if (item.offset >= 0) {
+            uploadQueue.push({ room: item.recipient, file: item.content, offset: item.offset, socket });
+            processUploadQueue();
+          }
           else sendMessage(item.recipient, item.content, true, socket);
         }
       } catch (err) {
@@ -180,21 +201,6 @@
     });
   }
 
-  async function waitForFlush(socket) {
-    try {
-      const ws = socket?.io?.engine?.transport?.ws;
-      if (ws && typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 0) {
-        await new Promise(resolve => {
-          const check = () => {
-            if (ws.bufferedAmount === 0) resolve();
-            else setTimeout(check, 5);
-          };
-          setTimeout(check, 5);
-        });
-      }
-    } catch {}
-  }
-
   async function sendChunks(room, file, offset, socket) {
     if (offset === 0) { window._uploadAborted = false; addUploadProgress(file.name); }
     while (offset < file.size) {
@@ -210,7 +216,6 @@
         if (window._uploadAborted) return;
         socket.emit("room file", { fileData: buf });
         offset += chunkSize;
-        await waitForFlush(socket);
       } catch {
         window._uploadAborted = true;
         return;
@@ -226,36 +231,42 @@
 
   async function sendMessage(rec = null, msg = null, flush = false, socket) {
     console.log("[Room] sendMessage called", { rec, msg, flush, connected: socket?.connected });
-    if (!socket) socket = window.socket;
-    const messageInput = document.getElementById("message-input");
-    const fileInputEl = document.getElementById("file-input");
-    let message = messageInput.value.trim();
-    let targetRoom = currentRoom;
-    if (rec && msg) { targetRoom = rec; message = msg; }
-    if (!targetRoom) return M.toast({ html: "Select a room first!", classes: "rounded red" });
-    if (message && targetRoom) {
-      const date = new Date().toLocaleString();
-      if (!socket || !socket.connected || !(await isOnline())) {
-        if (window.Pending) window.Pending(targetRoom, message, -1);
-        addOfflineTextPreview(message, messagesDiv);
-        messageInput.value = "";
-      } else {
-        addMessageTo(message, date, messagesDiv);
-        socket.emit("room message", {
-          room: { name: targetRoom, admin: window.userInfo.username },
-          message,
-          date,
-        });
-        messageInput.value = "";
+    try {
+      if (!socket) socket = window.socket;
+      const messageInput = document.getElementById("message-input");
+      const fileInputEl = document.getElementById("file-input");
+      let message = messageInput.value.trim();
+      let targetRoom = currentRoom;
+      if (rec && msg) { targetRoom = rec; message = msg; }
+      if (!targetRoom) return M.toast({ html: "Select a room first!", classes: "rounded red" });
+      if (message && targetRoom) {
+        if (!rec && !msg) {
+          messageInput.value = "";
+        }
+        const date = new Date().toLocaleString();
+        if (!socket || !socket.connected || !(await isOnline())) {
+          if (window.Pending) window.Pending(targetRoom, message, -1);
+          addOfflineTextPreview(message, messagesDiv);
+        } else {
+          addMessageTo(message, date, messagesDiv);
+          socket.emit("room message", {
+            room: { name: targetRoom, admin: window.userInfo.username },
+            message,
+            date,
+          });
+        }
       }
-    }
-    if (flush) return;
-    const file = fileInputEl.files[0];
-    if (file && targetRoom) {
-      sendChunks(targetRoom, file, 0, socket);
-      fileInputEl.value = "";
-      const uploadBtn = document.getElementById("custom-file-upload");
-      if (uploadBtn) uploadBtn.style.backgroundColor = "";
+      if (flush) return;
+      const file = fileInputEl.files[0];
+      if (file && targetRoom) {
+        fileInputEl.value = "";
+        const uploadBtn = document.getElementById("custom-file-upload");
+        if (uploadBtn) uploadBtn.style.backgroundColor = "";
+        uploadQueue.push({ room: targetRoom, file, offset: 0, socket });
+        processUploadQueue();
+      }
+    } catch (err) {
+      console.error("[Room] sendMessage error:", err);
     }
   }
 
