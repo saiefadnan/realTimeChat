@@ -317,11 +317,8 @@ function socketHandler(io) {
       for (const roomName of roomNames) {
         if (rooms[roomName]) {
           socket.join(roomName);
-          if (!rooms[roomName].members.some((m) => m.id === socket.id)) {
-            rooms[roomName].members.push({
-              id: socket.id,
-              sequence: generateSequence(roomName),
-            });
+          if (!rooms[roomName].members.includes(socket.id)) {
+            rooms[roomName].members.push(socket.id);
           }
           io.to(roomName).emit("room-info", {
             name: roomName,
@@ -338,7 +335,7 @@ function socketHandler(io) {
       rooms[room.name] = {
         admin: room.admin,
         created_at: Date.now(),
-        members: [{ id: socket.id, sequence: generateSequence(room.name) }],
+        members: [socket.id],
         onCallIds: [],
       };
       storeRoom(room.name, room.admin);
@@ -352,14 +349,9 @@ function socketHandler(io) {
         if (socIns[username]) {
           socIns[username].join(room.name);
           if (
-            !rooms[room.name].members.some(
-              (member) => member.id === users[username],
-            )
+            !rooms[room.name].members.includes(users[username])
           ) {
-            rooms[room.name].members.push({
-              id: users[username],
-              sequence: generateSequence(room.name),
-            });
+            rooms[room.name].members.push(users[username]);
           }
         }
       }
@@ -451,10 +443,9 @@ function socketHandler(io) {
     socket.on("handshake", ({ id, to, room, signal }) => {
       const isCallOngoing =
         rooms[room.name] && rooms[room.name].onCallIds.length > 0;
-      console.log("[WebRTC] startVideoCall called for room:", room.name);
       if (
         !rooms[room.name].onCallIds.some((member) => member.id === socket.id) &&
-        rooms[room.name].members.some((member) => member.id === socket.id)
+        rooms[room.name].members.includes(socket.id)
       ) {
         rooms[room.name].onCallIds.push({
           id: socket.id,
@@ -512,7 +503,7 @@ function socketHandler(io) {
 
       for (const roomName of Object.keys(rooms)) {
         rooms[roomName].members = rooms[roomName].members.filter(
-          (member) => member.id !== socket.id,
+          (id) => id !== socket.id,
         );
         rooms[roomName].onCallIds = rooms[roomName].onCallIds.filter(
           (member) => member.id !== socket.id,

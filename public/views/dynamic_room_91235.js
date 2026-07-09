@@ -1480,7 +1480,7 @@
       if (roomMembers.has(currentRoom)) {
         roomMembers.set(
           currentRoom,
-          roomMembers.get(currentRoom).filter((m) => (m.id ?? m) !== id),
+          roomMembers.get(currentRoom).filter((m) => m !== id),
         );
       }
       if (liveMembers.has(currentRoom)) {
