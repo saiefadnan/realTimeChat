@@ -55,10 +55,10 @@ const io = new Server(server, {
 });
 
 // ─── Security Middleware ──────────────────────────────────────────────────── 
+// Helmet's CSP interferes with CDN-loaded scripts. Use only non-CSP protections.
 app.use(helmet({
-    // Content-Security-Policy disabled because the SPA loads scripts from CDN
-    // and embeds Google Drive iframes — adjust to your deployment as needed
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
 }));
 
 // ─── Body Parsing ─────────────────────────────────────────────────────────── 

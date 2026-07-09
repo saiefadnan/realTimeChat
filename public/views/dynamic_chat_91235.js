@@ -165,63 +165,97 @@
     socket.emit("show active-users");
   }
 
+  function readChunkBlob(file, offset, size) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file.slice(offset, offset + size));
+    });
+  }
+
+  async function waitForFlush(socket) {
+    try {
+      const ws = socket?.io?.engine?.transport?.ws;
+      if (ws && typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 0) {
+        await new Promise(resolve => {
+          const check = () => {
+            if (ws.bufferedAmount === 0) resolve();
+            else setTimeout(check, 5);
+          };
+          setTimeout(check, 5);
+        });
+      }
+    } catch {}
+  }
+
+  function chunkEventName(file, recipient) {
+    if (file.type.startsWith("image/")) return recipient === "public" ? "public image" : "private image";
+    if (file.type.startsWith("video/")) return recipient === "public" ? "public video" : "private video";
+    return recipient === "public" ? "public file" : "private file";
+  }
+
   async function sendChunks(recipient, file, offset) {
-    if (window._uploadAborted) return;
-    if (!socket || !socket.connected || !(await isOnline())) {
-      if (window.Pending) window.Pending(recipient, file, offset);
-      if (offset === 0) addOfflineFilePreview(file, messagesDiv);
-      return;
-    }
     if (offset === 0) addUploadProgress(file.name);
-    if (offset >= file.size) {
-      updateChatProgress(100, file.name);
-      socket.emit("complete", { to: recipient, fileType: file.type, fileName: file.name });
-      if (window.clearPending) window.clearPending();
-      return;
-    }
-    const percent = (offset / file.size) * 100;
-    if (!updateChatProgress(percent, file.name)) { window._uploadAborted = true; return; }
-    const reader = new FileReader();
-    reader.onload = () => {
+    while (offset < file.size) {
       if (window._uploadAborted) return;
-      const payload = { fileData: reader.result, fileType: file.type, fileName: file.name };
-      if (recipient !== "public") payload.to = recipient;
-      let eventName;
-      if (file.type.startsWith("image/")) eventName = recipient === "public" ? "public image" : "private image";
-      else if (file.type.startsWith("video/")) eventName = recipient === "public" ? "public video" : "private video";
-      else eventName = recipient === "public" ? "public file" : "private file";
-      socket.emit(eventName, payload);
-      sendChunks(recipient, file, offset + chunkSize);
-    };
-    reader.readAsArrayBuffer(file.slice(offset, offset + chunkSize));
+      if (!socket || !socket.connected || !(await isOnline())) {
+        if (window.Pending) window.Pending(recipient, file, offset);
+        return;
+      }
+      const percent = (offset / file.size) * 100;
+      if (!updateChatProgress(percent, file.name)) { window._uploadAborted = true; return; }
+      try {
+        const buf = await readChunkBlob(file, offset, chunkSize);
+        if (window._uploadAborted) return;
+        const payload = { fileData: buf, fileType: file.type, fileName: file.name };
+        if (recipient !== "public") payload.to = recipient;
+        socket.emit(chunkEventName(file, recipient), payload);
+        offset += chunkSize;
+        await waitForFlush(socket);
+      } catch {
+        window._uploadAborted = true;
+        return;
+      }
+    }
+    socket.emit("complete", { to: recipient, fileType: file.type, fileName: file.name });
+    removeUploadProgress();
+    if (window.clearPending) window.clearPending();
   }
 
   async function sendMessage(rec = null, msg = null, flush = false) {
-    const recipientInput = document.getElementById("recipientInput");
-    const messageInput = document.getElementById("message-input");
-    const fileInput = document.getElementById("file-input");
-    let recipient = recipientInput.value.trim();
-    let message = messageInput.value.trim();
-    if (rec && msg) { recipient = rec; message = msg; }
-    if (recipient && message) {
-      const date = new Date().toLocaleString();
-      if (!socket || !socket.connected || !(await isOnline())) {
-        if (window.Pending) window.Pending(recipient, message, -1);
-        addOfflineTextPreview(message, messagesDiv);
-        messageInput.value = "";
-      } else {
-        addMessageTo(message, date, messagesDiv);
-        const event = recipient === "public" ? "public message" : "private message";
-        const payload = recipient === "public" ? [{ message, date }] : [{ to: recipient, message, date }];
-        socket.emit(event, ...payload);
-        messageInput.value = "";
+    console.log("[Chat] sendMessage called", { rec, msg, flush, connected: socket?.connected });
+    try {
+      const recipientInput = document.getElementById("recipientInput");
+      const messageInput = document.getElementById("message-input");
+      const fileInput = document.getElementById("file-input");
+      let recipient = recipientInput.value.trim();
+      let message = messageInput.value.trim();
+      if (rec && msg) { recipient = rec; message = msg; }
+      if (recipient && message) {
+        const date = new Date().toLocaleString();
+        if (!socket || !socket.connected || !(await isOnline())) {
+          if (window.Pending) window.Pending(recipient, message, -1);
+          addOfflineTextPreview(message, messagesDiv);
+          messageInput.value = "";
+        } else {
+          addMessageTo(message, date, messagesDiv);
+          const event = recipient === "public" ? "public message" : "private message";
+          const payload = recipient === "public" ? [{ message, date }] : [{ to: recipient, message, date }];
+          socket.emit(event, ...payload);
+          messageInput.value = "";
+        }
       }
-    }
-    if (flush) return;
-    const file = fileInput.files[0];
-    if (file && recipient) {
-      sendChunks(recipient, file, 0);
-      fileInput.value = "";
+      if (flush) return;
+      const file = fileInput.files[0];
+      if (file && recipient) {
+        sendChunks(recipient, file, 0);
+        fileInput.value = "";
+        const uploadBtn = document.getElementById("custom-file-upload");
+        if (uploadBtn) uploadBtn.style.backgroundColor = "";
+      }
+    } catch (err) {
+      console.error("[Chat] sendMessage error:", err);
     }
   }
 
@@ -277,9 +311,9 @@
     });
   }
 
-  sendButton.addEventListener("click", sendMessage);
+  sendButton.addEventListener("click", () => { console.log("[Chat] Send button clicked"); sendMessage(); });
   const messageInput = document.getElementById("message-input");
-  messageInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
+  messageInput.addEventListener("keypress", (e) => { if (e.key === "Enter") { console.log("[Chat] Enter pressed"); sendMessage(); } });
   messageInput.addEventListener("input", () => {
     if (!isTyping) { isTyping = true; socket.emit("typing", { to: document.getElementById("recipientInput").value }); }
     clearTimeout(typingTimer);

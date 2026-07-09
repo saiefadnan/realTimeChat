@@ -37,6 +37,7 @@
   let currentRoom;
   let roomMembers = new Map();
   let liveMembers = new Map();
+  let roomDotIndicators = new Map();
 
   let _lastPing = 0;
   async function isOnline() {
@@ -170,37 +171,61 @@
     addRoomToList(name);
   }
 
+  function readChunkBlob(file, offset, size) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file.slice(offset, offset + size));
+    });
+  }
+
+  async function waitForFlush(socket) {
+    try {
+      const ws = socket?.io?.engine?.transport?.ws;
+      if (ws && typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 0) {
+        await new Promise(resolve => {
+          const check = () => {
+            if (ws.bufferedAmount === 0) resolve();
+            else setTimeout(check, 5);
+          };
+          setTimeout(check, 5);
+        });
+      }
+    } catch {}
+  }
+
   async function sendChunks(room, file, offset, socket) {
-    if (offset === 0) window._uploadAborted = false;
-    if (window._uploadAborted) return;
-    if (!socket || !socket.connected || !(await isOnline())) {
-      if (window.Pending) window.Pending(room, file, offset);
-      if (offset === 0) addOfflineFilePreview(file, messagesDiv);
-      return;
-    }
-    if (offset === 0) addUploadProgress(file.name);
-    if (offset >= file.size) {
-      updateChatProgress(100, file.name);
-      socket.emit("room file complete", {
-        room: { name: room, admin: window.userInfo.username },
-        fileType: file.type,
-        fileName: file.name,
-      });
-      return;
-    }
-    const percent = (offset / file.size) * 100;
-    if (!updateChatProgress(percent, file.name)) { window._uploadAborted = true; return; }
-    const slice = file.slice(offset, offset + chunkSize);
-    const reader = new FileReader();
-    reader.onload = () => {
+    if (offset === 0) { window._uploadAborted = false; addUploadProgress(file.name); }
+    while (offset < file.size) {
       if (window._uploadAborted) return;
-      socket.emit("room file", { fileData: reader.result });
-      sendChunks(room, file, offset + chunkSize, socket);
-    };
-    reader.readAsArrayBuffer(slice);
+      if (!socket || !socket.connected || !(await isOnline())) {
+        if (window.Pending) window.Pending(room, file, offset);
+        return;
+      }
+      const percent = (offset / file.size) * 100;
+      if (!updateChatProgress(percent, file.name)) { window._uploadAborted = true; return; }
+      try {
+        const buf = await readChunkBlob(file, offset, chunkSize);
+        if (window._uploadAborted) return;
+        socket.emit("room file", { fileData: buf });
+        offset += chunkSize;
+        await waitForFlush(socket);
+      } catch {
+        window._uploadAborted = true;
+        return;
+      }
+    }
+    socket.emit("room file complete", {
+      room: { name: room, admin: window.userInfo.username },
+      fileType: file.type,
+      fileName: file.name,
+    });
+    removeUploadProgress();
   }
 
   async function sendMessage(rec = null, msg = null, flush = false, socket) {
+    console.log("[Room] sendMessage called", { rec, msg, flush, connected: socket?.connected });
     if (!socket) socket = window.socket;
     const messageInput = document.getElementById("message-input");
     const fileInputEl = document.getElementById("file-input");
@@ -229,6 +254,8 @@
     if (file && targetRoom) {
       sendChunks(targetRoom, file, 0, socket);
       fileInputEl.value = "";
+      const uploadBtn = document.getElementById("custom-file-upload");
+      if (uploadBtn) uploadBtn.style.backgroundColor = "";
     }
   }
 
@@ -314,11 +341,29 @@
   function addRoomToList(name) {
     const div = document.createElement("div");
     div.className = "room-item";
-    div.textContent = name;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = name;
+
+    const dot = document.createElement("span");
+    dot.className = "call-dot";
+    dot.style.display = "none";
+    roomDotIndicators.set(name, dot);
+
+    div.appendChild(nameSpan);
+    div.appendChild(dot);
+
     div.addEventListener("mouseover", () => (div.style.transform = "scale(0.95)"));
     div.addEventListener("mouseout", () => (div.style.transform = "scale(1)"));
     div.addEventListener("click", () => selectRoom(div, name));
     activeRoom.appendChild(div);
+  }
+
+  function updateRoomCallDot(name) {
+    const dot = roomDotIndicators.get(name);
+    if (!dot) return;
+    const members = liveMembers.get(name);
+    dot.style.display = members && members.length > 0 ? "" : "none";
   }
 
   const webrtc = new WebRTCManager(window.socket, { container, videoModal });
@@ -376,10 +421,12 @@
     socket.on("room-info", ({ name, memberIds, onCallIds }) => {
       roomMembers.set(name, memberIds);
       liveMembers.set(name, onCallIds.filter((m) => m !== socket.id));
+      updateRoomCallDot(name);
     });
     socket.on("update-room-info", ({ name, signal, memberIds, onCallIds }) => {
       roomMembers.set(name, memberIds);
       liveMembers.set(name, onCallIds.filter((m) => m !== socket.id));
+      updateRoomCallDot(name);
       if (signal?.type === "init-call" && signal?.callerId !== socket.id) {
         callingModal(signal.room, signal.callerId, signal.callerName);
       } else if (signal?.type !== "init-call") {
@@ -447,9 +494,9 @@
     M.Modal.getInstance(document.getElementById("search-modal")).close();
   });
 
-  document.getElementById("send-button")?.addEventListener("click", () => sendMessage());
+  document.getElementById("send-button")?.addEventListener("click", () => { console.log("[Room] Send button clicked"); sendMessage(); });
   document.getElementById("message-input")?.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+    if (e.key === "Enter") { e.preventDefault(); console.log("[Room] Enter pressed"); sendMessage(); }
   });
   document.getElementById("message-input")?.addEventListener("input", () => {
     if (!isTyping && currentRoom) { isTyping = true; window.socket.emit("typing", { to: currentRoom }); }

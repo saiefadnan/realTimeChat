@@ -10,7 +10,7 @@
 | Command | What it does |
 |---------|-------------|
 | `npm start` | `node server.js` |
-| `npm test` | `jest --runInBand` (single test: `__tests__/chatMediaPreview.test.js`) |
+| `npm test` | `jest --runInBand` (cron in chatController may require `--forceExit`) |
 
 No `dev` script in `package.json` (README says `npm run dev` but it doesn't exist — use `npx nodemon server.js` if needed).
 
@@ -53,5 +53,11 @@ All components accept their dependencies (DOM refs, socket, etc.) explicitly —
 
 ## Testing
 
-- Single Jest test file tests `public/chatMediaPreview.js` (UMD module). Test creates a fake `document` since it runs in Node.
+| File | What it tests |
+|------|---------------|
+| `__tests__/chatMediaPreview.test.js` | UMD module `public/chatMediaPreview.js` (fake `document` in Node) |
+| `__tests__/handlers/socketHandlers.test.js` | All 7 socket handler modules: auth, messaging, rooms, webrtc, fileChunks, typing, chatSocket entry |
+| `__tests__/handlers/apiControllers.test.js` | All 3 Express controllers: auth, chat, room |
+
 - Run: `npm test`
+- `--forceExit` may be needed due to `cron.schedule()` in chatController keeping a handle open

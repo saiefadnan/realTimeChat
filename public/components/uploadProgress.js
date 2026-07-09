@@ -35,7 +35,7 @@ export function createUploadProgress(messagesDiv) {
     if (nameEl && fileName) nameEl.textContent = fileName;
     if (percent >= 100) {
       const box = _el.querySelector(".message-send");
-      if (box) box.innerHTML = '<div style="font-weight:600;color:var(--accent);">Upload complete, waiting for server...</div>';
+      if (box) box.innerHTML = '<div style="font-weight:600;color:#000;">Upload complete, waiting for server...</div>';
     }
     return true;
   }

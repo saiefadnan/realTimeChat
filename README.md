@@ -1,6 +1,6 @@
 # RealTimeChat
 
-**Mesh‑topology WebRTC video calls + real‑time chat + segmented file uploads, all vanilla JS.**
+**Mesh‑topology WebRTC video calls + real‑time chat + segmented file uploads + live room call indicators, all vanilla JS.**
 
 A full‑stack real‑time communication platform where the frontend is a zero‑framework SPA, the signaling layer runs on Socket.IO, and the media plane is pure peer‑to‑peer. Built for the browser, not for slides.
 
@@ -17,6 +17,9 @@ Not a toy "foundational support" — a working **mesh‑topology** call system. 
 **The hard part:** When multiple people join a call at the same instant, the server serializes joins through a **non‑blocking handshake queue with ack synchronization**. No busy‑wait loops, no deadlocks, no race conditions. The queue accepts handshake events, processes them one at a time, and waits for every participant to acknowledge the updated room state before moving to the next join. (Read the gory details in [`docs/video-call-workflow.md`](docs/video-call-workflow.md).)
 
 ICE candidates are buffered until the remote description is set. Stale connections are guarded by identity checks. The whole thing is about 600 lines of client‑side JS — no framework, no library, no magic.
+
+### Live room call indicators
+Every room in the sidebar displays a glowing green dot when a video call is active in that room. The dot appears/disappears in real time — driven by `update-room-info` socket events — so you always know which rooms are live before you click in.
 
 ### Segmented file uploads with SHA‑256 dedup
 Files are split into **512 KB chunks** and uploaded over Socket.IO to Google Drive. The server computes a SHA‑256 hash of each file before upload; identical files are deduplicated automatically. A per‑socket chunk buffer (`gatherChunksMap`, keyed by `socket.id`) prevents interleaving when multiple users upload simultaneously.
@@ -88,7 +91,7 @@ The app runs on **port 4000** by default.
 npm test
 ```
 
-Single Jest test file covering `public/chatMediaPreview.js` (UMD module, runs in Node with a fake `document`).
+Three Jest test files covering the UMD media preview module, all 7 socket handler modules (auth, messaging, rooms, WebRTC, file chunks, typing, entry point), and all 3 Express controllers (auth, chat, room). Handlers are tested in isolation with mocked dependencies — no network, no database, no filesystem.
 
 ---
 
@@ -96,27 +99,58 @@ Single Jest test file covering `public/chatMediaPreview.js` (UMD module, runs in
 
 ```
 realTimeChat/
-├── server.js                 # Express entrypoint
+├── server.js                     # Express entrypoint
 ├── controllers/
-│   └── controller.js         # Route logic + chat cleanup cron (hourly)
+│   ├── authController.js         # Login / signin
+│   ├── chatController.js         # Chat history, search, cleanup cron
+│   └── roomController.js         # Room CRUD, room chat history
+├── sockets/
+│   ├── chatSocket.js             # Socket.IO entry point (wires all events)
+│   ├── state.js                  # In‑memory maps (users, rooms, ackIds, …)
+│   └── handlers/
+│       ├── auth.js               # JWT verify, duplicate‑session kill (999)
+│       ├── messaging.js          # Private / public / room messages
+│       ├── fileChunks.js         # Chunked file upload state per socket
+│       ├── rooms.js              # Room create, join, invite
+│       ├── typing.js             # Typing indicators, mood updates
+│       └── webrtc.js             # Handshake queue with ack sync
 ├── middleware/
-│   ├── auth.js               # JWT verification
-│   └── rateLimiter.js        # IP‑based rate limiting
+│   ├── auth.js                   # JWT verification
+│   └── rateLimiter.js            # IP‑based rate limiting
 ├── models/
-│   └── userModel.js          # Mongoose user schema
-├── socketHandler.js          # All Socket.IO event wiring
-├── Gdrive.js                 # Google Drive upload (chunked, SHA‑256 dedup)
-├── firebase.js               # Firestore client
+│   └── User.js                   # Mongoose user schema + bcrypt hooks
+├── config/
+│   └── firebase.js               # Firestore client (service‑account JSON)
+├── services/
+│   ├── storage/
+│   │   ├── googleDrive.js        # Chunked GDrive upload, SHA‑256 dedup
+│   │   └── cloudinary.js         # Profile picture upload
+│   └── database/
+│       └── chatStore.js          # Firestore CRUD helpers
 ├── public/
-│   ├── index.html            # SPA shell
-│   ├── loadfunc.js           # Page loader (loadPage, closeSockets)
-│   ├── dynamic_room_91235.js # Room page + video call logic
-│   ├── chatMediaPreview.js   # Media preview UMD module
-│   └── ...                   # Other dynamic pages
+│   ├── index.html                # SPA shell
+│   ├── loadfunc.js               # Page loader (loadPage, closeSockets)
+│   ├── components/
+│   │   ├── chatMessage.js        # Message rendering (text, files, embeds)
+│   │   ├── uploadProgress.js     # Upload progress bar factory
+│   │   ├── typingIndicator.js    # Typing indicator UI factory
+│   │   ├── notificationDrawer.js # Room‑live notification drawer
+│   │   ├── webRTC.js             # WebRTCManager class (mesh peer mgmt)
+│   │   └── incomingCallModal.js  # Incoming call modal (IIFE, not a module)
+│   ├── views/
+│   │   ├── dynamic_chat_91235.js # Chat page (private + public messaging)
+│   │   ├── dynamic_room_91235.js # Room page (rooms list, video calls, green dot)
+│   │   └── dynamic_*_91235.html  # HTML shells loaded by loadPage()
+│   ├── css/
+│   │   └── styles.css            # All styles (CSS custom properties)
+│   └── js/                       # Legacy / utility scripts
 ├── docs/
-│   └── video-call-workflow.md # Deep dive into the WebRTC implementation
+│   └── video-call-workflow.md    # Deep dive into the WebRTC implementation
 └── __tests__/
-    └── chatMediaPreview.test.js
+    ├── chatMediaPreview.test.js   # UMD module test (fake document)
+    └── handlers/
+        ├── socketHandlers.test.js # All 7 socket handler modules
+        └── apiControllers.test.js # All 3 Express controllers
 ```
 
 ---
@@ -161,9 +195,13 @@ When a third peer joins during an active call, their handshake is queued (`hands
 - **No `npm run dev`** — README says it exists; it doesn't. Use `npx nodemon server.js`.
 - **Azure Blob code exists but is unused** — there's an `azure.js` from an earlier iteration. It's dead code.
 - **CSP is disabled** (`contentSecurityPolicy: false`) — CDN‑loaded scripts depend on it. Don't re‑enable without testing.
-- **`.env.example` shows individual Firebase fields** but `firebase.js` actually loads a service account JSON file. Set `FIREBASE_SERVICE_ACCOUNT` to the JSON path.
+- **`.env.example` shows individual Firebase fields** but `config/firebase.js` actually loads a service account JSON file. Set `FIREBASE_SERVICE_ACCOUNT` to the JSON path.
 - **Pending messages queue** — `window.Pending()` buffers messages/files during disconnect and flushes on reconnect (5s delay).
+- **File upload race** — per‑socket chunk buffer in `gatherChunksMap` (keyed by `socket.id`), NOT a global array.
+- **Dynamic page scripts** are loaded as regular `<script>` tags (not `type="module"`); view files use dynamic `import()` to load ES modules from `components/`.
 - **Dynamic page scripts** register cleanup in `window.eventListeners[]`, which runs on page transition.
+- **Error code `999`** from server means "already logged in elsewhere" — client redirects to login.
+- **`--forceExit`** may be needed when running Jest because the hourly chat cleanup cron keeps a handle open.
 
 ---
 

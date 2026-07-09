@@ -665,6 +665,20 @@ nav {
   padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
+  position: relative;
+}
+
+.call-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #2ecc71;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 6px rgba(46, 204, 113, 0.6);
+  transition: opacity 0.25s ease;
 }
 
 .room-item:hover {
