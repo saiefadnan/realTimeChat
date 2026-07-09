@@ -779,32 +779,42 @@
     const localVideo = document.getElementById("localVideo");
     cleanupVideoCall();
     try {
+      console.log("[WebRTC] startVideoCall called for room:", currentRoom);
+      if (!navigator.mediaDevices?.getUserMedia) {
+        console.log("[WebRTC] startVideoCall called for room:", currentRoom);
+        throw new Error("getUserMedia not available in this browser");
+      }
+      console.log("[WebRTC] startVideoCall called for room:", currentRoom);
       if (!localStream) {
-        localStream = await navigator.mediaDevices.getUserMedia({
+        const gdm = navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("getUserMedia timed out (camera not responding)")), 10000),
+        );
+        localStream = await Promise.race([gdm, timeout]);
         localVideo.srcObject = localStream;
       }
-      console.log(
-        "[WebRTC] Starting call with live members:",
-        liveMembers.get(currentRoom).length,
-      );
-      if (liveMembers.get(currentRoom).length > 0) {
+      console.log("[WebRTC] startVideoCall called for room:", currentRoom);
+      const live = liveMembers.get(currentRoom) || [];
+      console.log("[WebRTC] Starting call with live members:", live.length);
+      if (live.length > 0) {
         //create offer for live members
-        for (const id of liveMembers.get(currentRoom)) {
+        for (const member of live) {
+          const peerId = member.id ?? member;
           // Skip if already connected to this peer (prevents glare)
-          if (peerConnections.has(id)) continue;
-          const remoteVideo = addVideo(id);
-          const peerConnection = getOrCreatePeerConnection(id, localStream);
+          if (peerConnections.has(peerId)) continue;
+          const remoteVideo = addVideo(peerId);
+          const peerConnection = getOrCreatePeerConnection(peerId, localStream);
 
           setupOnTrack(peerConnection, remoteVideo);
 
           peerConnection.onicecandidate = (e) => {
-            if (e.candidate && peerConnections.get(id) === peerConnection) {
+            if (e.candidate && peerConnections.get(peerId) === peerConnection) {
               socket.emit("handshake", {
                 id: socket.id,
-                to: id,
+                to: peerId,
                 room: { name: currentRoom },
                 signal: { type: "candidate", candidate: e.candidate },
               });
@@ -815,7 +825,7 @@
           await peerConnection.setLocalDescription(offer);
           socket.emit("handshake", {
             id: socket.id,
-            to: id,
+            to: peerId,
             room: { name: currentRoom },
             signal: offer,
           });
@@ -840,7 +850,10 @@
       }
     } catch (err) {
       console.error("[WebRTC] Failed to start call:", err);
-      M.toast({ html: "Camera/mic access denied", classes: "rounded red" });
+      M.toast({
+        html: "Video call failed: " + err.message,
+        classes: "rounded red",
+      });
     }
   }
 
@@ -1295,15 +1308,23 @@
         roomMembers.set(name, memberIds);
         liveMembers.set(
           name,
-          onCallIds.filter((id) => id !== socket.id),
+          onCallIds.filter((m) => (m.id ?? m) !== socket.id),
         );
       },
     );
-    socket.on("update-room-info", ({ name, onCallIds }) => {
+    socket.on("update-room-info", ({ name, signal, memberIds, onCallIds }) => {
       console.log("[Room] Info received:", { name, onCallIds });
+      if (
+        signal &&
+        signal.type === "init-call" &&
+        signal.callerId !== socket.id
+      ) {
+        callingModal(signal.room, signal.callerId, signal.callerName);
+      }
+      roomMembers.set(name, memberIds);
       liveMembers.set(
         name,
-        onCallIds.filter((id) => id !== socket.id),
+        onCallIds.filter((m) => (m.id ?? m) !== socket.id),
       );
       console.log(
         "[Room] Updated live members for",
@@ -1324,7 +1345,8 @@
         addRoomToList(name);
       }
     });
-    socket.on("on-call", async ({ id, room, callerName }) => {
+
+    async function callingModal(room, callerId, callerName) {
       console.log(
         "[WebRTC] Incoming call from",
         callerName,
@@ -1338,13 +1360,13 @@
       }
       // Show the incoming call modal — wait for user decision
       const decision = await window.incomingCall({
-        callerName: callerName || id,
+        callerName: callerName || callerId,
         roomName: room.name,
         timeout: 30000,
       });
       if (!decision.accepted) {
         socket.emit("reject-call", {
-          to: id,
+          to: callerId,
           room: room.name,
         });
         return;
@@ -1352,7 +1374,7 @@
       const div = getDivByTextContent(room.name);
       selectRoom(div, room.name);
       await startVideoCall();
-    });
+    }
 
     socket.on("handshake", async ({ id, room, signal }) => {
       console.log(
@@ -1455,20 +1477,27 @@
     });
     socket.on("exit-room", ({ id }) => {
       console.log("exited room", id);
-      roomMembers.set(
-        currentRoom,
-        (roomMembers.get(currentRoom) || []).filter((mId) => mId !== id),
-      );
-      liveMembers.set(
-        currentRoom,
-        (liveMembers.get(currentRoom) || []).filter((mId) => mId !== id),
-      );
+      if (roomMembers.has(currentRoom)) {
+        roomMembers.set(
+          currentRoom,
+          roomMembers.get(currentRoom).filter((m) => (m.id ?? m) !== id),
+        );
+      }
+      if (liveMembers.has(currentRoom)) {
+        liveMembers.set(
+          currentRoom,
+          liveMembers.get(currentRoom).filter((m) => (m.id ?? m) !== id),
+        );
+      }
       closePeerConnection(id);
     });
-    socket.on("reject-call", ({username, id }) => {
+    socket.on("reject-call", ({ username, id }) => {
       console.log("call rejected by", id);
       closePeerConnection(id);
-      M.toast({ html: "Call was declined by " + username, classes: "rounded red" });
+      M.toast({
+        html: "Call was declined by " + username,
+        classes: "rounded red",
+      });
     });
   }
 })();

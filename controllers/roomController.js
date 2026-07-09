@@ -17,17 +17,15 @@ const getUserRooms = async (req, res) => {
     const roomsList = snapshot.docs.map((doc) => {
       const data = doc.data();
 
-      const activeMemberIds = (data.members || [])
-        .map((uname) => users[uname])
-        .filter(Boolean);
-
-      rooms[data.name] = {
-        initiator: rooms[data.name]?.initiator || null,
-        admin: data.admin,
-        created_at: data.created_at || Date.now(),
-        members: activeMemberIds,
-        onCallIds: rooms[data.name]?.onCallIds || [],
-      };
+      if (!rooms[data.name]) {
+        rooms[data.name] = {
+          initiator: null,
+          admin: data.admin,
+          created_at: data.created_at || Date.now(),
+          members: [],
+          onCallIds: [],
+        };
+      }
       return { name: data.name, admin: data.admin };
     });
     return res.status(200).json({ rooms: roomsList });

@@ -17,7 +17,8 @@ const names = {}; // socket.id  → username
 const photos = {}; // socket.id  → profile picture URL
 const socIns = {}; // username   → socket instance
 const moods = {}; // username   → emoji mood
-const rooms = {};
+const rooms = {}; // stores live room-info centrally
+const sequence = {}; // roomId → join sequence number
 
 /**
  * Verifies a JWT and extracts { username, imageurl }.
@@ -30,6 +31,14 @@ function verifyToken(token) {
   } catch {
     return null;
   }
+}
+
+function generateSequence(roomName) {
+  if (!sequence[roomName]) {
+    sequence[roomName] = 0;
+  }
+  sequence[roomName]++;
+  return sequence[roomName];
 }
 
 /**
@@ -308,8 +317,11 @@ function socketHandler(io) {
       for (const roomName of roomNames) {
         if (rooms[roomName]) {
           socket.join(roomName);
-          if (!rooms[roomName].members.includes(socket.id)) {
-            rooms[roomName].members.push(socket.id);
+          if (!rooms[roomName].members.some((m) => m.id === socket.id)) {
+            rooms[roomName].members.push({
+              id: socket.id,
+              sequence: generateSequence(roomName),
+            });
           }
           io.to(roomName).emit("room-info", {
             name: roomName,
@@ -326,7 +338,7 @@ function socketHandler(io) {
       rooms[room.name] = {
         admin: room.admin,
         created_at: Date.now(),
-        members: [socket.id],
+        members: [{ id: socket.id, sequence: generateSequence(room.name) }],
         onCallIds: [],
       };
       storeRoom(room.name, room.admin);
@@ -339,8 +351,15 @@ function socketHandler(io) {
       for (const username of usernames) {
         if (socIns[username]) {
           socIns[username].join(room.name);
-          if (!rooms[room.name].members.includes(users[username])) {
-            rooms[room.name].members.push(users[username]);
+          if (
+            !rooms[room.name].members.some(
+              (member) => member.id === users[username],
+            )
+          ) {
+            rooms[room.name].members.push({
+              id: users[username],
+              sequence: generateSequence(room.name),
+            });
           }
         }
       }
@@ -432,24 +451,32 @@ function socketHandler(io) {
     socket.on("handshake", ({ id, to, room, signal }) => {
       const isCallOngoing =
         rooms[room.name] && rooms[room.name].onCallIds.length > 0;
+      console.log("[WebRTC] startVideoCall called for room:", room.name);
       if (
-        !rooms[room.name].onCallIds.includes(socket.id) &&
-        rooms[room.name].members.includes(socket.id)
+        !rooms[room.name].onCallIds.some((member) => member.id === socket.id) &&
+        rooms[room.name].members.some((member) => member.id === socket.id)
       ) {
-        rooms[room.name].onCallIds.push(socket.id);
+        rooms[room.name].onCallIds.push({
+          id: socket.id,
+          sequence: generateSequence(room.name),
+        });
+        console.log(rooms[room.name].onCallIds);
         io.to(room.name).emit("update-room-info", {
           name: room.name,
+          signal:
+            !isCallOngoing && signal?.type === "init-call"
+              ? {
+                  ...signal,
+                  callerId: socket.id,
+                  room,
+                  callerName: names[socket.id],
+                }
+              : null,
+          memberIds: rooms[room.name].members || [],
           onCallIds: rooms[room.name].onCallIds || [],
         });
       }
-      if (!isCallOngoing && signal.type === "init-call") {
-        const callerName = names[socket.id] || "Unknown";
-        socket.broadcast
-          .to(room.name)
-          .emit("on-call", { id: socket.id, room, callerName });
-        return;
-      }
-      if (to && rooms[room.name].onCallIds.includes(to)) {
+      if (to && rooms[room.name].onCallIds.some((member) => member.id === to)) {
         io.to(to).emit("handshake", {
           id: socket.id,
           room,
@@ -458,14 +485,19 @@ function socketHandler(io) {
       }
     });
     socket.on("reject-call", ({ to, room }) => {
-      io.to(to).emit("reject-call", { id: socket.id, room, username: names[socket.id] || "Unknown" });
+      io.to(to).emit("reject-call", {
+        id: socket.id,
+        room,
+        username: names[socket.id] || "Unknown",
+      });
     });
     socket.on("exit-video", ({ room }) => {
       rooms[room.name].onCallIds = rooms[room.name]?.onCallIds.filter(
-        (id) => id !== socket.id,
+        (member) => member.id !== socket.id,
       );
       io.to(room.name).emit("update-room-info", {
         name: room.name,
+        memberIds: rooms[room.name]?.members || [],
         onCallIds: rooms[room.name]?.onCallIds || [],
       });
       socket.broadcast.to(room.name).emit("exit-video", { id: socket.id });
@@ -480,15 +512,16 @@ function socketHandler(io) {
 
       for (const roomName of Object.keys(rooms)) {
         rooms[roomName].members = rooms[roomName].members.filter(
-          (id) => id !== socket.id,
+          (member) => member.id !== socket.id,
+        );
+        rooms[roomName].onCallIds = rooms[roomName].onCallIds.filter(
+          (member) => member.id !== socket.id,
         );
         io.to(roomName).emit("update-room-info", {
           name: roomName,
+          memberIds: rooms[roomName]?.members || [],
           onCallIds: rooms[roomName]?.onCallIds || [],
         });
-        rooms[roomName].onCallIds = rooms[roomName].onCallIds.filter(
-          (id) => id !== socket.id,
-        );
         socket.broadcast.to(roomName).emit("exit-room", { id: socket.id });
       }
 
