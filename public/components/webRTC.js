@@ -2,6 +2,22 @@ const ICE_CONFIG = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:openrelay.metered.ca:80" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelay",
+      credential: "openrelay",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelay",
+      credential: "openrelay",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelay",
+      credential: "openrelay",
+    },
   ],
 };
 const PEER_CONFIG = { ...ICE_CONFIG, offerExtmapAllowMixed: true };
@@ -34,7 +50,9 @@ export default class WebRTCManager {
   closePeerConnection(id) {
     const pc = this.peerConnections.get(id);
     if (pc) {
-      try { pc.close(); } catch (_) {}
+      try {
+        pc.close();
+      } catch (_) {}
       this.peerConnections.delete(id);
     }
     this.pendingCandidates.delete(id);
@@ -73,11 +91,18 @@ export default class WebRTCManager {
     if (!this.container) return;
     const isMobile = window.innerWidth < 700;
     const isTablet = window.innerWidth < 1000;
-    if (isMobile) { this.container.style.gridTemplateColumns = "1fr"; return; }
-    if (isTablet) { this.container.style.gridTemplateColumns = "1fr 1fr"; return; }
+    if (isMobile) {
+      this.container.style.gridTemplateColumns = "1fr";
+      return;
+    }
+    if (isTablet) {
+      this.container.style.gridTemplateColumns = "1fr 1fr";
+      return;
+    }
     if (count === 1) this.container.style.gridTemplateColumns = "1fr";
     else if (count <= 4) this.container.style.gridTemplateColumns = "1fr 1fr";
-    else if (count <= 9) this.container.style.gridTemplateColumns = "1fr 1fr 1fr";
+    else if (count <= 9)
+      this.container.style.gridTemplateColumns = "1fr 1fr 1fr";
     else this.container.style.gridTemplateColumns = "repeat(4, 1fr)";
   }
 
@@ -117,13 +142,17 @@ export default class WebRTCManager {
 
   cleanupVideoCall() {
     if (this.localStream) {
-      try { this.localStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      try {
+        this.localStream.getTracks().forEach((t) => t.stop());
+      } catch (_) {}
       this.localStream = null;
     }
     const localVideo = document.getElementById("localVideo");
     if (localVideo) localVideo.srcObject = null;
     for (const [, pc] of this.peerConnections) {
-      try { pc.close(); } catch (_) {}
+      try {
+        pc.close();
+      } catch (_) {}
     }
     this.peerConnections.clear();
     this.pendingCandidates.clear();
@@ -181,7 +210,10 @@ export default class WebRTCManager {
           });
         }
         this.videoModal.style.display = "flex";
-        M.toast({ html: "Connecting room members...", classes: "rounded blue" });
+        M.toast({
+          html: "Connecting room members...",
+          classes: "rounded blue",
+        });
         this.updateStyles();
       } else {
         this.socket.emit("handshake", {
@@ -189,12 +221,18 @@ export default class WebRTCManager {
           room: { name: currentRoom },
           signal: { type: "init-call" },
         });
-        M.toast({ html: "Calling all the members of the room...", classes: "rounded red" });
+        M.toast({
+          html: "Calling all the members of the room...",
+          classes: "rounded red",
+        });
         this.videoModal.style.display = "flex";
       }
     } catch (err) {
       console.error("[WebRTC] Failed to start call:", err);
-      M.toast({ html: "Video call failed: " + err.message, classes: "rounded red" });
+      M.toast({
+        html: "Video call failed: " + err.message,
+        classes: "rounded red",
+      });
     }
   }
 
@@ -207,8 +245,25 @@ export default class WebRTCManager {
       if (!rv) return;
       const pc = this.getOrCreatePeerConnection(id, this.localStream);
       this.setupOnTrack(pc, rv);
+      pc.onicecandidate = (e) => {
+        if (e.candidate && this.peerConnections.get(id) === pc) {
+          this.socket.emit("handshake", {
+            id: this.socket.id,
+            to: id,
+            room: { name: currentRoom },
+            signal: { type: "candidate", candidate: e.candidate },
+          });
+        }
+      };
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
+        const candidates = this.pendingCandidates.get(id) || [];
+        for (const c of candidates) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+          } catch (_) {}
+        }
+        this.pendingCandidates.delete(id);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         this.socket.emit("handshake", {
@@ -220,30 +275,24 @@ export default class WebRTCManager {
       } catch (err) {
         console.error("[WebRTC] Failed to mesh-connect to", id, err);
       }
-      pc.onicecandidate = (e) => {
-        if (e.candidate && this.peerConnections.get(id) === pc) {
-          this.socket.emit("handshake", {
-            id: this.socket.id,
-            to: id,
-            room: { name: currentRoom },
-            signal: { type: "candidate", candidate: e.candidate },
-          });
-        }
-      };
     } else if (signal.type === "answer") {
       const pc = this.getOrCreatePeerConnection(id, this.localStream);
       if (pc) {
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
         const candidates = this.pendingCandidates.get(id) || [];
         for (const c of candidates) {
-          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+          } catch (_) {}
         }
         this.pendingCandidates.delete(id);
       }
     } else if (signal.type === "candidate") {
       const pc = this.peerConnections.get(id);
       if (pc && pc.remoteDescription) {
-        try { await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } catch (_) {}
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        } catch (_) {}
       } else {
         if (!this.pendingCandidates.has(id)) {
           this.pendingCandidates.set(id, []);
